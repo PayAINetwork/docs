@@ -12,79 +12,80 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Docs",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "PayAI",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Freelance AI",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "freelance-ai/getting-started",
+              "freelance-ai/how-it-works",
+              "freelance-ai/architecture",
+              "freelance-ai/api-reference"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "X402 Facilitator",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "x402-facilitator/getting-started",
+              "x402-facilitator/how-it-works",
+              "x402-facilitator/architecture",
+              "x402-facilitator/api-reference"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "X402 Echo Merchant",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "x402-echo/getting-started",
+              "x402-echo/how-it-works",
+              "x402-echo/architecture",
+              "x402-echo/api-reference"
+            ]
+          },
+          {
+            "group": "CT Agent Monetization",
+            "pages": [
+              "ct-agent/getting-started",
+              "ct-agent/how-it-works",
+              "ct-agent/architecture",
+              "ct-agent/sdk-reference"
+            ]
+          },
+          {
+            "group": "Token Gateway",
+            "pages": [
+              "token-gateway/getting-started",
+              "token-gateway/how-it-works",
+              "token-gateway/architecture",
+              "token-gateway/api-reference"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
-          }
-        ]
+        "tab": "Guides"
+      },
+      {
+        "tab": "Examples"
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Github Repos",
+          "href": "https://github.com/PayAINetwork",
+          "icon": "github"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Developer Support",
+          "href": "https://discord.gg/TJ2kYrUj7D",
+          "icon": "discord"
         }
       ]
     }
@@ -128,6 +129,6 @@
     }
   },
   "banner": {
-      "content": "🚀 Our new docs are live, enjoy!"
+      "content": "👷 Our new docs are under development, check back soon!"
   }
 }
