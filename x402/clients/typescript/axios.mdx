@@ -1,0 +1,81 @@
+## Getting started with Axios
+
+This page shows you how to use Axios with support for x402.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/axios).</Note>
+
+### Step 1: Install dependencies
+
+```bash
+npm install axios x402-axios dotenv viem
+```
+
+### Step 2: Set your environment variables
+
+```bash
+echo "RESOURCE_SERVER_URL=http://localhost:4021\nENDPOINT_PATH=/weather\nPRIVATE_KEY=..." > .env
+```
+
+Your `.env` file should look like this:
+
+```
+RESOURCE_SERVER_URL=http://localhost:4021
+ENDPOINT_PATH=/weather
+PRIVATE_KEY=... # your private key, could be evm or solana
+```
+
+### Step 3: Create a new Axios client
+
+```typescript index.ts lines icon="typescript"
+import axios from "axios";
+import { config } from "dotenv";
+import { Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
+
+config();
+
+const privateKey = process.env.PRIVATE_KEY as Hex;
+const baseURL = process.env.RESOURCE_SERVER_URL as string; // e.g. https://example.com
+const endpointPath = process.env.ENDPOINT_PATH as string; // e.g. /weather
+
+if (!baseURL || !privateKey || !endpointPath) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const account = privateKeyToAccount(privateKey);
+
+const api = withPaymentInterceptor(
+  axios.create({
+    baseURL,
+  }),
+  account,
+);
+
+api
+  .get(endpointPath)
+  .then(response => {
+    console.log(response.data);
+
+    const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"]);
+    console.log(paymentResponse);
+  })
+  .catch(error => {
+    console.error(error);
+  });
+```
+
+### Step 4: Run the client
+
+```bash
+npx tsx index.ts
+```
+
+### Step 5: Test the client
+
+You can test payments against a local server by running the [express example](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express) or the [hono example](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/hono) from the x402 repository.  
+
+Just set your environment variables to match your local server, install the dependencies, and run the examples.
+
+<Note>You can also test your client against PayAI's [live Echo Merchant](https://x402.payai.network) for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.</Note>
