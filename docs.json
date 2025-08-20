@@ -17,8 +17,7 @@
           {
             "group": "PayAI",
             "pages": [
-              "index",
-              "quickstart"
+              "introduction"
             ]
           },
           {
@@ -70,12 +69,12 @@
               {
                 "group": "Facilitator",
                 "pages": [
-                  "x402-facilitator/getting-started",
-                  "x402-facilitator/how-it-works",
-                  "x402-facilitator/architecture",
-                  "x402-facilitator/api-reference"
+                  "x402/facilitators/introduction",
+                  "x402/facilitators/list-of-facilitators"
                 ]
-              }
+              },
+              "x402/supported-networks",
+              "x402/reference"
             ]
           },
           {

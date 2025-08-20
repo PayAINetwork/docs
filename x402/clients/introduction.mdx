@@ -1,7 +1,76 @@
-## Coming soon
+---
+title: "Client Introduction"
+description: "Learn how to support x402 in your client"
+---
 
-This page will explain the benefit of using x402 with your client.
+## Why use x402 with your client
 
-It will go over the architecture of x402, the responsibilities of a client in the x402 ecosystem, and how to get started.
+x402 standardizes how clients discover payment requirements, construct payment payloads, and complete on-chain payments for HTTP resources. Benefits include:
 
-The information here will be useful for adding x402 to your existing client, or for writing custom client middleware to support x402.
+- Unified handling of `402 Payment Required` across chains and schemes
+- Wallet-agnostic payment payload creation
+- Predictable retry semantics via the `X-PAYMENT` request header
+- Clear UX paths for both verification and settlement outcomes
+
+## Architecture at a glance
+
+![x402 sequence diagram](/images/x402-sequence-diagram.svg)
+
+- Client: Calls protected resources and constructs payment payloads.
+- Resource Server: Advertises payment requirements, verifies/settles payments, fulfills requests.
+- Facilitator Server (optional): Verifies and/or settles payments for the resource server.
+- Blockchain Networks: Execute and confirm payments.
+
+### Payment flow (client perspective)
+Steps (1) and (2) are optional if your client already knows the accepted payment details for the resource.
+
+1. Client makes an HTTP request to a resource server.
+2. Resource server responds with `402 Payment Required` and a Payment Required Response JSON object in the body.
+3. Client selects one of the `paymentRequirements` and creates a Payment Payload according to that scheme.
+4. Client retries the HTTP request with the `X-PAYMENT` header containing a base64-encoded string of the Payment Payload.
+5. Resource server verifies the Payment Payload locally or by POSTing the Payment Payload and Payment Requirements to the facilitator `/verify` endpoint.
+6. If verification is valid, the resource server fulfills the request; otherwise it returns `402` with a Payment Required Response JSON object.
+7. The resource server settles the payment either directly on-chain or via the facilitator `/settle` endpoint.
+8. Facilitator submits the payment to the blockchain and waits for confirmation (when used).
+9. Resource server returns `200 OK` with the resource, and an `X-PAYMENT-RESPONSE` header containing the settlement response as Base64-encoded JSON if execution succeeded.
+
+## Client responsibilities
+
+- Detect `402 Payment Required` responses and parse the Payment Required Response JSON object
+- Choose a `paymentRequirements` entry and construct a Payment Payload for the selected scheme and network
+- Encode the Payment Payload as base64 and include it in the `X-PAYMENT` request header on retry
+- Preserve the original HTTP method, path, and body when retrying with payment
+- Handle verification failures gracefully (e.g., offer alternative methods or networks)
+- On success, optionally read and surface details from `X-PAYMENT-RESPONSE` (base64 JSON)
+
+## Getting started
+
+1. Pick your transport and wallet libraries for the target network(s).
+2. Implement a 402 handler that parses Payment Required Response JSON and guides the user to select a payment option.
+3. Build the Payment Payload for the selected scheme/network using your wallet libraries.
+4. Retry the request with the `X-PAYMENT` header set to the base64-encoded Payment Payload.
+5. Parse `X-PAYMENT-RESPONSE` (if present) for settlement information and update your UI accordingly.
+6. Test end-to-end on a testnet supported by x402, then move to mainnet.
+
+<Tip>
+  Quickstart examples for your client:
+  <ul>
+    <li>TypeScript: <a href="/x402/clients/typescript/axios">Axios</a>, <a href="/x402/clients/typescript/fetch">Fetch</a></li>
+    <li>Python: <a href="/x402/clients/python/httpx">httpx</a>, <a href="/x402/clients/python/requests">requests</a></li>
+    <li>Networks: <a href="/x402/supported-networks">Supported networks</a></li>
+  </ul>
+</Tip>
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the <a href="/x402/reference">x402 Reference</a>.
+
+## Need help?
+
+<Card
+  title="Join our Community"
+  icon="discord"
+  href="https://discord.gg/TJ2kYrUj7D"
+>
+  Have questions or want to connect with other developers? Join our Discord server.
+</Card>
