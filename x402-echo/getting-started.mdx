@@ -1,1 +1,38 @@
 # Getting Started with X402 Echo Merchant
+
+Use the Echo Merchant to validate your <a href="/x402/clients">x402 client</a> in minutes—no server to deploy.
+
+<Card title="Echo Merchant Website" icon="link" href="https://x402.payai.network">
+  Visit the Echo Merchant Website to test your client against a live x402-powered merchant.
+</Card>
+
+## What you need
+
+- An x402 client implementation (see examples below)
+- A private key suitable for the network you’re testing
+
+## Step 1 — Pick a client example
+
+Start from one of the reference clients and run it locally:
+
+- TypeScript: <a href="/x402/clients/typescript/axios">Axios</a>, <a href="/x402/clients/typescript/fetch">Fetch</a>
+- Python: <a href="/x402/clients/python/httpx">httpx</a>, <a href="/x402/clients/python/requests">requests</a>
+
+These examples already implement the x402 flow (handling `402`, constructing the Payment Payload, retrying with `X-PAYMENT`, and decoding `X-PAYMENT-RESPONSE`).
+
+## Step 2 — Point your client at the Echo Merchant
+
+Visit the [Echo Merchant Website](https://x402.payai.network) to see the supported networks and endpoints for the Echo Merchant.
+
+For example:
+
+```
+https://x402.payai.network/api/solana-devnet/paid-content
+https://x402.payai.network/api/solana-mainnet/paid-content
+https://x402.payai.network/api/base/paid-content
+https://x402.payai.network/api/base-sepolia/paid-content
+```
+
+## Step 3 — Run and observe
+
+Run the client. You should see the initial `402`, a retry with `X-PAYMENT`, a `200 OK` response, and a decodable `X-PAYMENT-RESPONSE` header. The tokens you sent are refunded automatically and PayAI covers the fees.

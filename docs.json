@@ -80,10 +80,8 @@
           {
             "group": "X402 Echo Merchant",
             "pages": [
-              "x402-echo/getting-started",
-              "x402-echo/how-it-works",
-              "x402-echo/architecture",
-              "x402-echo/api-reference"
+              "x402-echo/introduction",
+              "x402-echo/getting-started"
             ]
           },
           {
