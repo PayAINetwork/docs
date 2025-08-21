@@ -1,0 +1,94 @@
+## Getting started with Hono
+
+Start accepting 402 payments in your Hono server in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/hono).</Note>
+
+### Step 1: Install dependencies
+
+```bash
+npm install x402-hono hono dotenv @hono/node-server
+```
+
+### Step 2: Set your environment variables
+
+```bash
+echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network\nNETWORK=solana-devnet" > .env
+```
+
+Your `.env` file should look like this:
+
+```
+ADDRESS=0x... # the wallet address you will receive payments on, could be evm or solana
+FACILITATOR_URL=https://facilitator.payai.network
+NETWORK=solana-devnet # or base-sepolia, avalanche, etc.
+```
+
+### Step 3: Create a new Hono app
+
+```typescript index.ts lines icon="typescript"
+import { config } from "dotenv";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { paymentMiddleware, Network, Resource } from "x402-hono";
+
+config();
+
+const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
+const payTo = process.env.ADDRESS as `0x${string}`;
+const network = process.env.NETWORK as Network;
+
+if (!facilitatorUrl || !payTo || !network) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const app = new Hono();
+
+console.log("Server is running");
+
+app.use(
+  paymentMiddleware(
+    payTo,
+    {
+      "/weather": {
+        price: "$0.001",
+        network,
+      },
+    },
+    {
+      url: facilitatorUrl,
+    },
+  ),
+);
+
+app.get("/weather", c => {
+  return c.json({
+    report: {
+      weather: "sunny",
+      temperature: 70,
+    },
+  });
+});
+
+serve({
+  fetch: app.fetch,
+  port: 4021,
+});
+```
+
+### Step 4: Run the server
+
+```bash
+npx tsx index.ts
+```
+
+<Check>
+  Your server is now accepting x402 payments!
+</Check>
+
+### Step 5: Test the server
+
+You can test payments against your server locally by following the [fetch example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/fetch) or the [axios example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/axios) from the x402 repository.  
+
+Just set your environment variables to match your local server, install the dependencies, and run the examples.

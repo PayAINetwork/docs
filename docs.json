@@ -17,26 +17,64 @@
           {
             "group": "PayAI",
             "pages": [
-              "index",
-              "quickstart"
+              "introduction"
             ]
           },
           {
-            "group": "Freelance AI",
+            "group": "X402",
             "pages": [
-              "freelance-ai/getting-started",
-              "freelance-ai/how-it-works",
-              "freelance-ai/architecture",
-              "freelance-ai/api-reference"
-            ]
-          },
-          {
-            "group": "X402 Facilitator",
-            "pages": [
-              "x402-facilitator/getting-started",
-              "x402-facilitator/how-it-works",
-              "x402-facilitator/architecture",
-              "x402-facilitator/api-reference"
+              "x402/introduction",
+              "x402/quickstart",
+              {
+                "group": "Merchants (Servers)",
+                "pages": [
+                  "x402/servers/introduction",
+                  {
+                    "group": "Typescript",
+                    "pages": [
+                      "x402/servers/typescript/express",
+                      "x402/servers/typescript/hono",
+                      "x402/servers/typescript/nextjs"
+                    ]
+                  },
+                  {
+                    "group": "Python",
+                    "pages": [
+                      "x402/servers/python/fastapi",
+                      "x402/servers/python/flask"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Buyers (Clients)",
+                "pages": [
+                  "x402/clients/introduction",
+                  {
+                    "group": "Typescript",
+                    "pages": [
+                      "x402/clients/typescript/axios",
+                      "x402/clients/typescript/fetch"
+                    ]
+                  },
+                  {
+                    "group": "Python",
+                    "pages": [
+                      "x402/clients/python/httpx",
+                      "x402/clients/python/requests"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Facilitator",
+                "pages": [
+                  "x402/facilitators/introduction",
+                  "x402/facilitators/list-of-facilitators"
+                ]
+              },
+              "x402/supported-networks",
+              "x402/reference"
             ]
           },
           {
@@ -46,6 +84,15 @@
               "x402-echo/how-it-works",
               "x402-echo/architecture",
               "x402-echo/api-reference"
+            ]
+          },
+          {
+            "group": "Freelance AI",
+            "pages": [
+              "freelance-ai/getting-started",
+              "freelance-ai/how-it-works",
+              "freelance-ai/architecture",
+              "freelance-ai/api-reference"
             ]
           },
           {
