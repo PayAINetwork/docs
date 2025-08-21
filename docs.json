@@ -87,48 +87,36 @@
           {
             "group": "Freelance AI",
             "pages": [
+              "freelance-ai/introduction",
               "freelance-ai/getting-started",
-              "freelance-ai/how-it-works",
-              "freelance-ai/architecture",
-              "freelance-ai/api-reference"
+              "freelance-ai/how-it-works"
+
             ]
           },
           {
             "group": "CT Agent Monetization",
             "pages": [
-              "ct-agent/getting-started",
-              "ct-agent/how-it-works",
-              "ct-agent/architecture",
-              "ct-agent/sdk-reference"
+              "ct-agent/introduction"
             ]
           },
           {
             "group": "Token Gateway",
             "pages": [
-              "token-gateway/getting-started",
-              "token-gateway/how-it-works",
-              "token-gateway/architecture",
-              "token-gateway/api-reference"
+              "token-gateway/introduction"
             ]
           }
         ]
-      },
-      {
-        "tab": "Guides"
-      },
-      {
-        "tab": "Examples"
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Github Repos",
+          "anchor": "Github",
           "href": "https://github.com/PayAINetwork",
           "icon": "github"
         },
         {
-          "anchor": "Developer Support",
+          "anchor": "Support",
           "href": "https://discord.gg/TJ2kYrUj7D",
           "icon": "discord"
         }
@@ -142,14 +130,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:info@payai.network"
+        "label": "Home",
+        "href": "https://payai.network"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.payai.network"
+      "label": "Support",
+      "href": "https://discord.gg/TJ2kYrUj7D"
     }
   },
   "contextual": {
@@ -174,6 +162,6 @@
     }
   },
   "banner": {
-      "content": "👷 Our new docs are under development, check back soon!"
+      "content": "🚀 Welcome to the PayAI docs!"
   }
 }
