@@ -104,6 +104,15 @@
             "pages": [
               "token-gateway/introduction"
             ]
+          },
+          {
+            "group": "Project Info",
+            "pages": [
+              "project-info/tokenomics",
+              "project-info/token-use-and-legal-disclaimer",
+              "project-info/official-links",
+              "project-info/contributing"
+            ]
           }
         ]
       }
