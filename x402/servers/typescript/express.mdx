@@ -4,34 +4,55 @@ Start accepting x402 payments in your Express server in 2 minutes.
 
 <Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express).</Note>
 
-### Step 1: Install the server wrapper
+### Step 1: Create a new server from the starter template
 
+Use your favorite package manager.
+
+##### npm (npx)
 ```bash
-npm install x402-express dotenv
+npx @payai/x402-express-starter my-first-server
 ```
+
+##### pnpm
+```bash
+pnpm dlx @payai/x402-express-starter my-first-server
+```
+
+##### bun
+```bash
+bunx @payai/x402-express-starter my-first-server
+```
+
+The starter mirrors the upstream example and bootstraps a ready-to-run Express server.
+
 
 ### Step 2: Set your environment variables
 
-```bash
-echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network" > .env
-```
+Open your generated project's `.env` and set:
 
-Your `.env` file should look like this:
-```
-ADDRESS=0x... # the wallet address you will receive payments on, could be evm or solana
+- ADDRESS: Wallet public address to receive payments to
+- FACILITATOR_URL: Facilitator base URL (default: https://facilitator.payai.network)
+
+```env
+ADDRESS=0x...
 FACILITATOR_URL=https://facilitator.payai.network
+# Optional if using coinbase facilitator:
+# CDP_API_KEY_ID="Coinbase Developer Platform Key"
+# CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
 ```
 
-### Step 3: Create a new Express app
+### Step 3: Preview the server code
 
-```ts index.ts lines icon="typescript"
+This is the `index.ts` the starter generates. It loads your env, applies the x402 payment middleware, defines example routes, and logs the server URL.
+
+```ts
 import { config } from "dotenv";
 import express from "express";
-import { paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
+import { paymentMiddleware, Resource } from "x402-express";
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
-const payTo = process.env.ADDRESS as `0x${string}` | SolanaAddress;
+const payTo = process.env.ADDRESS as `0x${string}`;
 
 if (!facilitatorUrl || !payTo) {
   console.error("Missing required environment variables");
@@ -48,7 +69,6 @@ app.use(
         // USDC amount in dollars
         price: "$0.001",
         // network: "base" // uncomment for Base mainnet
-        // network: "solana" // uncomment for Solana mainnet
         network: "base-sepolia",
       },
       "/premium/*": {
@@ -58,7 +78,6 @@ app.use(
           asset: {
             address: "0xabc",
             decimals: 18,
-            // omit eip712 for Solana
             eip712: {
               name: "WETH",
               version: "1",
@@ -66,7 +85,6 @@ app.use(
           },
         },
         // network: "base" // uncomment for Base mainnet
-        // network: "solana" // uncomment for Solana mainnet
         network: "base-sepolia",
       },
     },
@@ -99,7 +117,7 @@ app.listen(4021, () => {
 ### Step 4: Run the server
 
 ```bash
-npx ts-node-dev index.ts
+npm run dev
 ```
 
 <Check>
@@ -109,5 +127,3 @@ npx ts-node-dev index.ts
 ### Step 5: Test the server
 
 You can test payments against your server locally by following the [fetch example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/fetch) or the [axios example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/axios) from the x402 repository.  
-
-Just set your environment variables to match your local server, install the dependencies, and run the examples.

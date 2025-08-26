@@ -28,6 +28,22 @@ The starter mirrors the upstream example and bootstraps a ready-to-run Fetch cli
 
 ### Step 2: Preview the client code
 
+### Step 2: Set your environment variables
+
+Open your generated project's `.env` and set the following:
+
+- RESOURCE_SERVER_URL: Base URL of the server to call (e.g., http://localhost:4021)
+- ENDPOINT_PATH: Path to a paid endpoint (e.g., /weather)
+- PRIVATE_KEY: Hex EVM private key of the paying account
+
+```env
+RESOURCE_SERVER_URL=http://localhost:4021
+ENDPOINT_PATH=/weather
+PRIVATE_KEY=0x...
+```
+
+### Step 3: Preview the client code
+
 This is the `index.ts` the starter generates. It loads your env, wraps `fetch` with x402, calls your endpoint, and logs both the JSON body and the decoded `x-payment-response` headers.
 
 ```ts
@@ -67,7 +83,7 @@ fetchWithPayment(url, {
   });
 ```
 
-### Step 3: Run the client
+### Step 4: Run the client
 
 ```bash
 npm run dev
@@ -77,7 +93,7 @@ npm run dev
   Your client is now making x402 payments!
 </Check>
 
-### Step 4: Test the client
+### Step 5: Test the client
 
 You can test your client against a local server by running the [express example](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express) or the [hono example](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/hono) from the x402 repository.  
 
