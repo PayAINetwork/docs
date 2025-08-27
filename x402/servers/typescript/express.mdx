@@ -30,15 +30,18 @@ The starter mirrors the upstream example and bootstraps a ready-to-run Express s
 
 Open your generated project's `.env` and set:
 
-- ADDRESS: Wallet public address to receive payments to
-- FACILITATOR_URL: Facilitator base URL (default: https://facilitator.payai.network)
+- `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
+- `NETWORK`: Network to use for the facilitator (default: `base-sepolia`)
+- `ADDRESS`: Wallet public address to receive payments to
 
 ```env
-ADDRESS=0x...
 FACILITATOR_URL=https://facilitator.payai.network
-# Optional if using coinbase facilitator:
-# CDP_API_KEY_ID="Coinbase Developer Platform Key"
-# CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
+NETWORK=base-sepolia # or base
+ADDRESS=0x... # wallet public address you want to receive payments to
+
+# required if using the Base mainnet facilitator
+CDP_API_KEY_ID="Coinbase Developer Platform Key"
+CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
 ```
 
 ### Step 3: Preview the server code
@@ -126,4 +129,4 @@ npm run dev
 
 ### Step 5: Test the server
 
-You can test payments against your server locally by following the [fetch example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/fetch) or the [axios example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/axios) from the x402 repository.  
+You can test payments against your server locally by following the [fetch example](/x402/clients/typescript/fetch.mdx) or the [axios example](/x402/clients/typescript/axios.mdx).  
