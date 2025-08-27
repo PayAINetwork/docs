@@ -21,62 +21,67 @@
             ]
           },
           {
-            "group": "X402",
+            "group": "x402",
             "pages": [
               "x402/introduction",
-              "x402/quickstart",
-              {
-                "group": "Merchants (Servers)",
-                "pages": [
-                  "x402/servers/introduction",
-                  {
-                    "group": "Typescript",
-                    "pages": [
-                      "x402/servers/typescript/express",
-                      "x402/servers/typescript/hono",
-                      "x402/servers/typescript/nextjs"
-                    ]
-                  },
-                  {
-                    "group": "Python",
-                    "pages": [
-                      "x402/servers/python/fastapi",
-                      "x402/servers/python/flask"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Buyers (Clients)",
-                "pages": [
-                  "x402/clients/introduction",
-                  {
-                    "group": "Typescript",
-                    "pages": [
-                      "x402/clients/typescript/axios",
-                      "x402/clients/typescript/fetch"
-                    ]
-                  },
-                  {
-                    "group": "Python",
-                    "pages": [
-                      "x402/clients/python/httpx",
-                      "x402/clients/python/requests"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Facilitator",
-                "pages": [
-                  "x402/facilitators/introduction",
-                  "x402/facilitators/list-of-facilitators"
-                ]
-              },
-              "x402/supported-networks",
-              "x402/reference"
+              "x402/quickstart"
             ]
           },
+          {
+            "group": "x402 Merchants",
+            "pages": [
+              "x402/servers/introduction",
+              {
+                "group": "Typescript",
+                "pages": [
+                  "x402/servers/typescript/express",
+                  "x402/servers/typescript/hono",
+                  "x402/servers/typescript/nextjs"
+                ]
+              },
+              {
+                "group": "Python",
+                "pages": [
+                  "x402/servers/python/fastapi",
+                  "x402/servers/python/flask"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "x402 Clients",
+              "pages": [
+                "x402/clients/introduction",
+                {
+                  "group": "Typescript",
+                  "pages": [
+                    "x402/clients/typescript/axios",
+                    "x402/clients/typescript/fetch"
+                  ]
+                },
+                {
+                  "group": "Python",
+                  "pages": [
+                    "x402/clients/python/httpx",
+                    "x402/clients/python/requests"
+                  ]
+                }
+              ]
+            },
+            {
+              "group": "x402 Facilitator",
+              "pages": [
+                "x402/facilitators/introduction",
+                "x402/facilitators/list-of-facilitators"
+              ]
+            },
+            {
+              "group": "x402 Reference",
+              "pages": [
+                "x402/supported-networks",
+                "x402/reference"
+              ]
+            },
           {
             "group": "X402 Echo Merchant",
             "pages": [
