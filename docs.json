@@ -8,7 +8,7 @@
     "light": "#F7F5F0",
     "dark": "#172869"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/logo/favicon.svg",
   "navigation": {
     "tabs": [
       {
@@ -176,6 +176,6 @@
     }
   },
   "banner": {
-      "content": "🚀 Welcome to the PayAI docs!"
+      "content": "🎉 x402 is now live on Solana!"
   }
 }
