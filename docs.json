@@ -2,13 +2,13 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "aspen",
   "name": "PayAI Documentation",
-  "description": "Learn how to use PayAI products to build the agentic future!",
+  "description": "Learn how to use PayAI to build the agentic future!",
   "colors": {
     "primary": "#006EFF",
     "light": "#F7F5F0",
     "dark": "#172869"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "navigation": {
     "tabs": [
       {
@@ -138,8 +138,8 @@
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
   },
   "navbar": {
     "links": [
