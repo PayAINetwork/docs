@@ -3,64 +3,59 @@ title: "Merchant Introduction"
 description: "Learn how to sell services with x402."
 ---
 
-## Why use x402 with your server
+## Monetize your API with x402
 
-x402 lets you monetize HTTP APIs and content with on-chain payments, while keeping your existing server stack. It standardizes how clients discover accepted payment methods, submit payments, and how servers verify and settle them. Benefits include:
+x402 lets you monetize HTTP APIs and content with on-chain payments, while keeping your existing server stack. 
 
-- Simple, consistent 402 flow across multiple chains and schemes
-- Works with your current authentication/authorization model
-- Flexible verification: local or via a facilitator
-- Direct or facilitated on-chain settlement
-- Clear developer ergonomics for both clients and servers
+Benefits:
+
+✅ Merchants don't pay network fees.  
+✅ Customers don't pay network fees.  
+✅ Payment settles in < 1 second.  
+✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
 
 ## Architecture at a glance
 
 ![x402 sequence diagram](/images/x402-sequence-diagram.svg)
 
-- Client: Calls your protected resource and submits payments.
-- Resource Server (your server): Advertises payment requirements, verifies payments, fulfills requests, and settles payments.
-- Facilitator Server (optional): Verifies and/or settles payments on your behalf via standard endpoints.
-- Blockchain Networks: Where payments are executed and confirmed.
-
-### Payment flow
-Steps (1) and (2) are optional if the client already knows the accepted payment details for the resource.
-
-1. Client makes an HTTP request to a resource server.
-2. Resource server responds with a 402 Payment Required status and a Payment Required Response JSON object in the body.
-3. Client selects one of the `paymentRequirements` and creates a Payment Payload according to that scheme.
-4. Client sends the HTTP request with the `X-PAYMENT` header containing a base64-encoded string of the Payment Payload to the resource server.
-5. Resource server verifies the Payment Payload locally or by POSTing the Payment Payload and Payment Requirements to the facilitator `/verify` endpoint.
-6. Facilitator performs verification based on the scheme and network and returns a Verification Response. If valid, the resource server fulfills the request; if invalid, it returns 402 with a Payment Required Response JSON object.
-7. The resource server settles the payment either directly on-chain or by POSTing the Payment Payload and Payment Requirements to the facilitator `/settle` endpoint.
-8. Facilitator submits the payment to the blockchain based on the scheme and network.
-9. Facilitator waits for on-chain confirmation.
-10. Facilitator returns a Payment Execution Response to the resource server.
-11. Resource server returns `200 OK` with the resource, and an `X-PAYMENT-RESPONSE` header containing the settlement response as Base64-encoded JSON if execution succeeded.
-
-## Server responsibilities
-
-- Advertise payment options by returning `402 Payment Required` with a Payment Required Response JSON object.
-- Accept client retries that include an `X-PAYMENT` header containing the Payment Payload.
-- Verify payments locally or via a facilitator `/verify` endpoint and act on the result.
-- Fulfill successful requests and include `X-PAYMENT-RESPONSE` on responses when applicable.
-- Settle payments directly or via a facilitator `/settle` endpoint.
+- **Client**: Calls your protected resource and submits payments.
+- **Server (merchant)**: Advertises payment requirements, verifies payments, fulfills requests, and settles payments.
+- **Facilitator**: Verifies and/or settles payments on your behalf via standard endpoints.
+- **Blockchain**: Where payments are executed and confirmed.
 
 ## Getting started
 
-1. Identify protected resources and define `paymentRequirements` for each.
-2. Implement a 402 handler that returns a Payment Required Response JSON object.
-3. Add request handling that reads `X-PAYMENT`, verifies it (locally or via a facilitator), and authorizes on success.
-4. Implement settlement logic (direct chain interaction or facilitator `/settle`).
-5. Test on a testnet supported by x402 (see supported networks) and then move to mainnet.
+Select one of the quickstart examples, or read the [reference](/x402/reference) for more details.
 
-<Tip>
-  Quickstart examples for your server framework:
-  <ul>
-    <li>TypeScript: <a href="/x402/servers/typescript/express">Express</a>, <a href="/x402/servers/typescript/hono">Hono</a>, <a href="/x402/servers/typescript/nextjs">Next.js</a></li>
-    <li>Python: <a href="/x402/servers/python/fastapi">FastAPI</a>, <a href="/x402/servers/python/flask">Flask</a></li>
-    <li>Networks: <a href="/x402/supported-networks">Supported networks</a></li>
-  </ul>
-</Tip>
+<Tabs>
+  <Tab title="TypeScript">
+    <CardGroup>
+        <Card title="Express" href="/x402/servers/typescript/express" icon="server">
+            Quickstart for building an x402-enabled server with Express.
+        </Card>
+        <Card title="Hono" href="/x402/servers/typescript/hono" icon="server">
+            Quickstart for building an x402-enabled server with Hono.
+        </Card>
+        <Card title="NextJS (coming soon)" href="/x402/servers/typescript/nextjs" icon="server">
+            NextJS server quickstart is coming soon.
+        </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Python">
+    <CardGroup>
+        <Card title="FastAPI" href="/x402/servers/python/fastapi" icon="server">
+            Quickstart for building an x402-enabled server with FastAPI.
+        </Card>
+        <Card title="Flask" href="/x402/servers/python/flask" icon="server">
+            Quickstart for building an x402-enabled server with Flask.
+        </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Facilitator URL
+
+The PayAI facilitator URL is `https://facilitator.payai.network`.
 
 ## x402 reference
 
