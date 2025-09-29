@@ -72,13 +72,12 @@
               "group": "x402 Facilitator",
               "pages": [
                 "x402/facilitators/introduction",
-                "x402/facilitators/list-of-facilitators"
+                "x402/supported-networks"
               ]
             },
             {
               "group": "x402 Reference",
               "pages": [
-                "x402/supported-networks",
                 "x402/reference"
               ]
             },
