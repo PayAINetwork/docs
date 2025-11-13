@@ -76,6 +76,13 @@
               ]
             },
             {
+              "group": "Guides",
+              "pages": [
+                "x402/guides/x402-ui-components-solana",
+                "x402/guides/x402-solana-integration"
+              ]
+            },
+            {
               "group": "x402 Reference",
               "pages": [
                 "x402/reference"

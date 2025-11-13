@@ -1,0 +1,162 @@
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## X402 UI Components On Solana
+
+Quick guide — drop `@payai/x402-launcher-sol` into your React app.
+
+Add premade react components to start accepting payments in style in just a few minutes.
+
+<Note>
+  You can find the full code and examples in the [x402-launcher-sol repository](https://github.com/PayAINetwork/x402-launcher-sol).
+</Note>
+
+## Installation
+
+### Install the package
+
+```bash
+npm install @payai/x402-launcher-sol
+```
+
+Or with pnpm:
+
+```bash
+pnpm add @payai/x402-launcher-sol
+```
+
+Or with yarn:
+
+```bash
+yarn add @payai/x402-launcher-sol
+```
+
+### Install peer dependencies (Solana wallet adapter stack)
+
+```bash
+npm install @solana/wallet-adapter-react @solana/wallet-adapter-react-ui @solana/wallet-adapter-wallets @solana/web3.js
+```
+
+<Note>You can also use `yarn add` or `pnpm add` for peer dependencies.</Note>
+
+## Setup
+
+### Step 1: Import styles once (entry file)
+
+Add these imports to your `main.tsx` / `index.tsx` / `App.tsx` (one-time):
+
+```tsx
+import "@payai/x402-launcher-sol/styles";
+import "@solana/wallet-adapter-react-ui/styles.css";
+```
+
+This ensures the paywall and wallet modal UI look correct.
+
+### Step 2: (Optional but recommended) Set RPC in .env
+
+To avoid public RPC rate limits in production, set a custom RPC:
+
+```env
+VITE_SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+```
+
+Restart your dev server after changing `.env`. If you skip this, the package will try sensible defaults.
+
+## Usage
+
+### Option A — Auto-setup (fastest)
+
+If you want the package to auto-configure wallet providers for you, simply wrap/insert the component where you want gated content:
+
+```tsx
+import { X402Paywall } from "@payai/x402-launcher-sol";
+import "@payai/x402-launcher-sol/styles";
+import "@solana/wallet-adapter-react-ui/styles.css";
+
+function PremiumPage() {
+  return (
+    <X402Paywall
+      amount={0.02} // price in SOL/USDC depending on network/token (see README)
+      description="Premium Content"
+      network="solana" // network identifier
+    >
+      <YourPremiumContent />
+    </X402Paywall>
+  );
+}
+```
+
+Auto-setup is the easiest path and will configure common wallets (Phantom, Solflare, …) for you.
+
+### Option B — Manual wallet provider setup
+
+If you need custom wallet behaviour (custom adapters, different network endpoint, autoConnect, SSR setup), wrap your app with the Solana wallet provider stack then use the component with `autoSetupProviders={false}`:
+
+```tsx
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+import { clusterApiUrl } from "@solana/web3.js";
+import { X402Paywall } from "@payai/x402-launcher-sol";
+
+function App() {
+  const network = WalletAdapterNetwork.Mainnet;
+  const endpoint = process.env.VITE_SOLANA_RPC_URL || clusterApiUrl(network);
+  const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect={false}>
+        <WalletModalProvider>
+          <X402Paywall
+            amount={0.01}
+            description="Premium"
+            network="solana"
+            autoSetupProviders={false}
+          >
+            <YourPremiumContent />
+          </X402Paywall>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+```
+
+Use this when you need full control (custom wallets, custom cluster endpoints, or special autoConnect behaviour).
+
+## Props Reference
+
+### Key props & behaviour
+
+- **amount** — price to pay (pass number).
+- **description** — human text shown in paywall UI.
+- **network** — `"solana"` (auto-detects mainnet/devnet where possible).
+- **autoSetupProviders** — default `true`; set to `false` when you handle wallet providers manually.
+
+<Note>For the full prop list and examples, check the [package README](https://github.com/PayAINetwork/x402-launcher-sol).</Note>
+
+## Troubleshooting
+
+### Common issues
+
+- **No wallet modal / nothing happens** — confirm you imported the wallet adapter CSS: `@solana/wallet-adapter-react-ui/styles.css`.
+- **RPC errors / rate limits** — configure `VITE_SOLANA_RPC_URL` with a managed RPC (Helius / QuickNode / Alchemy) as shown above.
+- **TypeScript errors** — ensure TypeScript target >= the package's tsconfig (package is TypeScript first; Node >= 18, React >= 18 recommended).
+
+## Resources
+
+- **GitHub**: [github.com/PayAINetwork/x402-launcher-sol](https://github.com/PayAINetwork/x402-launcher-sol)
+- **Issues**: [github.com/PayAINetwork/x402-launcher-sol/issues](https://github.com/PayAINetwork/x402-launcher-sol/issues)
+- **Protocol Overview**: [x402.org](https://x402.org)
+
+## Need help?
+
+<DiscordHelpCard />
