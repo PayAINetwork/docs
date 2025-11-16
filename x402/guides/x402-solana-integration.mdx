@@ -141,6 +141,64 @@ function PremiumContent() {
 }
 ```
 
+### Wallet Adapter Interface
+
+The package works with any wallet that implements this interface:
+
+```ts
+interface WalletAdapter {
+  address: string;
+  signTransaction: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+}
+```
+
+#### Compatible Wallet Providers
+
+**Solana Wallet Adapter (@solana/wallet-adapter-react)**
+
+The official Solana wallet adapter provides the most flexibility and supports multiple wallets:
+
+```tsx
+import { useWallet } from "@solana/wallet-adapter-react";
+
+const wallet = useWallet();
+const walletAdapter = {
+  address: wallet.publicKey?.toString() || "",
+  signTransaction: wallet.signTransaction,
+};
+```
+
+**Privy (@privy-io/react-auth)**
+
+Privy wallets work out of the box:
+
+```tsx
+import { useSolanaWallets } from "@privy-io/react-auth/solana";
+
+const { wallets } = useSolanaWallets();
+const wallet = wallets[0]; // Already implements the interface
+```
+
+**Direct Wallet SDKs**
+
+You can also use wallet SDKs directly:
+
+```ts
+// Phantom
+const phantomProvider = window.phantom?.solana;
+const walletAdapter = {
+  address: phantomProvider.publicKey.toString(),
+  signTransaction: (tx) => phantomProvider.signTransaction(tx),
+};
+
+// Solflare
+const solflareProvider = window.solflare;
+const walletAdapter = {
+  address: solflareProvider.publicKey.toString(),
+  signTransaction: (tx) => solflareProvider.signTransaction(tx),
+};
+```
+
 ### Server Side
 
 #### Next.js API Route Example
@@ -292,7 +350,7 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 ### USDC Mint Addresses
 
-When creating payment requirements, you need to specify the USDC token mint address:
+When creating payment requirements, you need to specify any SPL or Token2022 token address. If you would like to accept payment in USDC, you should specify the following token address:
 
 - **Devnet**: `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`
 - **Mainnet**: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
@@ -318,64 +376,6 @@ const paymentRequirements = await x402.createPaymentRequirements({
     resource: `${process.env.BASE_URL}/api/endpoint`,
   },
 });
-```
-
-### Wallet Adapter Interface
-
-The package works with any wallet that implements this interface:
-
-```ts
-interface WalletAdapter {
-  address: string;
-  signTransaction: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
-}
-```
-
-#### Compatible Wallet Providers
-
-**Solana Wallet Adapter (@solana/wallet-adapter-react)**
-
-The official Solana wallet adapter provides the most flexibility and supports multiple wallets:
-
-```tsx
-import { useWallet } from "@solana/wallet-adapter-react";
-
-const wallet = useWallet();
-const walletAdapter = {
-  address: wallet.publicKey?.toString() || "",
-  signTransaction: wallet.signTransaction,
-};
-```
-
-**Privy (@privy-io/react-auth)**
-
-Privy wallets work out of the box:
-
-```tsx
-import { useSolanaWallets } from "@privy-io/react-auth/solana";
-
-const { wallets } = useSolanaWallets();
-const wallet = wallets[0]; // Already implements the interface
-```
-
-**Direct Wallet SDKs**
-
-You can also use wallet SDKs directly:
-
-```ts
-// Phantom
-const phantomProvider = window.phantom?.solana;
-const walletAdapter = {
-  address: phantomProvider.publicKey.toString(),
-  signTransaction: (tx) => phantomProvider.signTransaction(tx),
-};
-
-// Solflare
-const solflareProvider = window.solflare;
-const walletAdapter = {
-  address: solflareProvider.publicKey.toString(),
-  signTransaction: (tx) => solflareProvider.signTransaction(tx),
-};
 ```
 
 ## Payment Amounts
