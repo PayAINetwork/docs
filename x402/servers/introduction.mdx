@@ -24,6 +24,49 @@ Benefits:
 - **Facilitator**: Verifies and/or settles payments on your behalf via standard endpoints.
 - **Blockchain**: Where payments are executed and confirmed.
 
+## It's this easy
+
+Add x402 payments to your server with just a few lines:
+
+<Tabs>
+  <Tab title="Express">
+```typescript
+import { paymentMiddleware } from "x402-express";
+
+app.use(
+  paymentMiddleware(
+    payTo,
+    {
+      "GET /weather": {
+        price: "$0.001",
+        network: "solana-devnet",
+      },
+    },
+    { url: "https://facilitator.payai.network" },
+  ),
+);
+```
+  </Tab>
+  <Tab title="Hono">
+```typescript
+import { paymentMiddleware } from "x402-hono";
+
+app.use(
+  paymentMiddleware(
+    payTo,
+    {
+      "/weather": {
+        price: "$0.001",
+        network: "solana-devnet",
+      },
+    },
+    { url: "https://facilitator.payai.network" },
+  ),
+);
+```
+  </Tab>
+</Tabs>
+
 ## Getting started
 
 Select one of the quickstart examples, or read the [reference](/x402/reference) for more details.
