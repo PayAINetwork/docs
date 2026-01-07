@@ -14,16 +14,16 @@ It behaves like a real merchant: it advertises payment requirements, verifies yo
 
 - **Fast iteration**: Validate your x402 client integration without deploying your own merchant.
 - **Zero cost**: All tokens are refunded and PayAI pays on‑chain fees.
-- **Realistic flow**: Exercise discovery, verification, retry with `X-PAYMENT`, and settlement just like a production merchant.
+- **Realistic flow**: Exercise discovery, verification, retry with `PAYMENT-SIGNATURE`, and settlement just like a production merchant.
 - **Multi‑network coverage**: Test on the networks supported by x402 without juggling faucets or balances.
 
 ## How it fits into the x402 flow
 
 1. Your client requests a protected resource at the Echo Merchant.
 2. The Echo Merchant responds with `402 Payment Required` and payment requirements.
-3. Your client constructs a Payment Payload and retries with the `X-PAYMENT` header.
+3. Your client constructs a Payment Payload and retries with the `PAYMENT-SIGNATURE` header.
 4. The Echo Merchant verifies and settles the payment, then fulfills the request.
-5. The response includes `X-PAYMENT-RESPONSE` (base64 JSON) you can decode for details.
+5. The response includes `PAYMENT-RESPONSE` (base64 JSON) you can decode for details.
 
 ## Related examples
 
