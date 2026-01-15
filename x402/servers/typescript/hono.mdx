@@ -15,7 +15,7 @@ npm install x402-hono hono dotenv @hono/node-server
 ### Step 2: Set your environment variables
 
 ```bash
-echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network\nNETWORK=solana-devnet" > .env
+echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network\nNETWORK=eip155:84532" > .env
 ```
 
 Your `.env` file should look like this:
@@ -23,7 +23,7 @@ Your `.env` file should look like this:
 ```
 ADDRESS=0x... # the wallet address you will receive payments on, could be evm or solana
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=solana-devnet # or base-sepolia, avalanche, etc.
+NETWORK=eip155:84532 # or eip155:8453, solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1, etc.
 ```
 
 ### Step 3: Create a new Hono app

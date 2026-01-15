@@ -33,17 +33,13 @@ The starter mirrors the upstream example and bootstraps a ready-to-run Express s
 Open your generated project's `.env` and set:
 
 - `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
-- `NETWORK`: Network to use for the facilitator (default: `base-sepolia`)
+- `NETWORK`: Network to use for the facilitator (default: `eip155:84532`)
 - `ADDRESS`: Wallet public address to receive payments to
 
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=base-sepolia # or base
+NETWORK=eip155:84532 # or eip155:8453, solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1, etc.
 ADDRESS=0x... # wallet public address you want to receive payments to
-
-# required if using the Base mainnet facilitator
-CDP_API_KEY_ID="Coinbase Developer Platform Key"
-CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
 ```
 
 ### Step 3: Preview the server code
@@ -73,8 +69,8 @@ app.use(
       "GET /weather": {
         // USDC amount in dollars
         price: "$0.001",
-        // network: "base" // uncomment for Base mainnet
-        network: "base-sepolia",
+        // network: "eip155:8453" // uncomment for Base mainnet
+        network: "eip155:84532",
       },
       "/premium/*": {
         // Define atomic amounts in any EIP-3009 token
@@ -89,8 +85,8 @@ app.use(
             },
           },
         },
-        // network: "base" // uncomment for Base mainnet
-        network: "base-sepolia",
+        // network: "eip155:8453" // uncomment for Base mainnet
+        network: "eip155:84532",
       },
     },
     {
