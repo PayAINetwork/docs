@@ -1,0 +1,138 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with Express
+
+Start accepting x402 payments in your Express server in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express).</Note>
+
+### Step 1: Create a new server from the starter template
+
+Use your favorite package manager.
+
+##### npm (npx)
+```bash
+npx @payai/x402-express-starter my-first-server
+```
+
+##### pnpm
+```bash
+pnpm dlx @payai/x402-express-starter my-first-server
+```
+
+##### bun
+```bash
+bunx @payai/x402-express-starter my-first-server
+```
+
+The starter mirrors the upstream example and bootstraps a ready-to-run Express server.
+
+
+### Step 2: Set your environment variables
+
+Open your generated project's `.env` and set:
+
+- `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
+- `NETWORK`: Network to use for the facilitator (default: `base-sepolia`)
+- `ADDRESS`: Wallet public address to receive payments to
+
+```env
+FACILITATOR_URL=https://facilitator.payai.network
+NETWORK=base-sepolia # or base
+ADDRESS=0x... # wallet public address you want to receive payments to
+
+# required if using the Base mainnet facilitator
+CDP_API_KEY_ID="Coinbase Developer Platform Key"
+CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
+```
+
+### Step 3: Preview the server code
+
+This is the `index.ts` the starter generates. It loads your env, applies the x402 payment middleware, defines example routes, and logs the server URL.
+
+```ts
+import { config } from "dotenv";
+import express from "express";
+import { paymentMiddleware, Resource } from "x402-express";
+config();
+
+const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
+const payTo = process.env.ADDRESS as `0x${string}`;
+
+if (!facilitatorUrl || !payTo) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const app = express();
+
+app.use(
+  paymentMiddleware(
+    payTo,
+    {
+      "GET /weather": {
+        // USDC amount in dollars
+        price: "$0.001",
+        // network: "base" // uncomment for Base mainnet
+        network: "base-sepolia",
+      },
+      "/premium/*": {
+        // Define atomic amounts in any EIP-3009 token
+        price: {
+          amount: "100000",
+          asset: {
+            address: "0xabc",
+            decimals: 18,
+            eip712: {
+              name: "WETH",
+              version: "1",
+            },
+          },
+        },
+        // network: "base" // uncomment for Base mainnet
+        network: "base-sepolia",
+      },
+    },
+    {
+      url: facilitatorUrl,
+    },
+  ),
+);
+
+app.get("/weather", (req, res) => {
+  res.send({
+    report: {
+      weather: "sunny",
+      temperature: 70,
+    },
+  });
+});
+
+app.get("/premium/content", (req, res) => {
+  res.send({
+    content: "This is premium content",
+  });
+});
+
+app.listen(4021, () => {
+  console.log(`Server listening at http://localhost:${4021}`);
+});
+```
+
+### Step 4: Run the server
+
+```bash
+npm run dev
+```
+
+<Check>
+  Your server is now accepting 402 payments!
+</Check>
+
+### Step 5: Test the server
+
+You can test payments against your server locally by following the [fetch example](/v1/x402/clients/typescript/fetch) or the [axios example](/v1/x402/clients/typescript/axios).  
+
+## Need help?
+
+<DiscordHelpCard />

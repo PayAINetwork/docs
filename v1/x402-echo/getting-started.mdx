@@ -1,6 +1,6 @@
 # Getting Started with X402 Echo Merchant
 
-Use the Echo Merchant to validate your <a href="/x402/clients">x402 client</a> in minutes—no server to deploy.
+Use the Echo Merchant to validate your <a href="/v1/x402/clients">x402 client</a> in minutes—no server to deploy.
 
 <Card title="Echo Merchant Website" icon="link" href="https://x402.payai.network">
   Visit the Echo Merchant Website to test your client against a live x402-powered merchant.
@@ -15,10 +15,10 @@ Use the Echo Merchant to validate your <a href="/x402/clients">x402 client</a> i
 
 Start from one of the reference clients and run it locally:
 
-- TypeScript: <a href="/x402/clients/typescript/axios">Axios</a>, <a href="/x402/clients/typescript/fetch">Fetch</a>
-- Python: <a href="/x402/clients/python/httpx">httpx</a>, <a href="/x402/clients/python/requests">requests</a>
+- TypeScript: <a href="/v1/x402/clients/typescript/axios">Axios</a>, <a href="/v1/x402/clients/typescript/fetch">Fetch</a>
+- Python: <a href="/v1/x402/clients/python/httpx">httpx</a>, <a href="/v1/x402/clients/python/requests">requests</a>
 
-These examples already implement the x402 flow (handling `402`, constructing the Payment Payload, retrying with `PAYMENT-SIGNATURE`, and decoding `PAYMENT-RESPONSE`).
+These examples already implement the x402 flow (handling `402`, constructing the Payment Payload, retrying with `X-PAYMENT`, and decoding `X-PAYMENT-RESPONSE`).
 
 ## Step 2 — Point your client at the Echo Merchant
 
@@ -37,9 +37,4 @@ https://x402.payai.network/api/skale-base-spolia/paid-content
 
 ## Step 3 — Run and observe
 
-Run the client. You should see:
-1. Initial `402 Payment Required` response with `PAYMENT-REQUIRED` header
-2. A retry with `PAYMENT-SIGNATURE` header containing your payment
-3. A `200 OK` response with `PAYMENT-RESPONSE` header containing settlement details
-
-The tokens you sent are refunded automatically and PayAI covers the fees.
+Run the client. You should see the initial `402`, a retry with `X-PAYMENT`, a `200 OK` response, and a decodable `X-PAYMENT-RESPONSE` header. The tokens you sent are refunded automatically and PayAI covers the fees.

@@ -1,0 +1,127 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with FastAPI
+
+Start accepting x402 payments in your FastAPI server in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/python/servers/fastapi).</Note>
+
+### Step 1: Install dependencies
+
+```bash
+pip install x402 fastapi uvicorn python-dotenv
+```
+
+### Step 2: Set your environment variables
+
+```bash
+echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network" > .env
+```
+
+Your `.env` file should look like this:
+
+```
+ADDRESS=0x... # the wallet address you will receive payments on, could be evm or solana
+FACILITATOR_URL=https://facilitator.payai.network
+```
+
+### Step 3: Create a new FastAPI app
+
+```python main.py lines icon="python"
+import os
+from typing import Any, Dict
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from x402.fastapi.middleware import require_payment
+from x402.facilitator import FacilitatorConfig
+from x402.types import EIP712Domain, TokenAmount, TokenAsset
+
+# Load environment variables
+load_dotenv()
+
+# Get configuration from environment
+ADDRESS = os.getenv("ADDRESS")
+FACILITATOR_URL = os.getenv("FACILITATOR_URL")
+
+if not ADDRESS or not FACILITATOR_URL:
+    raise ValueError("Missing required environment variables")
+
+facilitator_config = FacilitatorConfig(
+    url=FACILITATOR_URL,
+)
+
+app = FastAPI()
+
+# Apply payment middleware to specific routes
+app.middleware("http")(
+    require_payment(
+        path="/weather",
+        price="$0.001",
+        pay_to_address=ADDRESS,
+        network="base-sepolia",
+        facilitator_config=facilitator_config,
+    )
+)
+
+# Apply payment middleware to premium routes
+app.middleware("http")(
+    require_payment(
+        path="/premium/*",
+        price=TokenAmount(
+            amount="10000",
+            asset=TokenAsset(
+                address="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+                decimals=6,
+                eip712=EIP712Domain(name="USDC", version="2"),
+            ),
+        ),
+        pay_to_address=ADDRESS,
+        network="base-sepolia",
+        facilitator_config=facilitator_config,
+    )
+)
+
+
+@app.get("/weather")
+async def get_weather() -> Dict[str, Any]:
+    return {
+        "report": {
+            "weather": "sunny",
+            "temperature": 70,
+        }
+    }
+
+
+@app.get("/premium/content")
+async def get_premium_content() -> Dict[str, Any]:
+    return {
+        "content": "This is premium content",
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=4021)
+```
+
+### Step 4: Run the server
+
+```bash
+uvicorn main:app --reload
+```
+
+<Check>
+  Your server is now accepting x402 payments!
+</Check>
+
+### Step 5: Test the server
+
+You can test payments against your server locally by following the [httpx example](https://github.com/coinbase/x402/tree/main/examples/python/clients/httpx) or the [requests example](https://github.com/coinbase/x402/tree/main/examples/python/clients/requests) from the x402 repository.  
+
+Just set your environment variables to match your local server, install the dependencies, and run the examples.
+
+## Need help?
+
+<DiscordHelpCard />

@@ -1,0 +1,59 @@
+---
+title: "Client Introduction"
+description: "Learn how to support x402 in your client"
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Why use x402 with your client
+
+x402 standardizes how clients discover payment requirements, construct payment payloads, and complete on-chain payments for HTTP resources. Benefits include:
+
+✅ Customers don't pay network fees.  
+✅ Merchants don't pay network fees.  
+✅ Payment settles in < 1 second.  
+✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
+
+## Architecture at a glance
+
+![x402 sequence diagram](/images/x402-sequence-diagram.svg)
+
+- **Client (buyer)**: Calls protected resources and constructs payment payloads.
+- **Server**: Advertises payment requirements, verifies/settles payments, fulfills requests.
+- **Facilitator**: Verifies and/or settles payments for the resource server.
+- **Blockchains**: Execute and confirm payments.
+
+## Getting started
+
+Select one of the quickstart examples, or read the [reference](/v1/x402/reference) for more details.
+
+<Tabs>
+  <Tab title="TypeScript">
+    <CardGroup>
+        <Card title="Axios" href="/v1/x402/clients/typescript/axios" icon="code">
+            Quickstart for building an x402 client with Axios.
+        </Card>
+        <Card title="Fetch" href="/v1/x402/clients/typescript/fetch" icon="code">
+            Quickstart for building an x402 client with Fetch.
+        </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Python">
+    <CardGroup>
+        <Card title="httpx" href="/v1/x402/clients/python/httpx" icon="code">
+            Quickstart for building an x402 client with httpx.
+        </Card>
+        <Card title="requests" href="/v1/x402/clients/python/requests" icon="code">
+            Quickstart for building an x402 client with requests.
+        </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the <a href="/v1/x402/reference">x402 Reference</a>.
+
+## Need help?
+
+<DiscordHelpCard />
