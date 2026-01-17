@@ -1,0 +1,106 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with Axios
+
+Make x402 payments with an Axios client in 2 minutes.
+
+<Note>You can find the full code for this example <a href="https://github.com/coinbase/x402/tree/main/examples/typescript/clients/axios" target="_blank">here</a>.</Note>
+
+### Step 1: Create a new client from the starter template
+
+Use your favorite package manager.
+
+##### npm (npx)
+```bash
+npx @payai/x402-axios-starter my-first-client
+```
+
+##### pnpm
+```bash
+pnpm dlx @payai/x402-axios-starter my-first-client
+```
+
+##### bun
+```bash
+bunx @payai/x402-axios-starter my-first-client
+```
+
+The starter mirrors the upstream example and bootstraps a ready-to-run Axios client.
+
+### Step 2: Set your environment variables
+
+Open your generated project's `.env` and set the following:
+
+- RESOURCE_SERVER_URL: Base URL of the server to call (e.g., http://localhost:4021)
+- ENDPOINT_PATH: Path to a paid endpoint (e.g., /weather)
+- PRIVATE_KEY: Hex EVM private key of the paying account
+
+```env
+RESOURCE_SERVER_URL=http://localhost:4021
+ENDPOINT_PATH=/weather
+PRIVATE_KEY=0x...
+```
+
+### Step 3: Preview the client code
+
+This is the `index.ts` the starter generates. It loads your env, attaches the x402 payment interceptor to an Axios instance, calls your endpoint, and logs both the JSON body and the decoded `x-payment-response` headers.
+
+```ts
+import axios from "axios";
+import { config } from "dotenv";
+import { Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
+
+config();
+
+const privateKey = process.env.PRIVATE_KEY as Hex;
+const baseURL = process.env.RESOURCE_SERVER_URL as string; // e.g. https://example.com
+const endpointPath = process.env.ENDPOINT_PATH as string; // e.g. /weather
+
+if (!baseURL || !privateKey || !endpointPath) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const account = privateKeyToAccount(privateKey);
+
+const api = withPaymentInterceptor(
+  axios.create({
+    baseURL,
+  }),
+  account,
+);
+
+api
+  .get(endpointPath)
+  .then(response => {
+    console.log(response.data);
+
+    const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"] as string);
+    console.log(paymentResponse);
+  })
+  .catch(error => {
+    console.error(error.response?.data?.error ?? error.message);
+  });
+```
+
+### Step 4: Run the client
+
+```bash
+npm run dev
+```
+
+<Check>
+  Your client is now making x402 payments!
+</Check>
+
+### Step 5: Test the client
+
+You can test your client against a local server by running the [express example](/v1/x402/servers/typescript/express) or the [hono example](/v1/x402/servers/typescript/hono).  
+
+You can also test your client against a <a href="https://x402.payai.network" target="_blank">live merchant</a> for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.
+
+## Need help?
+
+<DiscordHelpCard />

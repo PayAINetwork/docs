@@ -50,37 +50,37 @@
           },
           {
             "group": "x402 Clients",
-              "pages": [
-                "x402/clients/introduction",
-                {
-                  "group": "Typescript",
-                  "pages": [
-                    "x402/clients/typescript/axios",
-                    "x402/clients/typescript/fetch"
-                  ]
-                },
-                {
-                  "group": "Python",
-                  "pages": [
-                    "x402/clients/python/httpx",
-                    "x402/clients/python/requests"
-                  ]
-                }
-              ]
-            },
-            {
-              "group": "x402 Facilitator",
-              "pages": [
-                "x402/facilitators/introduction",
-                "x402/supported-networks"
-              ]
-            },
-            {
-              "group": "x402 Reference",
-              "pages": [
-                "x402/reference"
-              ]
-            },
+            "pages": [
+              "x402/clients/introduction",
+              {
+                "group": "Typescript",
+                "pages": [
+                  "x402/clients/typescript/axios",
+                  "x402/clients/typescript/fetch"
+                ]
+              },
+              {
+                "group": "Python",
+                "pages": [
+                  "x402/clients/python/httpx",
+                  "x402/clients/python/requests"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "x402 Facilitator",
+            "pages": [
+              "x402/facilitators/introduction",
+              "x402/supported-networks"
+            ]
+          },
+          {
+            "group": "x402 Reference",
+            "pages": [
+              "x402/reference"
+            ]
+          },
           {
             "group": "X402 Echo Merchant",
             "pages": [
@@ -94,7 +94,6 @@
               "freelance-ai/introduction",
               "freelance-ai/getting-started",
               "freelance-ai/how-it-works"
-
             ]
           },
           {
@@ -116,6 +115,79 @@
               "project-info/token-use-and-legal-disclaimer",
               "project-info/official-links",
               "project-info/contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "V1 (Legacy)",
+        "groups": [
+          {
+            "group": "x402 V1",
+            "pages": [
+              "v1/x402/introduction",
+              "v1/x402/quickstart"
+            ]
+          },
+          {
+            "group": "x402 Merchants (V1)",
+            "pages": [
+              "v1/x402/servers/introduction",
+              {
+                "group": "Typescript",
+                "pages": [
+                  "v1/x402/servers/typescript/express",
+                  "v1/x402/servers/typescript/hono",
+                  "v1/x402/servers/typescript/nextjs"
+                ]
+              },
+              {
+                "group": "Python",
+                "pages": [
+                  "v1/x402/servers/python/fastapi",
+                  "v1/x402/servers/python/flask"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "x402 Clients (V1)",
+            "pages": [
+              "v1/x402/clients/introduction",
+              {
+                "group": "Typescript",
+                "pages": [
+                  "v1/x402/clients/typescript/axios",
+                  "v1/x402/clients/typescript/fetch"
+                ]
+              },
+              {
+                "group": "Python",
+                "pages": [
+                  "v1/x402/clients/python/httpx",
+                  "v1/x402/clients/python/requests"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "x402 Facilitator (V1)",
+            "pages": [
+              "v1/x402/facilitators/introduction",
+              "v1/x402/supported-networks"
+            ]
+          },
+          {
+            "group": "x402 Reference (V1)",
+            "pages": [
+              "v1/x402/reference"
+            ]
+          },
+          {
+            "group": "X402 Echo Merchant (V1)",
+            "pages": [
+              "v1/x402-echo/introduction",
+              "v1/x402-echo/getting-started"
             ]
           }
         ]

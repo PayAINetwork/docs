@@ -1,0 +1,68 @@
+---
+title: "Merchant Introduction"
+description: "Learn how to sell services with x402."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Monetize your API with x402
+
+x402 lets you monetize HTTP APIs and content with on-chain payments, while keeping your existing server stack. 
+
+Benefits:
+
+✅ Merchants don't pay network fees.  
+✅ Customers don't pay network fees.  
+✅ Payment settles in < 1 second.  
+✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
+
+## Architecture at a glance
+
+![x402 sequence diagram](/images/x402-sequence-diagram.svg)
+
+- **Client**: Calls your protected resource and submits payments.
+- **Server (merchant)**: Advertises payment requirements, verifies payments, fulfills requests, and settles payments.
+- **Facilitator**: Verifies and/or settles payments on your behalf via standard endpoints.
+- **Blockchain**: Where payments are executed and confirmed.
+
+## Getting started
+
+Select one of the quickstart examples, or read the [reference](/v1/x402/reference) for more details.
+
+<Tabs>
+  <Tab title="TypeScript">
+    <CardGroup>
+        <Card title="Express" href="/v1/x402/servers/typescript/express" icon="server">
+            Quickstart for building an x402-enabled server with Express.
+        </Card>
+        <Card title="Hono" href="/v1/x402/servers/typescript/hono" icon="server">
+            Quickstart for building an x402-enabled server with Hono.
+        </Card>
+        <Card title="NextJS (coming soon)" href="/v1/x402/servers/typescript/nextjs" icon="server">
+            NextJS server quickstart is coming soon.
+        </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Python">
+    <CardGroup>
+        <Card title="FastAPI" href="/v1/x402/servers/python/fastapi" icon="server">
+            Quickstart for building an x402-enabled server with FastAPI.
+        </Card>
+        <Card title="Flask" href="/v1/x402/servers/python/flask" icon="server">
+            Quickstart for building an x402-enabled server with Flask.
+        </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Facilitator URL
+
+The PayAI facilitator URL is `https://facilitator.payai.network`.
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/v1/x402/reference).
+
+## Need help?
+
+<DiscordHelpCard />
