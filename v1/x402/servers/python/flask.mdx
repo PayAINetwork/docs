@@ -1,0 +1,122 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with Flask
+
+Start accepting x402 payments in your Flask server in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/python/servers/flask).</Note>
+
+### Step 1: Install dependencies
+
+```bash
+pip install x402 flask python-dotenv
+```
+
+### Step 2: Set your environment variables
+
+```bash
+echo "ADDRESS=0x...\nFACILITATOR_URL=https://facilitator.payai.network" > .env
+```
+
+### Step 3: Create a new Flask app
+
+```python main.py lines icon="python"
+import os
+from flask import Flask, jsonify
+from dotenv import load_dotenv
+from x402.facilitator import FacilitatorConfig
+from x402.flask.middleware import PaymentMiddleware
+from x402.types import EIP712Domain, TokenAmount, TokenAsset
+
+# Load environment variables
+load_dotenv()
+
+# Get configuration from environment
+ADDRESS = os.getenv("ADDRESS")
+FACILITATOR_URL = os.getenv("FACILITATOR_URL")
+
+if not ADDRESS or not FACILITATOR_URL:
+    raise ValueError("Missing required environment variables")
+
+facilitator_config = FacilitatorConfig(url=FACILITATOR_URL)
+
+app = Flask(__name__)
+
+# Initialize payment middleware
+payment_middleware = PaymentMiddleware(app)
+
+# Apply payment middleware to specific routes
+payment_middleware.add(
+    path="/weather",
+    price="$0.001",
+    pay_to_address=ADDRESS,
+    network="base-sepolia",
+    facilitator_config=facilitator_config,
+)
+
+# Apply payment middleware to premium routes
+payment_middleware.add(
+    path="/premium/*",
+    price=TokenAmount(
+        amount="10000",
+        asset=TokenAsset(
+            address="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+            decimals=6,
+            eip712=EIP712Domain(name="USDC", version="2"),
+        ),
+    ),
+    pay_to_address=ADDRESS,
+    network="base-sepolia",
+    facilitator_config=facilitator_config,
+)
+
+
+@app.route("/weather")
+def get_weather():
+    return jsonify(
+        {
+            "report": {
+                "weather": "sunny",
+                "temperature": 70,
+            }
+        }
+    )
+
+
+@app.route("/premium/content")
+def get_premium_content():
+    return jsonify(
+        {
+            "content": "This is premium content",
+        }
+    )
+
+
+@app.route("/public")
+def public():
+    return jsonify({"message": "This is a public endpoint."})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=4021, debug=True)
+```
+
+### Step 4: Run the server
+
+```bash
+flask run
+```
+
+<Check>
+  Your server is now accepting x402 payments!
+</Check>
+
+### Step 5: Test the server
+
+You can test payments against your server locally by following the [httpx example](https://github.com/coinbase/x402/tree/main/examples/python/clients/httpx) or the [requests example](https://github.com/coinbase/x402/tree/main/examples/python/clients/requests) from the x402 repository.  
+
+Just set your environment variables to match your local server, install the dependencies, and run the examples.
+
+## Need help?
+
+<DiscordHelpCard />
