@@ -50,37 +50,37 @@
           },
           {
             "group": "x402 Clients",
-              "pages": [
-                "x402/clients/introduction",
-                {
-                  "group": "Typescript",
-                  "pages": [
-                    "x402/clients/typescript/axios",
-                    "x402/clients/typescript/fetch"
-                  ]
-                },
-                {
-                  "group": "Python",
-                  "pages": [
-                    "x402/clients/python/httpx",
-                    "x402/clients/python/requests"
-                  ]
-                }
-              ]
-            },
-            {
-              "group": "x402 Facilitator",
-              "pages": [
-                "x402/facilitators/introduction",
-                "x402/supported-networks"
-              ]
-            },
-            {
-              "group": "x402 Reference",
-              "pages": [
-                "x402/reference"
-              ]
-            },
+            "pages": [
+              "x402/clients/introduction",
+              {
+                "group": "Typescript",
+                "pages": [
+                  "x402/clients/typescript/axios",
+                  "x402/clients/typescript/fetch"
+                ]
+              },
+              {
+                "group": "Python",
+                "pages": [
+                  "x402/clients/python/httpx",
+                  "x402/clients/python/requests"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "x402 Facilitator",
+            "pages": [
+              "x402/facilitators/introduction",
+              "x402/supported-networks"
+            ]
+          },
+          {
+            "group": "x402 Reference",
+            "pages": [
+              "x402/reference"
+            ]
+          },
           {
             "group": "X402 Echo Merchant",
             "pages": [
