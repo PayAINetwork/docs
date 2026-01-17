@@ -28,8 +28,6 @@ bunx @payai/x402-fetch-starter my-first-client
 The starter mirrors the upstream example and bootstraps a ready-to-run Fetch client.
 
 
-### Step 2: Preview the client code
-
 ### Step 2: Set your environment variables
 
 Open your generated project's `.env` and set the following:
@@ -46,7 +44,7 @@ PRIVATE_KEY=0x...
 
 ### Step 3: Preview the client code
 
-This is the `index.ts` the starter generates. It loads your env, wraps `fetch` with x402, calls your endpoint, and logs both the JSON body and the decoded `x-payment-response` headers.
+This is the `index.ts` the starter generates. It loads your env, wraps `fetch` with x402, calls your endpoint, and logs both the JSON body and the decoded `PAYMENT-RESPONSE` headers.
 
 ```ts
 import { config } from "dotenv";
@@ -77,7 +75,7 @@ fetchWithPayment(url, {
     const body = await response.json();
     console.log(body);
 
-    const paymentResponse = decodeXPaymentResponse(response.headers.get("x-payment-response")!);
+    const paymentResponse = decodeXPaymentResponse(response.headers.get("payment-response")!);
     console.log(paymentResponse);
   })
   .catch(error => {

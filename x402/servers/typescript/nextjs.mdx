@@ -42,17 +42,13 @@ cp env.example .env.local
 Update `.env.local` with:
 
 - `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
-- `NETWORK`: Network to use for the facilitator (e.g. `base-sepolia`, `base`, `solana-devnet`, `solana`)
+- `NETWORK`: Network to use for the facilitator (e.g. `eip155:84532`, `eip155:8453`, `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`, `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`)
 - `ADDRESS`: Wallet public address to receive payments to (e.g. `0x...` for Base, `So11111111111111111111111111111111111111112` for Solana)
 
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=solana-devnet # or base, solana-devnet, etc.
-ADDRESS=So11111111111111111111111111111111111111112 # wallet public address you want to receive payments to
-
-# required if using the Base mainnet facilitator
-CDP_API_KEY_ID="Coinbase Developer Platform Key"
-CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
+NETWORK=eip155:84532 # or eip155:8453, solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1, etc.
+ADDRESS=0x... # wallet public address you want to receive payments to
 ```
 
 ### Step 3: Explore the generated app
