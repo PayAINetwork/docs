@@ -1,0 +1,132 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with httpx
+
+Make x402 payments with an httpx client in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/python/clients/httpx).</Note>
+
+### Step 1: Install dependencies
+
+```bash
+pip install httpx eth-account x402 python-dotenv
+```
+
+### Step 2: Set your environment variables
+
+```bash
+echo "RESOURCE_SERVER_URL=http://localhost:4021\nENDPOINT_PATH=/weather\nPRIVATE_KEY=..." > .env
+```
+
+Your `.env` file should look like this:
+
+```
+RESOURCE_SERVER_URL=http://localhost:4021
+ENDPOINT_PATH=/weather
+PRIVATE_KEY=... # your private key
+```
+
+### Step 3: Create a new httpx client
+
+```python main.py lines icon="python"
+import os
+import asyncio
+from dotenv import load_dotenv
+from eth_account import Account
+from x402.clients.httpx import x402HttpxClient
+from x402.clients.base import decode_x_payment_response, x402Client
+
+# Load environment variables
+load_dotenv()
+
+# Get environment variables
+private_key = os.getenv("PRIVATE_KEY")
+base_url = os.getenv("RESOURCE_SERVER_URL")
+endpoint_path = os.getenv("ENDPOINT_PATH")
+
+if not all([private_key, base_url, endpoint_path]):
+    print("Error: Missing required environment variables")
+    exit(1)
+
+# Create eth_account from private key
+account = Account.from_key(private_key)
+print(f"Initialized account: {account.address}")
+
+
+def custom_payment_selector(
+    accepts, network_filter=None, scheme_filter=None, max_value=None
+):
+    """Custom payment selector that filters by network."""
+    # Ignore the network_filter parameter for this example - we hardcode base-sepolia
+    _ = network_filter
+
+    # NOTE: In a real application, you'd want to dynamically choose the most
+    # appropriate payment requirement based on user preferences, available funds,
+    # network conditions, or other business logic rather than hardcoding a network.
+
+    # Filter by base-sepolia network (testnet)
+    return x402Client.default_payment_requirements_selector(
+        accepts,
+        network_filter="base-sepolia",
+        scheme_filter=scheme_filter,
+        max_value=max_value,
+    )
+
+
+async def main():
+    # Create x402HttpxClient with built-in payment handling and network filtering
+    async with x402HttpxClient(
+        account=account,
+        base_url=base_url,
+        payment_requirements_selector=custom_payment_selector,
+    ) as client:
+        # Make request - payment handling is automatic
+        try:
+            assert endpoint_path is not None  # we already guard against None above
+            print(f"Making request to {endpoint_path}")
+            response = await client.get(endpoint_path)
+
+            # Read the response content
+            content = await response.aread()
+            print(f"Response: {content.decode()}")
+
+            # Check for payment response header
+            if "X-Payment-Response" in response.headers:
+                payment_response = decode_x_payment_response(
+                    response.headers["X-Payment-Response"]
+                )
+                print(
+                    f"Payment response transaction hash: {payment_response['transaction']}"
+                )
+            else:
+                print("Warning: No payment response header found")
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Step 4: Run the client
+
+```bash
+python main.py
+```
+
+<Check>
+  Your client is now making x402 payments!
+</Check>
+
+### Step 5: Test the client
+
+You can test payments against a local server by running the [fastapi example](https://github.com/coinbase/x402/tree/main/examples/python/servers/fastapi) or the [flask example](https://github.com/coinbase/x402/tree/main/examples/python/servers/flask) from the x402 repository.  
+
+Just set your environment variables to match your local server, install the dependencies, and run the examples.
+
+<Note>You can also test your client against PayAI's [live Echo Merchant](https://x402.payai.network) for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.</Note>
+
+## Need help?
+
+<DiscordHelpCard />

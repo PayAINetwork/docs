@@ -1,0 +1,62 @@
+---
+title: "Facilitator Introduction"
+description: "Learn about the role of an x402 facilitator"
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Why use an x402 facilitator
+
+Facilitators provide shared infrastructure for verifying and settling on-chain payments for HTTP resources using the x402 protocol. They abstract multi-chain complexity, offer a consistent API for resource servers, and enable better reliability, observability, and reuse across multiple merchants and apps.
+
+- Consistent verification and settlement across schemes and networks
+- Offload blockchain operations and complexity from resource servers
+- Serve multiple merchants/apps via a stable `/verify` and `/settle` API
+- Help clients discover merchants via the `/list` endpoint
+
+## Architecture at a glance
+
+![x402 sequence diagram](/images/x402-sequence-diagram.svg)
+
+- Client: Calls protected resources and constructs payment payloads.
+- Resource Server: Advertises payment requirements, verifies/settles payments, fulfills requests.
+- Facilitator Server: Verifies payment payloads and executes settlements via standard endpoints.
+- Blockchain Networks: Execute and confirm payments.
+
+### Payment flow (facilitator perspective)
+
+From the facilitator’s point of view, the key steps of the protocol are:
+
+1. Resource server sends a POST to the facilitator `/verify` endpoint with the Payment Payload and the Payment Requirements selected by the client.
+2. Facilitator validates the payload according to the scheme and network (e.g., signatures, amounts, nonces) and returns a Verification Response.
+3. When the server is ready to execute the payment, it sends a POST to the facilitator `/settle` endpoint with the Payment Payload and Payment Requirements.
+4. Facilitator submits the transaction to the blockchain for the specified scheme/network, waits for confirmation, and returns a Payment Execution Response.
+
+## Facilitator responsibilities
+
+- Expose secure `/verify` and `/settle` endpoints that follow x402 request/response shapes
+- Validate Payment Payloads per scheme and network; prevent replay and ensure idempotency
+- Submit on-chain transactions for settlement and monitor confirmations
+- Provide clear error responses for verification or settlement failures
+- Maintain supported network coverage and RPC/wallet infrastructure
+- Implement observability (logs/metrics/traces), rate limiting, retries, and alerting
+
+## Getting started
+
+Try out an existing facilitator or build your own.
+
+<Card
+  title="Try an Existing Facilitator"
+  icon="list"
+  href="/v1/x402/facilitators/list-of-facilitators"
+>
+  Ready to try an existing facilitator? Continue to the List of Facilitators.
+</Card>
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the <a href="/v1/x402/reference">x402 Reference</a>.
+
+## Need help?
+
+<DiscordHelpCard />

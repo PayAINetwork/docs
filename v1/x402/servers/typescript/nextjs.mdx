@@ -1,0 +1,97 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with Next.js
+
+Start accepting x402 payments in your Next.js app in 2 minutes.
+
+<Note>
+  For the fastest setup, use the official starter:
+  <a href="https://www.npmjs.com/package/@payai/x402-next-starter">@payai/x402-next-starter</a>.
+</Note>
+
+### Step 1: Create a new app from the starter template
+
+Use your favorite package manager.
+
+##### npm (npx)
+```bash
+npx @payai/x402-next-starter my-first-app
+```
+
+##### pnpm
+```bash
+pnpm dlx @payai/x402-next-starter my-first-app
+```
+
+##### bun
+```bash
+bunx @payai/x402-next-starter my-first-app
+```
+
+The starter bootstraps a production-ready Next.js app with x402 payment middleware already wired up.
+
+### Step 2: Set your environment variables
+
+In your generated project, copy the example env and fill in your values:
+
+```bash
+cd my-first-app
+cp env.example .env.local
+```
+
+Update `.env.local` with:
+
+- `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
+- `NETWORK`: Network to use for the facilitator (e.g. `base-sepolia`, `base`, `solana-devnet`, `solana`)
+- `ADDRESS`: Wallet public address to receive payments to (e.g. `0x...` for Base, `So11111111111111111111111111111111111111112` for Solana)
+
+```env
+FACILITATOR_URL=https://facilitator.payai.network
+NETWORK=solana-devnet # or base, solana-devnet, etc.
+ADDRESS=So11111111111111111111111111111111111111112 # wallet public address you want to receive payments to
+
+# required if using the Base mainnet facilitator
+CDP_API_KEY_ID="Coinbase Developer Platform Key"
+CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
+```
+
+### Step 3: Explore the generated app
+
+The starter includes a minimal example showing both a free API route and premium content protected by x402.
+
+```text
+├── app/
+│   ├── api/                 # API routes
+│   ├── premium/             # Premium content page
+│   ├── globals.css          # Global styles
+│   ├── layout.tsx           # Root layout
+│   └── page.tsx             # Home page
+├── middleware.ts            # x402 payment middleware
+├── next.config.js           # Next.js configuration
+├── tailwind.config.js       # Tailwind CSS configuration
+├── tsconfig.json            # TypeScript configuration
+└── package.json             # Dependencies and scripts
+```
+
+- Adjust pricing, networks, and protected paths in `middleware.ts`.
+- Add your own protected pages under `app/premium/*` or secure API routes under `app/api/*`.
+
+### Step 4: Run the app
+
+```bash
+npm run dev
+```
+
+<Check>
+  Your Next.js app is now accepting x402 payments!
+</Check>
+
+### Step 5: Test the server
+
+You can test payments against your local app by following the
+[fetch example](/v1/x402/clients/typescript/fetch) or the
+[axios example](/v1/x402/clients/typescript/axios).
+
+## Need help?
+
+<DiscordHelpCard />
