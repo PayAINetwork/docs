@@ -72,7 +72,36 @@ The starter includes a minimal example showing both a free API route and premium
 - Adjust pricing, networks, and protected paths in `middleware.ts`.
 - Add your own protected pages under `app/premium/*` or secure API routes under `app/api/*`.
 
-### Step 4: Run the app
+### Step 4: Preview the middleware
+
+The payment middleware in `middleware.ts` protects your routes:
+
+```typescript
+import { paymentMiddleware } from "@x402/next";
+
+export const middleware = paymentMiddleware(
+  process.env.ADDRESS!,
+  {
+    "/api/premium/*": {
+      price: "$0.001",
+      network: process.env.NETWORK || "eip155:84532",
+    },
+    "/premium/*": {
+      price: "$0.001", 
+      network: process.env.NETWORK || "eip155:84532",
+    },
+  },
+  { url: process.env.FACILITATOR_URL! },
+);
+
+export const config = {
+  matcher: ["/api/premium/:path*", "/premium/:path*"],
+};
+```
+
+Adjust pricing, networks, and protected paths to match your needs.
+
+### Step 5: Run the app
 
 ```bash
 npm run dev
@@ -82,11 +111,11 @@ npm run dev
   Your Next.js app is now accepting x402 payments!
 </Check>
 
-### Step 5: Test the server
+### Step 6: Test the server
 
-You can test payments against your local app by following the
-[fetch example](/x402/clients/typescript/fetch) or the
-[axios example](/x402/clients/typescript/axios).
+The starter includes a built-in paywall at the home page. Navigate to `http://localhost:3000` to test payments directly.
+
+You can also test programmatically by following the [fetch example](/x402/clients/typescript/fetch) or [axios example](/x402/clients/typescript/axios).
 
 ## Need help?
 
