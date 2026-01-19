@@ -1,0 +1,85 @@
+import SupportedNetworksTable from "/snippets/supported-networks-table.mdx";
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+This page gets you set up quickly as a merchant (server) or a buyer (client).
+
+Choose your language and framework below to get started.
+
+<Note>Scroll to the end to see all supported blockchain networks.</Note>
+
+## Servers (Merchants)
+
+<Tabs>
+  <Tab title="TypeScript">
+    <CardGroup>
+        <Card title="Express" href="/v1/x402/servers/typescript/express" icon="server">
+            Quickstart for building an x402-enabled server with Express.
+        </Card>
+        <Card title="Hono" href="/v1/x402/servers/typescript/hono" icon="server">
+            Quickstart for building an x402-enabled server with Hono.
+        </Card>
+        <Card title="NextJS (coming soon)" href="/v1/x402/servers/typescript/nextjs" icon="server">
+            NextJS server quickstart is coming soon.
+        </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Python">
+    <CardGroup>
+        <Card title="FastAPI" href="/v1/x402/servers/python/fastapi" icon="server">
+            Quickstart for building an x402-enabled server with FastAPI.
+        </Card>
+        <Card title="Flask" href="/v1/x402/servers/python/flask" icon="server">
+            Quickstart for building an x402-enabled server with Flask.
+        </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Clients (Buyers)
+
+<Tabs>
+  <Tab title="TypeScript">
+    <CardGroup>
+        <Card title="Axios" href="/v1/x402/clients/typescript/axios" icon="code">
+            Quickstart for building an x402 client with Axios.
+        </Card>
+        <Card title="Fetch" href="/v1/x402/clients/typescript/fetch" icon="code">
+            Quickstart for building an x402 client with Fetch.
+        </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Python">
+    <CardGroup>
+        <Card title="httpx" href="/v1/x402/clients/python/httpx" icon="code">
+            Quickstart for building an x402 client with httpx.
+        </Card>
+        <Card title="requests" href="/v1/x402/clients/python/requests" icon="code">
+            Quickstart for building an x402 client with requests.
+        </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Facilitator
+
+The PayAI facilitator URL is https://facilitator.payai.network.
+
+Simply set the facilitator URL in your server configuration and you're good to go.
+
+The PayAI facilitator supports the following endpoints:
+
+- `/verify`
+- `/settle`
+- `/list`
+
+Read the [reference](/v1/x402/reference#7-1-post-%2Fverify) for more information on the facilitator endpoints and responses.
+
+## Supported networks
+
+The PayAI facilitator supports x402 on the following networks:
+
+<SupportedNetworksTable />
+
+## Need help?
+
+<DiscordHelpCard />
