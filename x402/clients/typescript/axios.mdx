@@ -43,7 +43,7 @@ PRIVATE_KEY=0x...
 
 ### Step 3: Preview the client code
 
-This is the `index.ts` the starter generates. It loads your env, attaches the x402 payment interceptor to an Axios instance, calls your endpoint, and logs both the JSON body and the decoded `x-payment-response` headers.
+This is the `index.ts` the starter generates. It loads your env, attaches the x402 payment interceptor to an Axios instance, calls your endpoint, and logs both the JSON body and the decoded `PAYMENT-RESPONSE` headers.
 
 ```ts
 import axios from "axios";
@@ -77,7 +77,7 @@ api
   .then(response => {
     console.log(response.data);
 
-    const paymentResponse = decodeXPaymentResponse(response.headers["x-payment-response"] as string);
+    const paymentResponse = decodeXPaymentResponse(response.headers["payment-response"] as string);
     console.log(paymentResponse);
   })
   .catch(error => {
@@ -97,9 +97,13 @@ npm run dev
 
 ### Step 5: Test the client
 
-You can test your client against a local server by running the [express example](/x402/servers/typescript/express) or the [hono example](/x402/servers/typescript/hono).  
+You can test your client against a local server by running the [Express example](/x402/servers/typescript/express), [Hono example](/x402/servers/typescript/hono), or [Next.js example](/x402/servers/typescript/nextjs).  
 
 You can also test your client against a <a href="https://x402.payai.network" target="_blank">live merchant</a> for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
 
 ## Need help?
 

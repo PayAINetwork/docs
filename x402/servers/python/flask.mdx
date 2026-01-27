@@ -50,7 +50,7 @@ payment_middleware.add(
     path="/weather",
     price="$0.001",
     pay_to_address=ADDRESS,
-    network="base-sepolia",
+    network="eip155:84532",
     facilitator_config=facilitator_config,
 )
 
@@ -66,7 +66,7 @@ payment_middleware.add(
         ),
     ),
     pay_to_address=ADDRESS,
-    network="base-sepolia",
+    network="eip155:84532",
     facilitator_config=facilitator_config,
 )
 
@@ -116,6 +116,10 @@ flask run
 You can test payments against your server locally by following the [httpx example](https://github.com/coinbase/x402/tree/main/examples/python/clients/httpx) or the [requests example](https://github.com/coinbase/x402/tree/main/examples/python/clients/requests) from the x402 repository.  
 
 Just set your environment variables to match your local server, install the dependencies, and run the examples.
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
 
 ## Need help?
 

@@ -20,9 +20,9 @@ This specification is based on the x402 protocol implementation and documentatio
 The x402 protocol follows a standard HTTP request-response cycle with payment integration:
 
 1. **Client Request**: Client makes an HTTP request to a resource server
-2. **Payment Required Response (402)**: If no valid payment is attached, the server responds with an HTTP 402 status code and payment requirements
-3. **Payment Authorization Request**: Client submits a signed payment authorization in the subsequent request
-4. **Settlement Response**: Server verifies the payment authorization and initiates blockchain settlement
+2. **Payment Required Response (402)**: If no valid payment is attached, the server responds with an HTTP 402 status code and includes payment requirements in the `PAYMENT-REQUIRED` header (base64-encoded JSON)
+3. **Payment Authorization Request**: Client selects a payment requirement, constructs a payment payload, and submits it in the `PAYMENT-SIGNATURE` header
+4. **Settlement Response**: Server verifies the payment authorization, settles the payment, and includes settlement details in the `PAYMENT-RESPONSE` header
 
 ## 3. Protocol Components
 
@@ -49,23 +49,24 @@ This section defines the core data structures used in the x402 protocol.
 
 #### 5.1.1 JSON Payload
 
-When a resource server requires payment, it responds with an HTTP 402 status code and a JSON payload containing payment requirements. Example:
+When a resource server requires payment, it responds with an HTTP 402 status code and includes payment requirements in the `PAYMENT-REQUIRED` header as base64-encoded JSON. Example:
 
 ```json
 {  
-  "x402Version": 1,  
-  "error": "X-PAYMENT header is required",
+  "x402Version": 2,  
+  "error": "PAYMENT-SIGNATURE header is required",
+  "resource": {
+    "url": "https://api.example.com/premium-data",
+    "description": "Access to premium market data",
+    "mimeType": "application/json"
+  },
   "accepts": [
     {
       "scheme": "exact",
-      "network": "base-sepolia",
-      "maxAmountRequired": "10000",
+      "network": "eip155:84532",
+      "amount": "10000",
       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-      "resource": "https://api.example.com/premium-data",
-      "description": "Access to premium market data",
-      "mimeType": "application/json",
-      "outputSchema": null,
       "maxTimeoutSeconds": 60,
       "extra": {
         "name": "USDC",
@@ -74,20 +75,17 @@ When a resource server requires payment, it responds with an HTTP 402 status cod
     },
     {
       "scheme": "exact",
-      "network": "solana-devnet",
-      "maxAmountRequired": "1000000",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "amount": "1000000",
       "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
-      "resource": "https://api.example.com/premium-data",
-      "description": "Access to premium market data",
-      "mimeType": "application/json",
-      "outputSchema": null,
       "maxTimeoutSeconds": 60,
       "extra": {
         "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
       }
     }
-  ]  
+  ],
+  "extensions": {}
 }
 ```
 
@@ -98,37 +96,51 @@ The Payment Requirements Response contains the following fields:
 **All fields are required.**
 | Field Name | Type | Description |
 | ---------- | ---- | ----------- |
-| `x402Version` | `number` | Protocol version identifier |
+| `x402Version` | `number` | Protocol version identifier (must be 2) |
 | `error` | `string` | Human-readable error message explaining why payment is required |
+| `resource` | `object` | Resource object containing URL, description, and MIME type |
 | `accepts` | `array` | Array of payment requirement objects defining acceptable payment methods |
+| `extensions` | `object` | Extensions object for future protocol enhancements |
+
+The `resource` object contains:
+
+| Field Name | Type | Required | Description |
+| ---------- | ---- | -------- | ----------- |
+| `url` | `string` | Required | URL of the protected resource |
+| `description` | `string` | Required | Human-readable description of the resource |
+| `mimeType` | `string` | Optional | MIME type of the expected response |
 
 Each payment requirement object in the `accepts` array contains:
 
 | Field Name | Type | Required | Description |
 | ---------- | ---- | -------- | ----------- |
 | `scheme` | `string` | Required | Payment scheme identifier (e.g., "exact") |
-| `network` | `string` | Required | Blockchain network identifier (e.g., "base-sepolia", "ethereum-mainnet", "solana") |
-| `maxAmountRequired` | `string` | Required | Required payment amount in atomic token units |
+| `network` | `string` | Required | Blockchain network identifier in CAIP-2 format (e.g., "eip155:84532", "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1") |
+| `amount` | `string` | Required | Required payment amount in atomic token units |
 | `asset` | `string` | Required | Token contract address |
 | `payTo` | `string` | Required | Recipient wallet address for the payment |
-| `resource` | `string` | Required | URL of the protected resource |
-| `description` | `string` | Required | Human-readable description of the resource |
-| `mimeType` | `string` | Optional | MIME type of the expected response |
-| `outputSchema` | `object` | Optional | JSON schema describing the response format |
 | `maxTimeoutSeconds` | `number` | Required | Maximum time allowed for payment completion |
 | `extra` | `object` | Optional | Scheme-specific additional information |
 
-### 5.2 Payment Proof (X-PAYMENT Header)
+### 5.2 Payment Proof (PAYMENT-SIGNATURE Header)
 
 #### 5.2.1 JSON Structure
 
-The client includes payment authorization in the `X-PAYMENT` header as base64-encoded JSON:
+The client includes payment authorization in the `PAYMENT-SIGNATURE` header as base64-encoded JSON:
 
 ```json
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "scheme": "exact",
-  "network": "base-sepolia",
+  "network": "eip155:84532",
+  "accepted": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60
+  },
   "payload": {
     "signature": "0x2d6a7588d6acca505cbf0d9a4a227e0c52c6c34008c8e8986a1283259764173608a2ce6496642e377d6da8dbbf5836e9bd15092f9ecab05ded3d6293af148b571c",
     "authorization": {
@@ -139,19 +151,29 @@ The client includes payment authorization in the `X-PAYMENT` header as base64-en
       "validBefore": "1740672154",
       "nonce": "0xf3746613c2d920b5fdabc0856f2aeb2d4f88ee6037b8cc5d04a71a4462f13480"
     }
-  }
+  },
+  "extensions": {}
 }
 ```
 
 And on Solana:
 ```json
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "scheme": "exact",
-  "network": "solana-devnet",
+  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+  "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000000",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
+    "maxTimeoutSeconds": 60
+  },
   "payload": {
-    "transaction": "base64-encoded partially-signed transaction",
-  }
+    "transaction": "base64-encoded partially-signed transaction"
+  },
+  "extensions": {}
 }
 ```
 
@@ -163,10 +185,12 @@ The Payment Payload contains the following fields:
 
 | Field Name | Type | Description |
 | ---------- | ---- | ----------- |
-| `x402Version` | `number` | Protocol version identifier (must be 1) |
+| `x402Version` | `number` | Protocol version identifier (must be 2) |
 | `scheme` | `string` | Payment scheme identifier (e.g., "exact") |
-| `network` | `string` | Blockchain network identifier (e.g., "base-sepolia", "ethereum-mainnet") |
+| `network` | `string` | Blockchain network identifier in CAIP-2 format (e.g., "eip155:84532", "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1") |
+| `accepted` | `object` | The payment requirement that was accepted by the client |
 | `payload` | `object` | Payment data object |
+| `extensions` | `object` | Extensions object for future protocol enhancements |
 
 The `payload` field contains scheme-specific data on EVM:
 
@@ -202,13 +226,13 @@ The `payload` field contains scheme-specific data on SVM:
 
 #### 5.3.1 JSON Structure
 
-After payment settlement, the server includes transaction details in the `X-PAYMENT-RESPONSE` header as base64-encoded JSON:
+After payment settlement, the server includes transaction details in the `PAYMENT-RESPONSE` header as base64-encoded JSON:
 
 ```json
 {
   "success": true,
   "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-  "network": "base-sepolia",
+  "network": "eip155:84532",
   "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
 }
 ```
@@ -222,7 +246,7 @@ The Settlement Response contains the following fields:
 | `success` | `boolean` | Required | Indicates whether the payment settlement was successful |
 | `errorReason` | `string` | Optional | Error reason if settlement failed (omitted if successful) |
 | `transaction` | `string` | Required | Blockchain transaction hash (empty string if settlement failed) |
-| `network` | `string` | Required | Blockchain network identifier |
+| `network` | `string` | Required | Blockchain network identifier in CAIP-2 format |
 | `payer` | `string` | Required | Address of the payer's wallet |
 
 ## 6. Payment Schemes
@@ -366,9 +390,17 @@ Settles a payment by broadcasting the transaction to the blockchain.
 ```json
 {
   "paymentPayload": {
-    "x402Version": 1,
+    "x402Version": 2,
     "scheme": "exact",
-    "network": "base-sepolia",
+    "network": "eip155:84532",
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60
+    },
     "payload": {
       "signature": "0x...",
       "authorization": {
@@ -379,23 +411,21 @@ Settles a payment by broadcasting the transaction to the blockchain.
         "validBefore": "1740672154",
         "nonce": "0x..."
       }
-    }
+    },
+    "extensions": {}
   },
   "paymentRequirements": {
-    "scheme": "exact",
-    "network": "base-sepolia",
-    "maxAmountRequired": "10000",
-    "resource": "https://api.example.com/premium-data",
-    "description": "Access to premium market data",
-    "mimeType": "application/json",
-    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-    "maxTimeoutSeconds": 60,
-    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    "extra": {
-      "name": "USDC",
-      "version": "2"
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+        "name": "USDC",
+        "version": "2"
+      }
     }
-  }
 }
 ```
 
@@ -404,22 +434,29 @@ Settles a payment by broadcasting the transaction to the blockchain.
 ```json
 {
   "paymentPayload": {
-    "x402Version": 1,
+    "x402Version": 2,
     "scheme": "exact",
-    "network": "solana-devnet",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "accepted": {
+      "scheme": "exact",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "amount": "1000000",
+      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
+      "maxTimeoutSeconds": 60
+    },
     "payload": {
-      "transaction": "base64-encoded partially-signed transaction",
-    }
+      "transaction": "base64-encoded partially-signed transaction"
+    },
+    "extensions": {}
   },
   "paymentRequirements": {
     "scheme": "exact",
-    "network": "solana-devnet",
-    "maxAmountRequired": "1000000",
-    "resource": "https://api.example.com/premium-data",
-    "description": "Access to premium market data",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000000",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
     "maxTimeoutSeconds": 60,
-    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "extra": {
       "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
@@ -460,52 +497,42 @@ Returns the list of payment schemes and networks supported by the facilitator.
 {
   "kinds": [
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
-      "network": "base-sepolia"
+      "network": "eip155:84532"
     },
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
-      "network": "base"
+      "network": "eip155:8453"
     },
     {
-      "x402Version": 1,
-      "scheme": "exact",
-      "network": "skale-base-spolia"
-    },
-    {
-      "x402Version": 1,
-      "scheme": "exact",
-      "network": "skale-base"
-    },
-    {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
       "network": "avalanche-fuji"
     },
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
       "network": "avalanche"
     },
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
       "network": "iotex"
     },
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
-      "network": "solana-devnet",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
       "extra": {
         "feePayer": "address of facilitator"
       }
     },
     {
-      "x402Version": 1,
+      "x402Version": 2,
       "scheme": "exact",
-      "network": "solana",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
       "extra": {
         "feePayer": "address of facilitator"
       }
@@ -534,23 +561,20 @@ List discoverable x402 resources from the Bazaar.
 
 ```json
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "items": [
     {
       "resource": "https://api.example.com/premium-data",
       "type": "http",
-      "x402Version": 1,
+      "x402Version": 2,
       "accepts": [
         {
           "scheme": "exact",
-          "network": "base-sepolia",
-          "maxAmountRequired": "10000",
-          "resource": "https://api.example.com/premium-data",
-          "description": "Access to premium market data",
-          "mimeType": "application/json",
+          "network": "eip155:84532",
+          "amount": "10000",
+          "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
           "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
           "maxTimeoutSeconds": 60,
-          "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
           "extra": {
             "name": "USDC",
             "version": "2"
@@ -642,14 +666,14 @@ The protocol supports integration with authentication systems (e.g., Sign-In wit
 
 ### 11.1 Supported Networks
 
-The following blockchain networks are currently supported by the reference implementation:
+The following blockchain networks are currently supported by the reference implementation (using CAIP-2 format):
 
-- **`base-sepolia`**: Base Sepolia testnet (Chain ID: 84532)
-- **`base`**: Base mainnet (Chain ID: 8453)
-- **`skale-base-spolia`**: SKALE Base Spolia (Chain ID: 324705682)
-- **`skale-base`**: SKALE Base (Chain ID: 1187947933)
+- **`eip155:84532`**: Base Sepolia testnet (Chain ID: 84532)
+- **`eip155:8453`**: Base mainnet (Chain ID: 8453)
 - **`avalanche-fuji`**: Avalanche Fuji testnet (Chain ID: 43113)
 - **`avalanche`**: Avalanche mainnet (Chain ID: 43114)
+- **`solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`**: Solana devnet
+- **`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`**: Solana mainnet
 
 ### 11.2 Supported Assets
 
@@ -712,6 +736,10 @@ The protocol enables sophisticated monetization strategies:
 - **Subscription models** built on micropayments
 
 *Note: Implementation details for specific patterns (such as budget management, correlation tracking, or session handling) are available in application notes and implementation guides.*
+
+<Note>
+Looking for V1 documentation? Visit the [V1 (Legacy) documentation](/v1/x402/reference) section.
+</Note>
 
 ---
 

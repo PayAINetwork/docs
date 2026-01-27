@@ -57,17 +57,17 @@ def custom_payment_selector(
     accepts, network_filter=None, scheme_filter=None, max_value=None
 ):
     """Custom payment selector that filters by network."""
-    # Ignore the network_filter parameter for this example - we hardcode base-sepolia
+    # Ignore the network_filter parameter for this example - we hardcode eip155:84532
     _ = network_filter
 
     # NOTE: In a real application, you'd want to dynamically choose the most
     # appropriate payment requirement based on user preferences, available funds,
     # network conditions, or other business logic rather than hardcoding a network.
 
-    # Filter by base-sepolia network (testnet)
+    # Filter by eip155:84532 network (Base Sepolia testnet)
     return x402Client.default_payment_requirements_selector(
         accepts,
-        network_filter="base-sepolia",
+        network_filter="eip155:84532",
         scheme_filter=scheme_filter,
         max_value=max_value,
     )
@@ -91,9 +91,9 @@ async def main():
             print(f"Response: {content.decode()}")
 
             # Check for payment response header
-            if "X-Payment-Response" in response.headers:
+            if "PAYMENT-RESPONSE" in response.headers:
                 payment_response = decode_x_payment_response(
-                    response.headers["X-Payment-Response"]
+                    response.headers["PAYMENT-RESPONSE"]
                 )
                 print(
                     f"Payment response transaction hash: {payment_response['transaction']}"
@@ -126,6 +126,10 @@ You can test payments against a local server by running the [fastapi example](ht
 Just set your environment variables to match your local server, install the dependencies, and run the examples.
 
 <Note>You can also test your client against PayAI's [live Echo Merchant](https://x402.payai.network) for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.</Note>
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
 
 ## Need help?
 
