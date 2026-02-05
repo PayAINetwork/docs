@@ -26,41 +26,65 @@ Benefits:
 
 ## It's this easy
 
-Add x402 payments to your server with just a few lines:
+Add x402 payments to your server with the V2 SDK:
 
 <Tabs>
   <Tab title="Express">
 ```typescript
-import { paymentMiddleware } from "x402-express";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 
 app.use(
   paymentMiddleware(
-    payTo,
     {
       "GET /weather": {
-        price: "$0.001",
-        network: "solana-devnet",
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
       },
     },
-    { url: "https://facilitator.payai.network" },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme()),
   ),
 );
 ```
   </Tab>
   <Tab title="Hono">
 ```typescript
-import { paymentMiddleware } from "x402-hono";
+import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 
 app.use(
   paymentMiddleware(
-    payTo,
     {
-      "/weather": {
-        price: "$0.001",
-        network: "solana-devnet",
+      "GET /weather": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
       },
     },
-    { url: "https://facilitator.payai.network" },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme()),
   ),
 );
 ```
