@@ -4,14 +4,11 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 Start accepting x402 payments in your Next.js app in 2 minutes.
 
-<Note>
-  For the fastest setup, use the official starter:
-  <a href="https://www.npmjs.com/package/@payai/x402-next-starter">@payai/x402-next-starter</a>.
-</Note>
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next). For the fastest setup, use [@payai/x402-next-starter](https://www.npmjs.com/package/@payai/x402-next-starter).</Note>
 
-### Step 1: Create a new app from the starter template
+### Step 1: Create a new app
 
-Use your favorite package manager.
+Use the starter or run the upstream example from the [x402 repo](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next).
 
 ##### npm (npx)
 ```bash
@@ -28,80 +25,94 @@ pnpm dlx @payai/x402-next-starter my-first-app
 bunx @payai/x402-next-starter my-first-app
 ```
 
-The starter bootstraps a production-ready Next.js app with x402 payment middleware already wired up.
+Or clone the repo and run the fullstack Next example from `examples/typescript/fullstack/next`.
 
 ### Step 2: Set your environment variables
 
-In your generated project, copy the example env and fill in your values:
+Copy the example env and fill in your values (e.g. `cp .env-local .env` or `cp env.example .env.local`).
 
-```bash
-cd my-first-app
-cp env.example .env.local
-```
-
-Update `.env.local` with:
-
-- `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
-- `NETWORK`: Network to use for the facilitator (e.g. `eip155:84532`, `eip155:8453`, `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`, `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`)
-- `ADDRESS`: Wallet public address to receive payments to (e.g. `0x...` for Base, `So11111111111111111111111111111111111111112` for Solana)
+- `FACILITATOR_URL`: Facilitator base URL (e.g. https://facilitator.payai.network)
+- `EVM_ADDRESS`: EVM wallet address to receive payments (e.g. Base)
+- `SVM_ADDRESS`: Solana wallet address to receive payments
 
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=eip155:84532 # or eip155:8453, solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1, etc.
-ADDRESS=0x... # wallet public address you want to receive payments to
+EVM_ADDRESS=0x...   # EVM wallet address to receive payments
+SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
-### Step 3: Explore the generated app
+### Step 3: Explore the app structure
 
-The starter includes a minimal example showing both a free API route and premium content protected by x402.
+The example uses a **proxy** for page routes and **withX402** for API routes:
 
 ```text
 ├── app/
-│   ├── api/                 # API routes
-│   ├── premium/             # Premium content page
-│   ├── globals.css          # Global styles
-│   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Home page
-├── middleware.ts            # x402 payment middleware
-├── next.config.js           # Next.js configuration
-├── tailwind.config.js       # Tailwind CSS configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Dependencies and scripts
+│   ├── api/           # API routes (use withX402 for payment)
+│   ├── protected/     # Protected page route
+│   ├── layout.tsx
+│   └── page.tsx
+├── proxy.ts           # x402 payment proxy (page routes)
+├── next.config.ts
+└── package.json
 ```
 
-- Adjust pricing, networks, and protected paths in `middleware.ts`.
-- Add your own protected pages under `app/premium/*` or secure API routes under `app/api/*`.
+- **paymentProxy** (in `proxy.ts`) protects page routes and returns a paywall when payment is required.
+- **withX402** wraps individual API route handlers so payment is settled only after a successful response.
 
-### Step 4: Preview the middleware
+### Step 4: Preview the payment proxy
 
-The payment middleware in `middleware.ts` protects your routes:
+The proxy in `proxy.ts` configures the resource server, paywall, and protected routes using the v2 API:
 
 ```typescript
-import { paymentMiddleware } from "@x402/next";
+import { paymentProxy } from "@x402/next";
+import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
+import { registerExactEvmScheme } from "@x402/evm/exact/server";
+import { registerExactSvmScheme } from "@x402/svm/exact/server";
+import { createPaywall } from "@x402/paywall";
+import { evmPaywall } from "@x402/paywall/evm";
+import { svmPaywall } from "@x402/paywall/svm";
 
-export const middleware = paymentMiddleware(
-  process.env.ADDRESS!,
+const facilitatorUrl = process.env.FACILITATOR_URL;
+const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+const svmAddress = process.env.SVM_ADDRESS;
+
+if (!facilitatorUrl || !evmAddress || !svmAddress) {
+  throw new Error("FACILITATOR_URL, EVM_ADDRESS, and SVM_ADDRESS are required");
+}
+
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+const server = new x402ResourceServer(facilitatorClient);
+registerExactEvmScheme(server);
+registerExactSvmScheme(server);
+
+const paywall = createPaywall()
+  .withNetwork(evmPaywall)
+  .withNetwork(svmPaywall)
+  .withConfig({ appName: "My App", testnet: true })
+  .build();
+
+export const proxy = paymentProxy(
   {
-    "/api/premium/*": {
-      price: "$0.001",
-      network: process.env.NETWORK || "eip155:84532",
-    },
-    "/premium/*": {
-      price: "$0.001", 
-      network: process.env.NETWORK || "eip155:84532",
+    "/protected": {
+      accepts: [
+        { scheme: "exact", price: "$0.001", network: "eip155:84532", payTo: evmAddress },
+        { scheme: "exact", price: "$0.001", network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", payTo: svmAddress },
+      ],
+      description: "Protected content",
+      mimeType: "text/html",
     },
   },
-  { url: process.env.FACILITATOR_URL! },
+  server,
+  undefined,
+  paywall,
 );
 
-export const config = {
-  matcher: ["/api/premium/:path*", "/premium/:path*"],
-};
+export const config = { matcher: ["/protected/:path*"] };
 ```
 
-Adjust pricing, networks, and protected paths to match your needs.
+For API routes, use **withX402** with the same `accepts` config and `server`. See the [full example](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next) for `app/api/weather/route.ts`.
 
-### Step 5: Run the app
+### Step 5: Run the server
 
 ```bash
 npm run dev
