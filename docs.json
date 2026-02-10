@@ -45,6 +45,12 @@
                   "x402/servers/python/fastapi",
                   "x402/servers/python/flask"
                 ]
+              },
+              {
+                "group": "Go",
+                "pages": [
+                  "x402/servers/go/gin"
+                ]
               }
             ]
           },

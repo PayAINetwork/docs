@@ -32,13 +32,13 @@ The starter mirrors the upstream example and bootstraps a ready-to-run Hono serv
 Open your generated project's `.env` and set:
 
 - `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
-- `NETWORK`: Network to use for the facilitator (default: `eip155:84532`)
-- `ADDRESS`: Wallet public address to receive payments to
+- `EVM_ADDRESS`: EVM wallet address to receive payments (e.g. Base)
+- `SVM_ADDRESS`: SVM wallet address to receive payments (e.g. Solana)
 
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=eip155:84532 # or eip155:8453, solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1, etc.
-ADDRESS=0x... # wallet public address you want to receive payments to
+EVM_ADDRESS=0x...   # EVM wallet address to receive payments
+SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
 ### Step 3: Preview the server code
@@ -47,35 +47,56 @@ This is the `index.ts` the starter generates. It loads your env, applies the x40
 
 ```ts
 import { config } from "dotenv";
+import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { paymentMiddleware, Network, Resource } from "x402-hono";
 
 config();
 
-const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
-const payTo = process.env.ADDRESS as `0x${string}`;
-const network = process.env.NETWORK as Network;
-
-if (!facilitatorUrl || !payTo || !network) {
+const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+const svmAddress = process.env.SVM_ADDRESS;
+if (!evmAddress || !svmAddress) {
   console.error("Missing required environment variables");
   process.exit(1);
 }
+
+const facilitatorUrl = process.env.FACILITATOR_URL;
+if (!facilitatorUrl) {
+  console.error("❌ FACILITATOR_URL environment variable is required");
+  process.exit(1);
+}
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 
 const app = new Hono();
 
 app.use(
   paymentMiddleware(
-    payTo,
     {
-      "/weather": {
-        price: "$0.001",
-        network,
+      "GET /weather": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            payTo: svmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
       },
     },
-    {
-      url: facilitatorUrl,
-    },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme())
+      .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme()),
   ),
 );
 
@@ -92,6 +113,8 @@ serve({
   fetch: app.fetch,
   port: 4021,
 });
+
+console.log(`Server listening at http://localhost:4021`);
 ```
 
 ### Step 4: Run the server
