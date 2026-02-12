@@ -8,32 +8,28 @@ Start accepting x402 payments in your Next.js app in 2 minutes.
 
 ### Step 1: Create a new app
 
-Use the starter or run the upstream example from the [x402 repo](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next).
+Use your favorite package manager:
 
 ##### npm (npx)
 ```bash
-npx @payai/x402-next-starter my-first-app
+npx @payai/x402-next-starter my-server
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-next-starter my-first-app
+pnpm dlx @payai/x402-next-starter my-server
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-next-starter my-first-app
+bunx @payai/x402-next-starter my-server
 ```
 
-Or clone the repo and run the fullstack Next example from `examples/typescript/fullstack/next`.
+The starter mirrors the [upstream example](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next) and boostraps a ready-to-run NextJS app.
 
 ### Step 2: Set your environment variables
 
 Copy the example env and fill in your values (e.g. `cp .env-local .env` or `cp env.example .env.local`).
-
-- `FACILITATOR_URL`: Facilitator base URL (e.g. https://facilitator.payai.network)
-- `EVM_ADDRESS`: EVM wallet address to receive payments (e.g. Base)
-- `SVM_ADDRESS`: Solana wallet address to receive payments
 
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
@@ -59,11 +55,16 @@ The example uses a **proxy** for page routes and **withX402** for API routes:
 - **paymentProxy** (in `proxy.ts`) protects page routes and returns a paywall when payment is required.
 - **withX402** wraps individual API route handlers so payment is settled only after a successful response.
 
-### Step 4: Preview the payment proxy
+### Step 4: Preview the example routes
 
-The proxy in `proxy.ts` configures the resource server, paywall, and protected routes using the v2 API:
+#### Protected Page Route
+
+The `/protected` page is protected using `paymentProxy`. 
+
+The proxy in `proxy.ts` configures the resource server, paywall, and protected routes:
 
 ```typescript
+// proxy.ts
 import { paymentProxy } from "@x402/next";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { registerExactEvmScheme } from "@x402/evm/exact/server";
@@ -72,45 +73,110 @@ import { createPaywall } from "@x402/paywall";
 import { evmPaywall } from "@x402/paywall/evm";
 import { svmPaywall } from "@x402/paywall/svm";
 
-const facilitatorUrl = process.env.FACILITATOR_URL;
-const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
-const svmAddress = process.env.SVM_ADDRESS;
-
-if (!facilitatorUrl || !evmAddress || !svmAddress) {
-  throw new Error("FACILITATOR_URL, EVM_ADDRESS, and SVM_ADDRESS are required");
-}
-
 const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 const server = new x402ResourceServer(facilitatorClient);
+
+// Register schemes
 registerExactEvmScheme(server);
 registerExactSvmScheme(server);
 
+// Build paywall using builder pattern
 const paywall = createPaywall()
   .withNetwork(evmPaywall)
   .withNetwork(svmPaywall)
-  .withConfig({ appName: "My App", testnet: true })
+  .withConfig({
+    appName: "Next x402 Demo",
+    appLogo: "/x402-icon-blue.png",
+    testnet: true,
+  })
   .build();
 
 export const proxy = paymentProxy(
   {
     "/protected": {
       accepts: [
-        { scheme: "exact", price: "$0.001", network: "eip155:84532", payTo: evmAddress },
-        { scheme: "exact", price: "$0.001", network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", payTo: svmAddress },
+        {
+          scheme: "exact",
+          price: "$0.001",
+          network: "eip155:84532",
+          payTo: evmAddress,
+        },
+        {
+          scheme: "exact",
+          price: "$0.001",
+          network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          payTo: svmAddress,
+        },
       ],
-      description: "Protected content",
+      description: "Premium music: x402 Remix",
       mimeType: "text/html",
     },
   },
   server,
-  undefined,
-  paywall,
+  undefined, // paywallConfig (using custom paywall instead)
+  paywall,   // custom paywall provider
 );
 
-export const config = { matcher: ["/protected/:path*"] };
+export const config = {
+  matcher: ["/protected/:path*"],
+};
 ```
 
-For API routes, use **withX402** with the same `accepts` config and `server`. See the [full example](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next) for `app/api/weather/route.ts`.
+#### Weather API Route (using withX402)
+
+The `/api/weather` route demonstrates the `withX402` wrapper for individual API routes:
+
+```typescript
+// app/api/weather/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { server, paywall, evmAddress, svmAddress } from "../../../proxy";
+
+const handler = async (_: NextRequest) => {
+  return NextResponse.json({
+    report: {
+      weather: "sunny",
+      temperature: 72,
+    },
+  });
+};
+
+export const GET = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.001",
+        network: "eip155:84532",
+        payTo: evmAddress,
+      },
+      {
+        scheme: "exact",
+        price: "$0.001",
+        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        payTo: svmAddress,
+      },
+    ],
+    description: "Access to weather API",
+    mimeType: "application/json",
+  },
+  server,
+  undefined, // paywallConfig (using custom paywall from proxy.ts)
+  paywall,
+);
+```
+
+#### paymentProxy vs withX402
+
+The `paymentProxy` function is used to protect page routes. It can also protect API routes, however this will charge clients for failed API responses.
+
+The `withX402` function wraps API route handlers. This is the recommended approach to protect API routes as it guarantees payment settlement only AFTER successful API responses (status &lt; 400).
+
+| Approach | Use Case |
+|----------|----------|
+| `paymentProxy` | Protecting page routes or multiple routes with a single configuration |
+| `withX402` | Protecting individual API routes where you need precise control over settlement timing |
 
 ### Step 5: Run the server
 
@@ -124,7 +190,7 @@ npm run dev
 
 ### Step 6: Test the server
 
-The starter includes a built-in paywall at the home page. Navigate to `http://localhost:3000` to test payments directly.
+The starter includes a built-in paywall at the home page. Navigate to http://localhost:3000 to test payments directly.
 
 You can also test programmatically by following the [fetch example](/x402/clients/typescript/fetch) or [axios example](/x402/clients/typescript/axios).
 
