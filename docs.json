@@ -71,6 +71,12 @@
                   "x402/clients/python/httpx",
                   "x402/clients/python/requests"
                 ]
+              },
+              {
+                "group": "Go",
+                "pages": [
+                  "x402/clients/go/http"
+                ]
               }
             ]
           },

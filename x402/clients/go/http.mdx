@@ -1,0 +1,159 @@
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Getting started with Go (net/http)
+
+Make x402 payments with Go's standard `net/http` client in 2 minutes.
+
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/go/clients/http).</Note>
+
+### Step 1: Create a Go module and install dependencies
+
+```bash
+go mod init myclient
+go get github.com/coinbase/x402/go github.com/joho/godotenv
+```
+
+To run from the x402 repo instead: clone [coinbase/x402](https://github.com/coinbase/x402), then `cd examples/go/clients/http`, copy `.env-example` to `.env`, and run `go run . mechanism-helper-registration` (or `go run . builder-pattern`).
+
+### Step 2: Set your environment variables
+
+Your `.env` file should look like this:
+
+- `EVM_PRIVATE_KEY`: Hex EVM private key of the paying account
+- `SVM_PRIVATE_KEY`: Base58 Solana private key (optional if only using EVM)
+- `RESOURCE_SERVER_URL`: Base URL of the server (e.g. http://localhost:4021)
+- `ENDPOINT_PATH`: Path to a paid endpoint (e.g. /weather)
+
+```env
+EVM_PRIVATE_KEY=
+SVM_PRIVATE_KEY=
+RESOURCE_SERVER_URL=http://localhost:4021
+ENDPOINT_PATH=/weather
+```
+
+The upstream example uses `SERVER_URL` (full URL, e.g. `http://localhost:4021/weather`). You can use that instead by setting a single `SERVER_URL` and building the request URL from it.
+
+### Step 3: Preview the client code
+
+This example loads your env, creates an x402 client with EVM and SVM schemes (using the mechanism-helper registration pattern), wraps `http.DefaultClient` with payment handling, makes a GET request, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
+
+```go
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+
+	x402 "github.com/coinbase/x402/go"
+	x402http "github.com/coinbase/x402/go/http"
+	evm "github.com/coinbase/x402/go/mechanisms/evm/exact/client"
+	svm "github.com/coinbase/x402/go/mechanisms/svm/exact/client"
+	evmsigners "github.com/coinbase/x402/go/signers/evm"
+	svmsigners "github.com/coinbase/x402/go/signers/svm"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	godotenv.Load()
+
+	evmPrivateKey := os.Getenv("EVM_PRIVATE_KEY")
+	if evmPrivateKey == "" {
+		fmt.Println("❌ EVM_PRIVATE_KEY environment variable is required")
+		os.Exit(1)
+	}
+	svmPrivateKey := os.Getenv("SVM_PRIVATE_KEY")
+	baseURL := os.Getenv("RESOURCE_SERVER_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:4021"
+	}
+	endpointPath := os.Getenv("ENDPOINT_PATH")
+	if endpointPath == "" {
+		endpointPath = "/weather"
+	}
+	url := baseURL + endpointPath
+
+	// Create signers and client
+	evmSigner, err := evmsigners.NewClientSignerFromPrivateKey(evmPrivateKey)
+	if err != nil {
+		fmt.Printf("❌ EVM signer: %v\n", err)
+		os.Exit(1)
+	}
+	client := x402.Newx402Client()
+	client.Register("eip155:*", evm.NewExactEvmScheme(evmSigner))
+	if svmPrivateKey != "" {
+		svmSigner, err := svmsigners.NewClientSignerFromPrivateKey(svmPrivateKey)
+		if err != nil {
+			fmt.Printf("❌ SVM signer: %v\n", err)
+			os.Exit(1)
+		}
+		client.Register("solana:*", svm.NewExactSvmScheme(svmSigner))
+	}
+
+	// Wrap HTTP client with x402 payment handling
+	httpClient := x402http.Newx402HTTPClient(client)
+	wrappedClient := x402http.WrapHTTPClientWithPayment(http.DefaultClient, httpClient)
+
+	fmt.Printf("Making request to: %s\n\n", url)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		fmt.Printf("❌ %v\n", err)
+		os.Exit(1)
+	}
+	resp, err := wrappedClient.Do(req)
+	if err != nil {
+		fmt.Printf("❌ %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	var body interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		fmt.Printf("❌ decode: %v\n", err)
+		os.Exit(1)
+	}
+	out, _ := json.MarshalIndent(body, "", "  ")
+	fmt.Println("Response body:", string(out))
+
+	if resp.StatusCode < 400 {
+		paymentHeader := resp.Header.Get("PAYMENT-RESPONSE")
+		if paymentHeader == "" {
+			paymentHeader = resp.Header.Get("X-PAYMENT-RESPONSE")
+		}
+		if paymentHeader != "" {
+			fmt.Println("\nPayment response header present (decode base64 JSON for details)")
+		}
+	}
+}
+```
+
+For a full runnable example with payment-response decoding and both builder-pattern and mechanism-helper registration, see the [upstream Go HTTP client](https://github.com/coinbase/x402/tree/main/examples/go/clients/http) (`main.go`, `utils.go`, `mechanism_helper_registration.go`, `builder_pattern.go`).
+
+### Step 4: Run the client
+
+```bash
+go run .
+```
+
+<Check>
+  Your client is now making x402 payments!
+</Check>
+
+### Step 5: Test the client
+
+You can test your client against a local server by running the [Gin example](/x402/servers/go/gin), or the [Express](/x402/servers/typescript/express), [Hono](/x402/servers/typescript/hono), or [Next.js](/x402/servers/typescript/nextjs) examples.
+
+You can also test your client against a <a href="https://x402.payai.network" target="_blank">live merchant</a> for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
+
+## Need help?
+
+<DiscordHelpCard />
