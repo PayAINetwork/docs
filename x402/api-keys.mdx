@@ -1,0 +1,133 @@
+---
+title: 'API Keys'
+description: 'Authenticate with the PayAI facilitator using API keys for production use.'
+---
+
+import DiscordHelpCard from '/snippets/discord-help-card.mdx';
+
+## Why use API keys?
+
+The PayAI facilitator offers a **free tier** that lets you verify and settle up to 1,000 payments with no configuration.
+Once you're ready for production, API keys unlock **credit-based access** with no settlement cap.
+
+|                  | Free tier                           | With API keys                       |
+| ---------------- | ----------------------------------- | ----------------------------------- |
+| Settlement limit | 1,000                               | Unlimited (credit-based)            |
+| Authentication   | None                                | JWT (automatic)                     |
+| Facilitator URL  | `https://facilitator.payai.network` | `https://facilitator.payai.network` |
+
+<Note>API keys are optional. You can start building and testing without them.</Note>
+
+## Get your API keys
+
+1. Sign in to the [PayAI Merchant Portal](https://merchant.payai.network).
+2. Navigate to **API Keys** and create a new key pair.
+3. Copy the **API Key ID** and **API Key Secret**.
+
+<Warning>
+  Your API Key Secret is only shown once. Store it securely -- you cannot retrieve it later.
+</Warning>
+
+## Configuration
+
+Add two environment variables to your project:
+
+```env
+PAYAI_API_KEY_ID=your-api-key-id
+PAYAI_API_KEY_SECRET=payai_sk_your-api-key-secret
+```
+
+Then pass them in your facilitator configuration. The SDK handles JWT generation, caching, and refresh automatically -- no extra imports needed.
+
+<Tabs>
+  <Tab title="Express (v1)">
+```ts
+import { paymentMiddleware } from "x402-express";
+
+app.use(
+  paymentMiddleware(payTo, routes, {
+    url: "https://facilitator.payai.network",
+    apiKeyId: process.env.PAYAI_API_KEY_ID,
+    apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+  }),
+);
+```
+  </Tab>
+  <Tab title="Next.js (v1)">
+```ts
+import { paymentMiddleware } from "x402-next";
+
+export default paymentMiddleware(payTo, routes, {
+  url: "https://facilitator.payai.network",
+  apiKeyId: process.env.PAYAI_API_KEY_ID,
+  apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+});
+```
+  </Tab>
+  <Tab title="Hono (v1)">
+```ts
+import { paymentMiddleware } from "x402-hono";
+
+app.use(
+  paymentMiddleware(payTo, routes, {
+    url: "https://facilitator.payai.network",
+    apiKeyId: process.env.PAYAI_API_KEY_ID,
+    apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+  }),
+);
+```
+  </Tab>
+  <Tab title="@x402/core (v2)">
+```ts
+import { HTTPFacilitatorClient } from "@payai/x402/http";
+
+const facilitator = new HTTPFacilitatorClient({
+  apiKeyId: process.env.PAYAI_API_KEY_ID,
+  apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+});
+```
+  </Tab>
+  <Tab title="x402-solana">
+```ts
+import { X402PaymentHandler } from "x402-solana/server";
+
+const handler = new X402PaymentHandler({
+  network: "solana-devnet",
+  treasuryAddress: "...",
+  facilitatorUrl: "https://facilitator.payai.network",
+  apiKeyId: process.env.PAYAI_API_KEY_ID,
+  apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+});
+```
+  </Tab>
+</Tabs>
+
+That's it. Every request to the facilitator now includes a signed JWT Bearer token.
+
+## How it works
+
+Under the hood, the SDK:
+
+1. **Signs** a short-lived JWT (Ed25519 / EdDSA) using your API Key Secret.
+2. **Caches** the token and reuses it until 30 seconds before expiry.
+3. **Attaches** an `Authorization: Bearer <jwt>` header to every facilitator request (`/verify`, `/settle`, `/supported`).
+
+This uses the Web Crypto API with zero external dependencies -- it works in Node.js 18+, Edge runtimes, and browsers.
+
+## Security best practices
+
+<Steps>
+  <Step title="Never commit secrets">
+    Keep `PAYAI_API_KEY_SECRET` in `.env` files that are listed in `.gitignore`. Never hardcode it in source.
+  </Step>
+  <Step title="Use environment variables">
+    Reference keys via `process.env` in your code. In production, use your hosting provider's secrets manager (e.g. Vercel Environment Variables, AWS Secrets Manager).
+  </Step>
+  <Step title="Rotate keys if compromised">
+    If a key is leaked, revoke it immediately in the [Merchant Portal](https://merchant.payai.network) and create a new one.
+  </Step>
+</Steps>
+
+## Need help?
+
+<DiscordHelpCard />

@@ -24,7 +24,15 @@ Your `.env` file should look like this:
 ADDRESS=0x... # the wallet address you will receive payments on, could be evm or solana
 FACILITATOR_URL=https://facilitator.payai.network
 NETWORK=solana-devnet # or base-sepolia, avalanche, etc.
+
+# optional: PayAI API keys for production (bypasses free tier limits)
+# PAYAI_API_KEY_ID=your-api-key-id
+# PAYAI_API_KEY_SECRET=payai_sk_your-api-key-secret
 ```
+
+<Tip>
+  For production use, add [PayAI API keys](/x402/api-keys) to bypass the free tier settlement limit.
+</Tip>
 
 ### Step 3: Create a new Hono app
 
@@ -60,6 +68,9 @@ app.use(
     },
     {
       url: facilitatorUrl,
+      // optional: add API keys for production use
+      // apiKeyId: process.env.PAYAI_API_KEY_ID,
+      // apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
     },
   ),
 );
