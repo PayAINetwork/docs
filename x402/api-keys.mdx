@@ -37,18 +37,38 @@ PAYAI_API_KEY_ID=your-api-key-id
 PAYAI_API_KEY_SECRET=payai_sk_your-api-key-secret
 ```
 
-Then pass them in your facilitator configuration. The SDK handles JWT generation, caching, and refresh automatically -- no extra imports needed.
+Then configure your facilitator client. The recommended approach depends on which SDK version you're using.
 
 <Tabs>
+  <Tab title="v2 (recommended)">
+Install `@payai/facilitator` — a tiny package that provides a ready-made config with automatic JWT auth:
+
+```bash
+npm install @payai/facilitator
+```
+
+```ts
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const client = new HTTPFacilitatorClient(facilitator);
+// Done. Auth is automatic when PAYAI_API_KEY_ID and PAYAI_API_KEY_SECRET are set.
+```
+
+This works with all v2 framework packages (`@x402/express`, `@x402/next`, `@x402/hono`).
+  </Tab>
   <Tab title="Express (v1)">
 ```ts
 import { paymentMiddleware } from "x402-express";
+import { createPayAIAuthHeaders } from "@payai/facilitator";
 
 app.use(
   paymentMiddleware(payTo, routes, {
     url: "https://facilitator.payai.network",
-    apiKeyId: process.env.PAYAI_API_KEY_ID,
-    apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+    createAuthHeaders: createPayAIAuthHeaders(
+      process.env.PAYAI_API_KEY_ID!,
+      process.env.PAYAI_API_KEY_SECRET!,
+    ),
   }),
 );
 ```
@@ -56,35 +76,31 @@ app.use(
   <Tab title="Next.js (v1)">
 ```ts
 import { paymentMiddleware } from "x402-next";
+import { createPayAIAuthHeaders } from "@payai/facilitator";
 
 export default paymentMiddleware(payTo, routes, {
   url: "https://facilitator.payai.network",
-  apiKeyId: process.env.PAYAI_API_KEY_ID,
-  apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+  createAuthHeaders: createPayAIAuthHeaders(
+    process.env.PAYAI_API_KEY_ID!,
+    process.env.PAYAI_API_KEY_SECRET!,
+  ),
 });
 ```
   </Tab>
   <Tab title="Hono (v1)">
 ```ts
 import { paymentMiddleware } from "x402-hono";
+import { createPayAIAuthHeaders } from "@payai/facilitator";
 
 app.use(
   paymentMiddleware(payTo, routes, {
     url: "https://facilitator.payai.network",
-    apiKeyId: process.env.PAYAI_API_KEY_ID,
-    apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
+    createAuthHeaders: createPayAIAuthHeaders(
+      process.env.PAYAI_API_KEY_ID!,
+      process.env.PAYAI_API_KEY_SECRET!,
+    ),
   }),
 );
-```
-  </Tab>
-  <Tab title="@x402/core (v2)">
-```ts
-import { HTTPFacilitatorClient } from "@payai/x402/http";
-
-const facilitator = new HTTPFacilitatorClient({
-  apiKeyId: process.env.PAYAI_API_KEY_ID,
-  apiKeySecret: process.env.PAYAI_API_KEY_SECRET,
-});
 ```
   </Tab>
   <Tab title="x402-solana">
@@ -106,7 +122,7 @@ That's it. Every request to the facilitator now includes a signed JWT Bearer tok
 
 ## How it works
 
-Under the hood, the SDK:
+Under the hood, `@payai/facilitator`:
 
 1. **Signs** a short-lived JWT (Ed25519 / EdDSA) using your API Key Secret.
 2. **Caches** the token and reuses it until 30 seconds before expiry.
