@@ -4,85 +4,105 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 Make x402 payments with a Fetch client in 2 minutes.
 
-<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/0dfd3e683f1563543bd62a3ad84cbc6851d4054b/examples/typescript/clients/fetch).</Note>
+<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/fetch).</Note>
 
-### Step 1: Create a new client from the starter template
+### Step 1: Create a new client
 
-Use your favorite package manager.
+Use the starter or run the [upstream example](https://github.com/coinbase/x402/tree/main/examples/typescript/clients/fetch) from the x402 repo.
 
 ##### npm (npx)
 ```bash
-npx @payai/x402-fetch-starter my-first-client
+npx @payai/x402-fetch-starter@latest my-first-client
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-fetch-starter my-first-client
+pnpm dlx @payai/x402-fetch-starter@latest my-first-client
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-fetch-starter my-first-client
+bunx @payai/x402-fetch-starter@latest my-first-client
 ```
 
-The starter mirrors the upstream example and bootstraps a ready-to-run Fetch client.
-
-
-### Step 2: Preview the client code
+The starter mirrors the upstream example and bootstraps a ready-to-run Fetch client. To run from the repo instead: clone [coinbase/x402](https://github.com/coinbase/x402), then from the typescript examples root run `pnpm install && pnpm build`, then `cd clients/fetch`, copy `.env-local` to `.env`, and run `pnpm dev`.
 
 ### Step 2: Set your environment variables
 
 Open your generated project's `.env` and set the following:
 
-- RESOURCE_SERVER_URL: Base URL of the server to call (e.g., http://localhost:4021)
-- ENDPOINT_PATH: Path to a paid endpoint (e.g., /weather)
-- PRIVATE_KEY: Hex EVM private key of the paying account
+- `EVM_PRIVATE_KEY`: Hex EVM private key of the paying account
+- `SVM_PRIVATE_KEY`: Base58 Solana private key of the paying account
+- `RESOURCE_SERVER_URL`: Base URL of the server to call (e.g. http://localhost:4021)
+- `ENDPOINT_PATH`: Path to a paid endpoint (e.g. /weather)
 
 ```env
+EVM_PRIVATE_KEY=
+SVM_PRIVATE_KEY=
 RESOURCE_SERVER_URL=http://localhost:4021
 ENDPOINT_PATH=/weather
-PRIVATE_KEY=0x...
 ```
 
 ### Step 3: Preview the client code
 
-This is the `index.ts` the starter generates. It loads your env, wraps `fetch` with x402, calls your endpoint, and logs both the JSON body and the decoded `x-payment-response` headers.
+This is the `index.ts` the starter generates. It loads your env, creates an x402 client with EVM and SVM schemes, wraps `fetch` with `wrapFetchWithPayment`, calls your endpoint, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
 
 ```ts
 import { config } from "dotenv";
-import { Hex } from "viem";
+import { x402Client, wrapFetchWithPayment, x402HTTPClient } from "@x402/fetch";
+import { registerExactEvmScheme } from "@x402/evm/exact/client";
+import { registerExactSvmScheme } from "@x402/svm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
-import { decodeXPaymentResponse, wrapFetchWithPayment } from "x402-fetch";
+import { createKeyPairSignerFromBytes } from "@solana/kit";
+import { base58 } from "@scure/base";
 
 config();
 
-const privateKey = process.env.PRIVATE_KEY as Hex;
-const baseURL = process.env.RESOURCE_SERVER_URL as string; // e.g. https://example.com
-const endpointPath = process.env.ENDPOINT_PATH as string; // e.g. /weather
-const url = `${baseURL}${endpointPath}`; // e.g. https://example.com/weather
+const evmPrivateKey = process.env.EVM_PRIVATE_KEY as `0x${string}`;
+const svmPrivateKey = process.env.SVM_PRIVATE_KEY as string;
+const baseURL = process.env.RESOURCE_SERVER_URL || "http://localhost:4021";
+const endpointPath = process.env.ENDPOINT_PATH || "/weather";
+const url = `${baseURL}${endpointPath}`;
 
-if (!baseURL || !privateKey || !endpointPath) {
-  console.error("Missing required environment variables");
-  process.exit(1);
+/**
+ * Example demonstrating how to use @x402/fetch to make requests to x402-protected endpoints.
+ *
+ * This uses the helper registration functions from @x402/evm and @x402/svm to register
+ * all supported networks for both v1 and v2 protocols.
+ *
+ * Required environment variables:
+ * - EVM_PRIVATE_KEY: The private key of the EVM signer
+ * - SVM_PRIVATE_KEY: The private key of the SVM signer
+ */
+async function main(): Promise<void> {
+  const evmSigner = privateKeyToAccount(evmPrivateKey);
+  const svmSigner = await createKeyPairSignerFromBytes(base58.decode(svmPrivateKey));
+
+  const client = new x402Client();
+  registerExactEvmScheme(client, { signer: evmSigner });
+  registerExactSvmScheme(client, { signer: svmSigner });
+
+  const fetchWithPayment = wrapFetchWithPayment(fetch, client);
+
+  console.log(`Making request to: ${url}\n`);
+  const response = await fetchWithPayment(url, { method: "GET" });
+  const body = await response.json();
+  console.log("Response body:", body);
+
+  if (response.ok) {
+    const paymentResponse = new x402HTTPClient(client).getPaymentSettleResponse(name =>
+      response.headers.get(name),
+    );
+    console.log("\nPayment response:", JSON.stringify(paymentResponse, null, 2));
+  } else {
+    console.log(`\nNo payment settled (response status: ${response.status})`);
+  }
 }
 
-const account = privateKeyToAccount(privateKey);
-
-const fetchWithPayment = wrapFetchWithPayment(fetch, account);
-
-fetchWithPayment(url, {
-  method: "GET",
-})
-  .then(async response => {
-    const body = await response.json();
-    console.log(body);
-
-    const paymentResponse = decodeXPaymentResponse(response.headers.get("x-payment-response")!);
-    console.log(paymentResponse);
-  })
-  .catch(error => {
-    console.error(error.response?.data?.error);
-  });
+main().catch(error => {
+  console.error(error?.response?.data?.error ?? error);
+  process.exit(1);
+});
 ```
 
 ### Step 4: Run the client
@@ -97,9 +117,13 @@ npm run dev
 
 ### Step 5: Test the client
 
-You can test your client against a local server by running the [express example](/x402/servers/typescript/express) or the [hono example](/x402/servers/typescript/hono).  
+You can test your client against a local server by running the [Express example](/x402/servers/typescript/express), [Hono example](/x402/servers/typescript/hono), or [Next.js example](/x402/servers/typescript/nextjs).  
 
-You can also test your client against a [live merchant](https://x402.payai.network) for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.
+You can also test your client against a <a href="https://x402.payai.network" target="_blank">live merchant</a> for free. You will receive a full refund of any tokens that you send, and PayAI will pay for the network fees.
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
 
 ## Need help?
 

@@ -10,7 +10,6 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 x402 standardizes how clients discover payment requirements, construct payment payloads, and complete on-chain payments for HTTP resources. Benefits include:
 
 ✅ Customers don't pay network fees.  
-✅ Merchants don't pay network fees.  
 ✅ Payment settles in < 1 second.  
 ✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
 
@@ -22,6 +21,39 @@ x402 standardizes how clients discover payment requirements, construct payment p
 - **Server**: Advertises payment requirements, verifies/settles payments, fulfills requests.
 - **Facilitator**: Verifies and/or settles payments for the resource server.
 - **Blockchains**: Execute and confirm payments.
+
+## It's this easy
+
+Make x402 payments with just a few lines:
+
+<Tabs>
+  <Tab title="Fetch">
+```typescript
+import { wrapFetchWithPayment } from "x402-fetch";
+
+const fetchWithPayment = wrapFetchWithPayment(fetch, account);
+
+const response = await fetchWithPayment("https://api.example.com/premium");
+```
+  </Tab>
+  <Tab title="Axios">
+```typescript
+import { withPaymentInterceptor } from "x402-axios";
+
+const api = withPaymentInterceptor(axios.create({ baseURL }), account);
+
+const response = await api.get("/premium");
+```
+  </Tab>
+  <Tab title="Python">
+```python
+from x402.clients.httpx import x402HttpxClient
+
+async with x402HttpxClient(account=account, base_url=base_url) as client:
+    response = await client.get("/premium")
+```
+  </Tab>
+</Tabs>
 
 ## Getting started
 
