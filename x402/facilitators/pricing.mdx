@@ -1,55 +1,78 @@
 ---
 title: "Facilitator Pricing"
-description: "PayAI Facilitator pricing tiers"
+description: "PayAI Facilitator pricing — free tier, per-transaction pricing, and credits"
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-## Pricing Tiers
+## Free Tier
 
-The PayAI Facilitator offers three pricing tiers to accommodate different usage levels.
+The free tier remains free — no strings attached.
 
-<CardGroup cols={3}>
-  <Card title="Free" icon="gift">
-    **$0/month**
-    
-    - 100,000 settlements/month
-    - 4 requests/second
-    - 480 burst requests/minute
-    
-    Perfect for development and testing.
-  </Card>
-  
-  <Card title="Basic" icon="rocket">
-    **$1,500 PAYAI**
-    
-    - 500,000 settlements/month
-    - 10 requests/second
-    - 1,200 burst requests/minute
-    
-    For growing applications.
-  </Card>
-  
-  <Card title="Pro" icon="crown">
-    **$2,800 PAYAI**
-    
-    - 1,000,000 settlements/month
-    - 25 requests/second
-    - 3,000 burst requests/minute
-    
-    For high-volume production use.
-  </Card>
-</CardGroup>
+<Card title="Free" icon="gift">
+  **$0/month**
 
-<Note>
-  Pricing is subject to change. Visit [facilitator.payai.network](https://facilitator.payai.network) for the latest pricing information.
-</Note>
+  - Up to **1,000 settlements per month**
+  - No API key required
+</Card>
 
-## How to upgrade
+Get started immediately with zero setup. Jump to the [quickstart](/x402/quickstart) to start building.
 
-1. Create a merchant account at [merchant.payai.network](https://merchant.payai.network)
-2. Get your API key ID and secret
-3. Set the environment variables in your server:
+## Beyond the Free Tier
+
+Beyond the free tier, pricing is simple and predictable:
+
+<Card title="Per Transaction" icon="coins">
+  **$0.001 per transaction**
+</Card>
+
+This fee is designed to cover gas and RPC costs while enabling the network to scale reliably.
+
+### Builder friendly
+
+At this pricing, the facilitator remains extremely builder friendly. It costs the same — even slightly less — than what merchants would otherwise pay in raw network fees and RPC costs, while preserving all the benefits of x402 for their users.
+
+### Pricing examples
+
+| Transactions | Cost |
+|-------------|------|
+| 1 | $0.001 |
+| 1,000 | $1 |
+| 100,000 | $100 |
+
+## Credit System
+
+To maintain access beyond 1,000 settlements/month, merchants log into a dashboard and top up credits.
+
+- **1 credit = 1 settled transaction**
+- **Credits never expire**
+
+<Card
+  title="Top Up Credits"
+  icon="credit-card"
+  href="https://merchant.payai.network"
+>
+  Log in to the merchant dashboard to manage your credits.
+</Card>
+
+## Comparison
+
+| | Free | Beyond Free |
+|---|---|---|
+| **Monthly cost** | $0 | $0.001 per transaction |
+| **Settlements included** | Up to 1,000/month | Unlimited (credit-based) |
+| **API key required** | No | Yes |
+| **Credits** | Not required | 1 credit = 1 settlement |
+| **Credit expiry** | — | Never |
+| **Dashboard access** | Not required | [merchant.payai.network](https://merchant.payai.network) |
+
+## How to get started
+
+1. Follow the [quickstart](/x402/quickstart) to start building — the free tier requires no API key
+2. When you're ready to scale beyond 1,000 settlements/month, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
+3. Top up credits from the dashboard
+4. Get your API key ID and secret
+5. Set the environment variables in your server:
 
 ```env
 PAYAI_API_KEY_ID=your-key-id
@@ -65,6 +88,10 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 // Automatically uses API keys from environment when available
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
+
+<Note>
+  Pricing is subject to change as PayAI continues to grow and adoption increases. For now, the focus is on sustainability at scale and building long-term value. Visit [facilitator.payai.network](https://facilitator.payai.network) for the latest pricing information.
+</Note>
 
 ## Need help?
 
