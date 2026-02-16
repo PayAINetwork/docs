@@ -62,9 +62,16 @@ Choose your language and framework below to get started.
 
 ## Facilitator
 
-The PayAI facilitator URL is https://facilitator.payai.network.
+All PayAI starter templates include `@payai/facilitator`, which automatically connects to the PayAI facilitator at `https://facilitator.payai.network`. No manual URL configuration needed.
 
-Simply set the facilitator URL in your server configuration and you're good to go.
+```typescript
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+```
+
+The facilitator works immediately on the **free tier**. When you're ready for production, set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` environment variables to authenticate — see [Facilitator Pricing](/x402/facilitators/pricing).
 
 The PayAI facilitator supports the following endpoints:
 
