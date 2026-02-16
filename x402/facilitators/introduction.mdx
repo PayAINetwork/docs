@@ -43,7 +43,20 @@ From the facilitator’s point of view, the key steps of the protocol are:
 
 ## Getting started
 
-Try out an existing facilitator or build your own.
+The easiest way to connect to the PayAI facilitator is with the `@payai/facilitator` package:
+
+```bash
+npm install @payai/facilitator
+```
+
+```typescript
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+```
+
+This works immediately on the **free tier** — no API keys required.
 
 <Card
   title="Try the PayAI Facilitator"
@@ -52,6 +65,27 @@ Try out an existing facilitator or build your own.
 >
   Ready to start? Visit the PayAI Facilitator to get started.
 </Card>
+
+## API key authentication
+
+When you're ready for production, create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get API keys. API keys unlock higher rate limits and settlement volumes — see [Pricing](/x402/facilitators/pricing) for tier details.
+
+Set these environment variables and `@payai/facilitator` will automatically authenticate your requests:
+
+```env
+PAYAI_API_KEY_ID=your-key-id
+PAYAI_API_KEY_SECRET=your-key-secret
+```
+
+For advanced use cases, you can also pass credentials explicitly:
+
+```typescript
+import { createFacilitatorConfig } from "@payai/facilitator";
+
+const facilitatorClient = new HTTPFacilitatorClient(
+  createFacilitatorConfig("your-key-id", "your-key-secret"),
+);
+```
 
 ## x402 reference
 
