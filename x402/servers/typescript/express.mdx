@@ -8,42 +8,34 @@ Start accepting x402 payments in your Express server in 2 minutes.
 
 ### Step 1: Create a new server from the starter template
 
-Use your favorite package manager.
+Use your favorite package manager:
 
 ##### npm (npx)
 ```bash
-npx @payai/x402-express-starter my-first-server
+npx @payai/x402-express-starter@latest my-server
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-express-starter my-first-server
+pnpm dlx @payai/x402-express-starter@latest my-server
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-express-starter my-first-server
+bunx @payai/x402-express-starter@latest my-server
 ```
 
-The starter mirrors the upstream example and bootstraps a ready-to-run Express server.
+The starter mirrors the [upstream example](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express) and bootstraps a ready-to-run Express server.
 
 
 ### Step 2: Set your environment variables
 
 Open your generated project's `.env` and set:
 
-- `FACILITATOR_URL`: Facilitator base URL (defaults to: https://facilitator.payai.network)
-- `NETWORK`: Network to use for the facilitator (default: `base-sepolia`)
-- `ADDRESS`: Wallet public address to receive payments to
-
 ```env
 FACILITATOR_URL=https://facilitator.payai.network
-NETWORK=base-sepolia # or base
-ADDRESS=0x... # wallet public address you want to receive payments to
-
-# required if using the Base mainnet facilitator
-CDP_API_KEY_ID="Coinbase Developer Platform Key"
-CDP_API_KEY_SECRET="Coinbase Developer Platform Key Secret"
+EVM_ADDRESS=0x...   # EVM wallet address to receive payments
+SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
 ### Step 3: Preview the server code
@@ -53,49 +45,54 @@ This is the `index.ts` the starter generates. It loads your env, applies the x40
 ```ts
 import { config } from "dotenv";
 import express from "express";
-import { paymentMiddleware, Resource } from "x402-express";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
 config();
 
-const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
-const payTo = process.env.ADDRESS as `0x${string}`;
-
-if (!facilitatorUrl || !payTo) {
+const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+const svmAddress = process.env.SVM_ADDRESS;
+if (!evmAddress || !svmAddress) {
   console.error("Missing required environment variables");
   process.exit(1);
 }
+
+const facilitatorUrl = process.env.FACILITATOR_URL;
+if (!facilitatorUrl) {
+  console.error("❌ FACILITATOR_URL environment variable is required");
+  process.exit(1);
+}
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 
 const app = express();
 
 app.use(
   paymentMiddleware(
-    payTo,
     {
       "GET /weather": {
-        // USDC amount in dollars
-        price: "$0.001",
-        // network: "base" // uncomment for Base mainnet
-        network: "base-sepolia",
-      },
-      "/premium/*": {
-        // Define atomic amounts in any EIP-3009 token
-        price: {
-          amount: "100000",
-          asset: {
-            address: "0xabc",
-            decimals: 18,
-            eip712: {
-              name: "WETH",
-              version: "1",
-            },
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
           },
-        },
-        // network: "base" // uncomment for Base mainnet
-        network: "base-sepolia",
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            payTo: svmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
       },
     },
-    {
-      url: facilitatorUrl,
-    },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme())
+      .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme()),
   ),
 );
 
@@ -105,12 +102,6 @@ app.get("/weather", (req, res) => {
       weather: "sunny",
       temperature: 70,
     },
-  });
-});
-
-app.get("/premium/content", (req, res) => {
-  res.send({
-    content: "This is premium content",
   });
 });
 
@@ -132,6 +123,10 @@ npm run dev
 ### Step 5: Test the server
 
 You can test payments against your server locally by following the [fetch example](/x402/clients/typescript/fetch) or the [axios example](/x402/clients/typescript/axios).  
+
+## x402 reference
+
+For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
 
 ## Need help?
 

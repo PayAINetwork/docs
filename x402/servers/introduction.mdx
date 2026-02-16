@@ -11,7 +11,6 @@ x402 lets you monetize HTTP APIs and content with on-chain payments, while keepi
 
 Benefits:
 
-✅ Merchants don't pay network fees.  
 ✅ Customers don't pay network fees.  
 ✅ Payment settles in < 1 second.  
 ✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
@@ -24,6 +23,73 @@ Benefits:
 - **Server (merchant)**: Advertises payment requirements, verifies payments, fulfills requests, and settles payments.
 - **Facilitator**: Verifies and/or settles payments on your behalf via standard endpoints.
 - **Blockchain**: Where payments are executed and confirmed.
+
+## It's this easy
+
+Add x402 payments to your server with just a few lines:
+
+<Tabs>
+  <Tab title="Express">
+```typescript
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /weather": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
+      },
+    },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme()),
+  ),
+);
+```
+  </Tab>
+  <Tab title="Hono">
+```typescript
+import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /weather": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: "$0.001",
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+        ],
+        description: "Weather data",
+        mimeType: "application/json",
+      },
+    },
+    new x402ResourceServer(facilitatorClient)
+      .register("eip155:84532", new ExactEvmScheme()),
+  ),
+);
+```
+  </Tab>
+</Tabs>
 
 ## Getting started
 
@@ -38,8 +104,8 @@ Select one of the quickstart examples, or read the [reference](/x402/reference) 
         <Card title="Hono" href="/x402/servers/typescript/hono" icon="server">
             Quickstart for building an x402-enabled server with Hono.
         </Card>
-        <Card title="NextJS (coming soon)" href="/x402/servers/typescript/nextjs" icon="server">
-            NextJS server quickstart is coming soon.
+        <Card title="Next.js" href="/x402/servers/typescript/nextjs" icon="server">
+            Quickstart for building an x402-enabled server with Next.js.
         </Card>
     </CardGroup>
   </Tab>
