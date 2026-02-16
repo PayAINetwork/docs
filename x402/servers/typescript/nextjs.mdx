@@ -32,10 +32,11 @@ The starter mirrors the [upstream example](https://github.com/coinbase/x402/tree
 Copy the example env and fill in your values (e.g. `cp .env-local .env` or `cp env.example .env.local`).
 
 ```env
-FACILITATOR_URL=https://facilitator.payai.network
 EVM_ADDRESS=0x...   # EVM wallet address to receive payments
 SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
+
+<Tip>The starter uses `@payai/facilitator` which automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
 
 ### Step 3: Explore the app structure
 
@@ -72,8 +73,9 @@ import { registerExactSvmScheme } from "@x402/svm/exact/server";
 import { createPaywall } from "@x402/paywall";
 import { evmPaywall } from "@x402/paywall/evm";
 import { svmPaywall } from "@x402/paywall/svm";
+import { facilitator } from "@payai/facilitator";
 
-const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 const server = new x402ResourceServer(facilitatorClient);
 
 // Register schemes
@@ -193,6 +195,19 @@ npm run dev
 The starter includes a built-in paywall at the home page. Navigate to http://localhost:3000 to test payments directly.
 
 You can also test programmatically by following the [fetch example](/x402/clients/typescript/fetch) or [axios example](/x402/clients/typescript/axios).
+
+## Going to production
+
+The starter works on the **free tier** out of the box — no API keys required.
+
+When you're ready for production, create a merchant account at [merchant.payai.network](https://merchant.payai.network), get your API keys, and add them to your `.env`:
+
+```env
+PAYAI_API_KEY_ID=your-key-id
+PAYAI_API_KEY_SECRET=your-key-secret
+```
+
+The `@payai/facilitator` package automatically detects these environment variables and authenticates your requests to the facilitator. See [Facilitator Pricing](/x402/facilitators/pricing) for tier details.
 
 ## x402 reference
 

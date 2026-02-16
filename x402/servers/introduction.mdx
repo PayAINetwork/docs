@@ -34,8 +34,9 @@ Add x402 payments to your server with just a few lines:
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { facilitator } from "@payai/facilitator";
 
-const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 
 app.use(
   paymentMiddleware(
@@ -64,8 +65,9 @@ app.use(
 import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { facilitator } from "@payai/facilitator";
 
-const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 
 app.use(
   paymentMiddleware(
@@ -121,9 +123,22 @@ Select one of the quickstart examples, or read the [reference](/x402/reference) 
   </Tab>
 </Tabs>
 
-## Facilitator URL
+## Facilitator setup
 
-The PayAI facilitator URL is `https://facilitator.payai.network`.
+The `@payai/facilitator` package provides a pre-configured facilitator that connects to the PayAI facilitator at `https://facilitator.payai.network`:
+
+```bash
+npm install @payai/facilitator
+```
+
+```typescript
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+```
+
+This works immediately on the free tier. For production, set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` environment variables — see [Going to Production](/x402/facilitators/pricing).
 
 ## x402 reference
 

@@ -33,10 +33,11 @@ The starter mirrors the [upstream example](https://github.com/coinbase/x402/tree
 Open your generated project's `.env` and set:
 
 ```env
-FACILITATOR_URL=https://facilitator.payai.network
 EVM_ADDRESS=0x...   # EVM wallet address to receive payments
 SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
+
+<Tip>The starter uses `@payai/facilitator` which automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
 
 ### Step 3: Preview the server code
 
@@ -49,6 +50,7 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { facilitator } from "@payai/facilitator";
 
 config();
 
@@ -59,12 +61,7 @@ if (!evmAddress || !svmAddress) {
   process.exit(1);
 }
 
-const facilitatorUrl = process.env.FACILITATOR_URL;
-if (!facilitatorUrl) {
-  console.error("❌ FACILITATOR_URL environment variable is required");
-  process.exit(1);
-}
-const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 
 const app = express();
 
@@ -123,6 +120,19 @@ npm run dev
 ### Step 5: Test the server
 
 You can test payments against your server locally by following the [fetch example](/x402/clients/typescript/fetch) or the [axios example](/x402/clients/typescript/axios).  
+
+## Going to production
+
+The starter works on the **free tier** out of the box — no API keys required.
+
+When you're ready for production, create a merchant account at [merchant.payai.network](https://merchant.payai.network), get your API keys, and add them to your `.env`:
+
+```env
+PAYAI_API_KEY_ID=your-key-id
+PAYAI_API_KEY_SECRET=your-key-secret
+```
+
+The `@payai/facilitator` package automatically detects these environment variables and authenticates your requests to the facilitator. See [Facilitator Pricing](/x402/facilitators/pricing) for tier details.
 
 ## x402 reference
 
