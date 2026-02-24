@@ -1,0 +1,56 @@
+# PayAI Documentation
+
+## Docs
+
+- [PayAI Introduction](https://docs.payai.network/introduction.md): Overview of PayAI and the agentic future.
+- [Contributing](https://docs.payai.network/project-info/contributing.md): How to contribute to the PayAI ecosystem and documentation.
+- [Official Links](https://docs.payai.network/project-info/official-links.md): Official resources, links, and contract addresses for PayAI and $PAYAI.
+- [Token Use & Legal Disclaimer](https://docs.payai.network/project-info/token-use-and-legal-disclaimer.md): Intended use, risks, and legal disclaimer for the $PAYAI utility token.
+- [Tokenomics](https://docs.payai.network/project-info/tokenomics.md): Overview of $PAYAI token supply, treasury, liquidity, and unlocks.
+- [x402 Echo Merchant V1 Getting Started](https://docs.payai.network/v1/x402-echo/getting-started.md): Legacy Echo Merchant setup (V1).
+- [x402 Echo Merchant V1 Introduction](https://docs.payai.network/v1/x402-echo/introduction.md): Legacy Echo Merchant overview (V1).
+- [Client Introduction](https://docs.payai.network/v1/x402/clients/introduction.md): Learn how to support x402 in your client
+- [httpx client quickstart (Python, V1)](https://docs.payai.network/v1/x402/clients/python/httpx.md): Make x402 payments with Python httpx (legacy).
+- [requests client quickstart (Python, V1)](https://docs.payai.network/v1/x402/clients/python/requests.md): Make x402 payments with Python requests (legacy).
+- [Axios client quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/clients/typescript/axios.md): Make x402 payments with Axios (legacy).
+- [Fetch client quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/clients/typescript/fetch.md): Make x402 payments with Fetch (legacy).
+- [Facilitator Introduction](https://docs.payai.network/v1/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
+- [x402 V1 Introduction](https://docs.payai.network/v1/x402/introduction.md): Legacy x402 V1 protocol documentation
+- [x402 V1 Quickstart](https://docs.payai.network/v1/x402/quickstart.md): Legacy x402 quickstart.
+- [x402 Reference](https://docs.payai.network/v1/x402/reference.md): Reference documentation for the x402 protocol
+- [Merchant Introduction](https://docs.payai.network/v1/x402/servers/introduction.md): Learn how to sell services with x402.
+- [FastAPI server quickstart (Python, V1)](https://docs.payai.network/v1/x402/servers/python/fastapi.md): Accept x402 payments with FastAPI (legacy).
+- [Flask server quickstart (Python, V1)](https://docs.payai.network/v1/x402/servers/python/flask.md): Accept x402 payments with Flask (legacy).
+- [Express server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/express.md): Accept x402 payments with Express (legacy).
+- [Hono server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/hono.md): Accept x402 payments with Hono (legacy).
+- [Next.js server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/nextjs.md): Accept x402 payments with Next.js (legacy).
+- [Supported Networks](https://docs.payai.network/v1/x402/supported-networks.md): See networks that are supported by the PayAI Facilitator for the x402 protocol
+- [x402 Echo Merchant Getting Started](https://docs.payai.network/x402-echo/getting-started.md): Echo Merchant setup and testing.
+- [x402 Echo Merchant Introduction](https://docs.payai.network/x402-echo/introduction.md): Echo Merchant overview and use cases.
+- [Go net/http client quickstart](https://docs.payai.network/x402/clients/go/http.md): Make x402 payments with Go standard HTTP client.
+- [Client Introduction](https://docs.payai.network/x402/clients/introduction.md): Learn how to support x402 in your client
+- [httpx client quickstart (Python)](https://docs.payai.network/x402/clients/python/httpx.md): Make x402 payments with Python httpx (async).
+- [requests client quickstart (Python)](https://docs.payai.network/x402/clients/python/requests.md): Make x402 payments with Python requests (sync).
+- [Axios client quickstart (TypeScript)](https://docs.payai.network/x402/clients/typescript/axios.md): Make x402 payments with Axios.
+- [Fetch client quickstart (TypeScript)](https://docs.payai.network/x402/clients/typescript/fetch.md): Make x402 payments with Fetch.
+- [Facilitator Introduction](https://docs.payai.network/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
+- [Facilitator Pricing](https://docs.payai.network/x402/facilitators/pricing.md): PayAI Facilitator pricing — free tier, per-transaction pricing, and credits
+- [x402 Introduction](https://docs.payai.network/x402/introduction.md): Learn about the x402 protocol
+- [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
+- [x402 Reference](https://docs.payai.network/x402/reference.md): Reference documentation for the x402 protocol
+- [Entire x402 flow in TypeScript](https://docs.payai.network/x402/manual-flow-typescript.md): Manual x402 client flow in TypeScript (no starter kit).
+- [Entire x402 flow in Python](https://docs.payai.network/x402/manual-flow-python.md): Manual x402 client flow in Python (no starter kit).
+- [Gin server quickstart (Go)](https://docs.payai.network/x402/servers/go/gin.md): Accept x402 payments with Gin (Go).
+- [Merchant Introduction](https://docs.payai.network/x402/servers/introduction.md): Learn how to sell services with x402.
+- [FastAPI server quickstart (Python)](https://docs.payai.network/x402/servers/python/fastapi.md): Accept x402 payments with FastAPI.
+- [Flask server quickstart (Python)](https://docs.payai.network/x402/servers/python/flask.md): Accept x402 payments with Flask.
+- [Express server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/express.md): Accept x402 payments with Express.
+- [Hono server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/hono.md): Accept x402 payments with Hono.
+- [Next.js server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/nextjs.md): Accept x402 payments with Next.js.
+- [Supported Networks](https://docs.payai.network/x402/supported-networks.md): See networks that are supported by the PayAI Facilitator for the x402 protocol
+
+
+## Optional
+
+- [Github](https://github.com/PayAINetwork)
+- [Support](https://discord.gg/eWJRwMpebQ)

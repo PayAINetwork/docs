@@ -24,7 +24,9 @@
             "group": "x402",
             "pages": [
               "x402/introduction",
-              "x402/quickstart"
+              "x402/quickstart",
+              "x402/manual-flow-typescript",
+              "x402/manual-flow-python"
             ]
           },
           {
