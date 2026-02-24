@@ -289,6 +289,33 @@ The facilitator performs the following verification steps:
 
 Settlement is performed by calling the `transferWithAuthorization` function on the ERC-20 contract with the signature and authorization parameters provided in the payment payload.
 
+### 6.2 Exact Scheme on Solana (SVM)
+
+On Solana, the "exact" scheme uses a partially-signed transaction (base64-encoded in the payment payload) that includes a **TransferChecked** instruction plus compute-budget instructions. Facilitators expect a specific instruction order and enforce limits on compute units and priority fee.
+
+#### 6.2.1 Expected Transaction Structure
+
+Instructions must appear in this order:
+
+1. **SetComputeUnitLimit** — set the transaction compute unit limit
+2. **SetComputeUnitPrice** — set the priority fee (in microlamports per compute unit)
+3. **TransferChecked** — the token transfer (amount, mint, decimals, etc.)
+4. *Optional:* **Lighthouse** — may be added by the wallet
+5. *Optional:* **Lighthouse** — may be added by the wallet
+
+The optional Lighthouse instructions are automatically added by wallets (e.g. Phantom, Solflare). Merchants do not need to add them manually; they only need to include the first three instructions.
+
+#### 6.2.2 Limits
+
+Facilitators enforce the following limits on the Solana transaction:
+
+| Instruction             | Limit        | Description                                                |
+| ----------------------- | ------------ | ---------------------------------------------------------- |
+| **SetComputeUnitLimit**  | **40,000**   | Maximum compute units allowed for the transaction          |
+| **SetComputeUnitPrice**  | **5**        | Maximum microlamports per compute unit (priority fee)     |
+
+Transactions that exceed these limits may be rejected by the facilitator.
+
 ## 7. Facilitator Interface
 
 The facilitator provides REST APIs for payment verification and settlement. This allows resource servers to delegate blockchain operations to trusted third parties or host the endpoints themselves.
@@ -636,7 +663,7 @@ The x402 protocol defines standard error codes that may be returned by facilitat
 - **`invalid_exact_evm_payload_authorization_value`**: Payment amount is insufficient for the required payment
 - **`invalid_exact_evm_payload_signature`**: Payment authorization signature is invalid or improperly signed
 - **`invalid_exact_evm_payload_recipient_mismatch`**: Recipient address does not match payment requirements
-- **`invalid_exact_svm_payload_transaction_instructions_length`**: Solana transaction must contain exactly 3 instructions: `setComputeUnitLimit`, `setComputeUnitPrice`, and `createTransferCheckedInstruction`
+- **`invalid_exact_svm_payload_transaction_instructions_length`**: Solana transaction must contain the three required instructions in order—`SetComputeUnitLimit`, `SetComputeUnitPrice`, and `TransferChecked`—and may include up to two optional Lighthouse instructions (see [§6.2 Exact scheme on Solana](/x402/reference))
 - **`invalid_network`**: Specified blockchain network is not supported
 - **`invalid_payload`**: Payment payload is malformed or contains invalid data
 - **`invalid_payment_requirements`**: Payment requirements object is invalid or malformed
