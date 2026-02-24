@@ -1,0 +1,169 @@
+---
+title: "Entire x402 flow in TypeScript"
+description: "Implement the full x402 payment flow in TypeScript without using starter kits or SDK client wrappers."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Manual x402 client flow (TypeScript)
+
+This page shows how to perform the **entire x402 flow by hand** in TypeScript: no starter kit, no `@x402/fetch` or `@x402/axios` wrappers. You send raw HTTP requests, decode the 402 response, build the payment payload, and resend with the payment signature.
+
+For production you’ll usually use the [Fetch](/x402/clients/typescript/fetch) or [Axios](/x402/clients/typescript/axios) quickstarts; this tutorial is for agents or environments that need a minimal, dependency-light implementation or want to understand the protocol step by step.
+
+---
+
+## 1. Request the resource
+
+Send a normal GET (or other method) to the protected URL. No special headers yet.
+
+```ts
+const url = "http://localhost:4021/weather";
+const response = await fetch(url, { method: "GET" });
+```
+
+---
+
+## 2. Handle 402 and decode PAYMENT-REQUIRED
+
+If the server requires payment, it returns **402 Payment Required** and puts the payment options in the **PAYMENT-REQUIRED** header (base64-encoded JSON).
+
+```ts
+if (response.status !== 402) {
+  // 200: already paid or free; 4xx/5xx: handle as needed
+  return response;
+}
+
+const paymentRequiredB64 = response.headers.get("PAYMENT-REQUIRED");
+if (!paymentRequiredB64) throw new Error("402 without PAYMENT-REQUIRED header");
+
+const paymentRequiredJson = Buffer.from(paymentRequiredB64, "base64").toString("utf-8");
+const paymentRequired = JSON.parse(paymentRequiredJson) as {
+  x402Version: number;
+  error: string;
+  resource: { url: string; description: string; mimeType?: string };
+  accepts: Array<{
+    scheme: string;
+    network: string;
+    amount: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number;
+    extra?: Record<string, unknown>;
+  }>;
+  extensions?: Record<string, unknown>;
+};
+```
+
+Exact field names and shapes are in the [x402 Reference](/x402/reference). You must use **x402Version: 2** and the **accepts** array.
+
+---
+
+## 3. Choose an accepted option
+
+Pick one entry from `paymentRequired.accepts` (e.g. by network or scheme). For example, take the first EVM option:
+
+```ts
+const accepted = paymentRequired.accepts.find((a) => a.network.startsWith("eip155:"));
+if (!accepted) throw new Error("No EVM accept option");
+```
+
+---
+
+## 4. Build the payment payload
+
+For the **exact** scheme on **EVM**, the client must produce an EIP-3009-style authorization and sign it with EIP-712 (see [x402 Reference](/x402/reference)). The payload is sent in the **PAYMENT-SIGNATURE** header as base64-encoded JSON.
+
+Example shape (simplified; real code must use correct domain, types, and signing):
+
+```ts
+import { privateKeyToAccount } from "viem/accounts";
+import { signTypedData } from "viem/accounts";
+
+// You need: payer private key, accepted requirement, token contract (asset), validAfter/validBefore, nonce
+const payload = {
+  x402Version: 2,
+  scheme: "exact",
+  network: accepted.network,
+  accepted: {
+    scheme: accepted.scheme,
+    network: accepted.network,
+    amount: accepted.amount,
+    asset: accepted.asset,
+    payTo: accepted.payTo,
+    maxTimeoutSeconds: accepted.maxTimeoutSeconds,
+    ...(accepted.extra && { extra: accepted.extra }),
+  },
+  payload: {
+    signature: "0x...", // EIP-712 signature from signTypedData
+    authorization: {
+      from: payerAddress,
+      to: accepted.payTo,
+      value: accepted.amount,
+      validAfter: "0",
+      validBefore: String(Math.floor(Date.now() / 1000) + 300),
+      nonce: "0x..." + Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex"),
+    },
+  },
+  extensions: {},
+};
+const paymentSignatureB64 = Buffer.from(JSON.stringify(payload)).toString("base64");
+```
+
+On **Solana**, the payload contains a base64-encoded partially-signed transaction. Implementation details depend on the token program and the exact scheme; see the [x402 Reference](/x402/reference) and the [x402 repo](https://github.com/coinbase/x402).
+
+---
+
+## 5. Resend the request with PAYMENT-SIGNATURE
+
+Send the **same** request again (same URL and method), this time adding the **PAYMENT-SIGNATURE** header.
+
+```ts
+const retryResponse = await fetch(url, {
+  method: "GET",
+  headers: {
+    "PAYMENT-SIGNATURE": paymentSignatureB64,
+  },
+});
+```
+
+---
+
+## 6. Parse the response and PAYMENT-RESPONSE
+
+On success the server returns **200** and may include **PAYMENT-RESPONSE** (base64-encoded settlement details).
+
+```ts
+if (!retryResponse.ok) {
+  throw new Error(`Request failed: ${retryResponse.status}`);
+}
+
+const body = await retryResponse.json();
+const paymentResponseB64 = retryResponse.headers.get("PAYMENT-RESPONSE");
+if (paymentResponseB64) {
+  const paymentResponse = JSON.parse(
+    Buffer.from(paymentResponseB64, "base64").toString("utf-8")
+  ) as { success: boolean; transaction?: string; network?: string; payer?: string };
+  console.log("Settlement:", paymentResponse);
+}
+return body;
+```
+
+---
+
+## Summary
+
+| Step | Action |
+|------|--------|
+| 1 | GET (or other method) the resource URL |
+| 2 | If status is 402, decode **PAYMENT-REQUIRED** (base64 JSON) |
+| 3 | Choose one entry from **accepts** |
+| 4 | Build payment payload (EIP-712 sign for EVM exact scheme; or Solana tx) and base64-encode it |
+| 5 | Resend the same request with **PAYMENT-SIGNATURE** header |
+| 6 | On 200, use response body and optionally decode **PAYMENT-RESPONSE** |
+
+For exact field names, types, and facilitator usage, see the [x402 Reference](/x402/reference). For a ready-made client, use the [Fetch](/x402/clients/typescript/fetch) or [Axios](/x402/clients/typescript/axios) quickstarts.
+
+## Need help?
+
+<DiscordHelpCard />
