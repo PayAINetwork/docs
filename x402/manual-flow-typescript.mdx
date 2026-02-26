@@ -61,9 +61,10 @@ Exact field names and shapes are in the [x402 Reference](/x402/reference). You m
 
 ## 3. Choose an accepted option
 
-Pick one entry from `paymentRequired.accepts` (e.g. by network or scheme). For example, take the first EVM option:
+Pick one entry from `paymentRequired.accepts` by network or scheme. For **EVM** (steps below), take an option whose `network` starts with `eip155:`. For **Solana**, take one whose `network` starts with `solana:` (see [Solana (exact scheme)](#solana-exact-scheme) in step 4).
 
 ```ts
+// EVM path:
 const accepted = paymentRequired.accepts.find((a) => a.network.startsWith("eip155:"));
 if (!accepted) throw new Error("No EVM accept option");
 ```
@@ -110,7 +111,55 @@ const payload = {
 const paymentSignatureB64 = Buffer.from(JSON.stringify(payload)).toString("base64");
 ```
 
-On **Solana**, the payload contains a base64-encoded partially-signed transaction. Implementation details depend on the token program and the exact scheme; see the [x402 Reference](/x402/reference) and the [x402 repo](https://github.com/coinbase/x402).
+#### Solana (exact scheme)
+
+On **Solana**, you choose a Solana accept option (e.g. `network` starting with `solana:`), then build a **partially-signed transaction** and send it in the payload as base64. The transaction must contain these instructions **in this order**:
+
+1. **SetComputeUnitLimit** — max **40,000** compute units
+2. **SetComputeUnitPrice** — max **5** microlamports per compute unit
+3. **TransferChecked** — token transfer (amount, mint, decimals, source, destination)
+4. *Optional:* Lighthouse (wallets like Phantom/Solflare may add up to two; merchants do not add these)
+
+You need a Solana SDK (e.g. `@solana/web3.js` or `@solana/spl-token`) to build and sign the transaction. Source and destination are **token accounts** (e.g. associated token accounts for the mint); `accepted.payTo` is the recipient **wallet**. Decimals may be in `accepted.extra`. The payment payload is JSON with the transaction in `payload.transaction` as base64:
+
+```ts
+// 3. Choose Solana option instead of EVM
+const accepted = paymentRequired.accepts.find((a) => a.network.startsWith("solana:"));
+if (!accepted) throw new Error("No Solana accept option");
+
+// 4. Build Solana transaction (pseudocode — use @solana/web3.js / @solana/spl-token in practice)
+// - Add setComputeUnitLimit(40_000)
+// - Add setComputeUnitPrice(5)   // microlamports
+// - Add createTransferCheckedInstruction: amount=accepted.amount, mint=accepted.asset,
+//   decimals from token metadata or accepted.extra, source=payerTokenAccount, destination=payeeTokenAccount
+// - Sign with payer keypair (partial sign; facilitator may add Lighthouse instructions)
+// - Serialize transaction to buffer, then base64
+
+// const transactionBuffer = serializedSignedTx;  // from your Solana library
+const transactionB64 = Buffer.from(transactionBuffer).toString("base64");
+
+const payload = {
+  x402Version: 2,
+  scheme: "exact",
+  network: accepted.network,
+  accepted: {
+    scheme: accepted.scheme,
+    network: accepted.network,
+    amount: accepted.amount,
+    asset: accepted.asset,
+    payTo: accepted.payTo,
+    maxTimeoutSeconds: accepted.maxTimeoutSeconds,
+    ...(accepted.extra && { extra: accepted.extra }),
+  },
+  payload: {
+    transaction: transactionB64,
+  },
+  extensions: {},
+};
+const paymentSignatureB64 = Buffer.from(JSON.stringify(payload)).toString("base64");
+```
+
+Exact instruction formats, token-account derivation, and limits are in the [x402 Reference (§6.2 Solana)](/x402/reference).
 
 ---
 
