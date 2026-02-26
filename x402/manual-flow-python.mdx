@@ -55,10 +55,11 @@ Exact field names and shapes are in the [x402 Reference](/x402/reference). You m
 
 ## 3. Choose an accepted option
 
-Pick one entry from `payment_required["accepts"]` (e.g. by network or scheme). For example, take the first EVM option:
+Pick one entry from `payment_required["accepts"]` by network or scheme. For **EVM** (steps below), take an option whose `network` starts with `eip155:`. For **Solana**, take one whose `network` starts with `solana:` (see [Solana (exact scheme)](#solana-exact-scheme) in step 4).
 
 ```python
 accepts = payment_required["accepts"]
+# EVM path:
 accepted = next((a for a in accepts if a["network"].startswith("eip155:")), None)
 if not accepted:
     raise ValueError("No EVM accept option")
@@ -107,7 +108,56 @@ payload = {
 payment_signature_b64 = base64.b64encode(json.dumps(payload).encode()).decode()
 ```
 
-On **Solana**, the payload contains a base64-encoded partially-signed transaction. Implementation details depend on the token program and the exact scheme; see the [x402 Reference](/x402/reference) and the [x402 repo](https://github.com/coinbase/x402).
+#### Solana (exact scheme)
+
+On **Solana**, you choose a Solana accept option (e.g. `network` starting with `solana:`), then build a **partially-signed transaction** and send it in the payload as base64. The transaction must contain these instructions **in this order**:
+
+1. **SetComputeUnitLimit** — max **40,000** compute units
+2. **SetComputeUnitPrice** — max **5** microlamports per compute unit
+3. **TransferChecked** — token transfer (amount, mint, decimals, source, destination)
+4. *Optional:* Lighthouse (wallets like Phantom/Solflare may add up to two; merchants do not add these)
+
+You need a Solana SDK (e.g. `solders` or `solana-py`) to build and sign the transaction. The payment payload is JSON with the transaction in `payload.transaction` as base64:
+
+```python
+# 3. Choose Solana option instead of EVM
+accepted = next((a for a in accepts if a["network"].startswith("solana:")), None)
+if not accepted:
+    raise ValueError("No Solana accept option")
+
+# 4. Build Solana transaction (pseudocode — use solders/solana-py in practice)
+# - Add SetComputeUnitLimit(40_000)
+# - Add SetComputeUnitPrice(5)   # microlamports
+# - Add TransferChecked: amount=accepted["amount"], mint=accepted["asset"],
+#   decimals from token metadata, source=payer_token_account, destination=payee_token_account
+# - Sign with payer keypair (partial sign; facilitator may add Lighthouse instructions)
+# - Serialize transaction to bytes, then base64
+
+# transaction_bytes = serialized_signed_tx  # from your Solana library
+transaction_b64 = base64.b64encode(transaction_bytes).decode()
+
+payload = {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": accepted["network"],
+    "accepted": {
+        "scheme": accepted["scheme"],
+        "network": accepted["network"],
+        "amount": accepted["amount"],
+        "asset": accepted["asset"],
+        "payTo": accepted["payTo"],
+        "maxTimeoutSeconds": accepted["maxTimeoutSeconds"],
+        **({"extra": accepted["extra"]} if accepted.get("extra") else {}),
+    },
+    "payload": {
+        "transaction": transaction_b64,
+    },
+    "extensions": {},
+}
+payment_signature_b64 = base64.b64encode(json.dumps(payload).encode()).decode()
+```
+
+Exact instruction formats, token-account derivation, and limits are in the [x402 Reference (§6.2 Solana)](/x402/reference).
 
 ---
 
