@@ -176,7 +176,7 @@ retry_response = requests.get(
 
 ## 6. Parse the response and PAYMENT-RESPONSE
 
-On success the server returns **200** and may include **PAYMENT-RESPONSE** (base64-encoded settlement details).
+On success the server returns **200** and may include **PAYMENT-RESPONSE** (base64-encoded settlement details). Decode the header and parse the JSON to get settlement info.
 
 ```python
 retry_response.raise_for_status()
@@ -191,6 +191,40 @@ if payment_response_b64:
     print("Settlement:", payment_response)
 
 return body
+```
+
+**Decoded PAYMENT-RESPONSE examples**
+
+On success (EVM):
+
+```json
+{
+  "success": true,
+  "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "network": "eip155:84532",
+  "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
+}
+```
+
+On success (Solana / SVM):
+
+```json
+{
+  "success": true,
+  "transaction": "AXGcLa7sqSjt7pXV4mpVRP5a77tVjokZbgx8gkQ16X8Wgg3vDkWKMh9BrPTr1f2KrDuf9nSX7FrZEAQTkJ3y5UN",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "payer": "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2"
+}
+```
+
+On failure (e.g. insufficient funds), the server may return a non-2xx status and/or a PAYMENT-RESPONSE header with an error. Example decoded payload:
+
+```json
+{
+  "x402Version": 2,
+  "error": "Payment failed: insufficient funds",
+  "accepts": [...]
+}
 ```
 
 ---
