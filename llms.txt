@@ -9,22 +9,22 @@
 - [Tokenomics](https://docs.payai.network/project-info/tokenomics.md): Overview of $PAYAI token supply, treasury, liquidity, and unlocks.
 - [x402 Echo Merchant V1 Getting Started](https://docs.payai.network/v1/x402-echo/getting-started.md): Legacy Echo Merchant setup (V1).
 - [x402 Echo Merchant V1 Introduction](https://docs.payai.network/v1/x402-echo/introduction.md): Legacy Echo Merchant overview (V1).
-- [Client Introduction](https://docs.payai.network/v1/x402/clients/introduction.md): Learn how to support x402 in your client
+- [Client Introduction (x402 v1)](https://docs.payai.network/v1/x402/clients/introduction.md): Learn how to support x402 in your client
 - [httpx client quickstart (Python, V1)](https://docs.payai.network/v1/x402/clients/python/httpx.md): Make x402 payments with Python httpx (legacy).
 - [requests client quickstart (Python, V1)](https://docs.payai.network/v1/x402/clients/python/requests.md): Make x402 payments with Python requests (legacy).
 - [Axios client quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/clients/typescript/axios.md): Make x402 payments with Axios (legacy).
 - [Fetch client quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/clients/typescript/fetch.md): Make x402 payments with Fetch (legacy).
-- [Facilitator Introduction](https://docs.payai.network/v1/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
+- [Facilitator Introduction (x402 v1)](https://docs.payai.network/v1/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
 - [x402 V1 Introduction](https://docs.payai.network/v1/x402/introduction.md): Legacy x402 V1 protocol documentation
 - [x402 V1 Quickstart](https://docs.payai.network/v1/x402/quickstart.md): Legacy x402 quickstart.
-- [x402 Reference](https://docs.payai.network/v1/x402/reference.md): Reference documentation for the x402 protocol
-- [Merchant Introduction](https://docs.payai.network/v1/x402/servers/introduction.md): Learn how to sell services with x402.
+- [x402 Reference (x402 v1)](https://docs.payai.network/v1/x402/reference.md): Reference documentation for the x402 protocol
+- [Merchant Introduction (x402 v1)](https://docs.payai.network/v1/x402/servers/introduction.md): Learn how to sell services with x402.
 - [FastAPI server quickstart (Python, V1)](https://docs.payai.network/v1/x402/servers/python/fastapi.md): Accept x402 payments with FastAPI (legacy).
 - [Flask server quickstart (Python, V1)](https://docs.payai.network/v1/x402/servers/python/flask.md): Accept x402 payments with Flask (legacy).
 - [Express server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/express.md): Accept x402 payments with Express (legacy).
 - [Hono server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/hono.md): Accept x402 payments with Hono (legacy).
 - [Next.js server quickstart (TypeScript, V1)](https://docs.payai.network/v1/x402/servers/typescript/nextjs.md): Accept x402 payments with Next.js (legacy).
-- [Supported Networks](https://docs.payai.network/v1/x402/supported-networks.md): See networks that are supported by the PayAI Facilitator for the x402 protocol
+- [Supported Networks (x402 v1)](https://docs.payai.network/v1/x402/supported-networks.md): See networks that are supported by the PayAI Facilitator for the x402 protocol
 - [x402 Echo Merchant Getting Started](https://docs.payai.network/x402-echo/getting-started.md): Echo Merchant setup and testing.
 - [x402 Echo Merchant Introduction](https://docs.payai.network/x402-echo/introduction.md): Echo Merchant overview and use cases.
 - [Go net/http client quickstart](https://docs.payai.network/x402/clients/go/http.md): Make x402 payments with Go standard HTTP client.
