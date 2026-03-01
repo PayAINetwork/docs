@@ -1,0 +1,164 @@
+---
+title: "x402 server flow (Python)"
+description: "Build the PAYMENT-REQUIRED response by hand in Python—no server SDK or middleware."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Manual x402 server flow (Python)
+
+This page shows how to respond with **402 Payment Required** and build the **PAYMENT-REQUIRED** header by hand in Python—no `x402` server middleware. You decide when payment is required, construct the payment-requirements payload, base64-encode it, and send it in the response.
+
+For production you’ll usually use the [Flask](/x402/servers/python/flask) or [FastAPI](/x402/servers/python/fastapi) quickstarts; this tutorial is for agents or environments that need a minimal implementation or want to understand the protocol from the server’s perspective.
+
+---
+
+## 1. When to return 402
+
+When a request hits a protected route:
+
+- If the request **does not** include a valid **PAYMENT-SIGNATURE** header (or the payment is invalid/expired), respond with **402** and a **PAYMENT-REQUIRED** header so the client knows how to pay.
+- If the request **does** include a valid payment, you (or your facilitator) verify/settle it and then respond with **200** and the resource. Verification and settlement are typically done via the [PayAI Facilitator](/x402/facilitators/introduction) or your own backend; this page focuses only on building the 402 response.
+
+---
+
+## 2. Build the payment-requirements payload
+
+The **PAYMENT-REQUIRED** header must contain **base64-encoded JSON**. The JSON object has this shape (see [x402 Reference §5.1](/x402/reference)):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `x402Version` | `number` | Protocol version; use **2** |
+| `error` | `string` | Human-readable message (e.g. why payment is required) |
+| `resource` | `object` | `url`, `description`, and optional `mimeType` for the protected resource |
+| `accepts` | `array` | List of payment options (scheme, network, amount, asset, payTo, maxTimeoutSeconds, optional extra) |
+| `extensions` | `object` | Reserved; use `{}` |
+
+Each item in **accepts** describes one way the client can pay (e.g. USDC on Base Sepolia, or USDC on Solana). The client will choose one and send it back in PAYMENT-SIGNATURE.
+
+---
+
+## 3. Example: building the payload in Python
+
+Define the payload dict, then encode it as base64 and set the header. Use your own recipient addresses (`payTo`), asset addresses, and amounts.
+
+```python
+import base64
+import json
+import os
+
+# Your wallet addresses (from env or config)
+EVM_PAY_TO = os.environ.get("EVM_ADDRESS", "0x209693Bc6afc0C5328bA36FaF03C514EF312287C")
+SVM_PAY_TO = os.environ.get("SVM_ADDRESS", "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k")
+
+# Example: protected resource URL and metadata
+resource_url = "https://api.example.com/weather"
+resource_description = "Weather data"
+resource_mime_type = "application/json"
+
+payment_required = {
+    "x402Version": 2,
+    "error": "PAYMENT-SIGNATURE header is required",
+    "resource": {
+        "url": resource_url,
+        "description": resource_description,
+        "mimeType": resource_mime_type,
+    },
+    "accepts": [
+        {
+            "scheme": "exact",
+            "network": "eip155:84532",
+            "amount": "10000",
+            "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+            "payTo": EVM_PAY_TO,
+            "maxTimeoutSeconds": 60,
+            "extra": {"name": "USDC", "version": "2"},
+        },
+        {
+            "scheme": "exact",
+            "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            "amount": "1000000",
+            "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "payTo": SVM_PAY_TO,
+            "maxTimeoutSeconds": 60,
+            "extra": {"feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"},
+        },
+    ],
+    "extensions": {},
+}
+
+payment_required_b64 = base64.b64encode(json.dumps(payment_required).encode()).decode()
+```
+
+---
+
+## 4. Send the 402 response with PAYMENT-REQUIRED
+
+Set the **PAYMENT-REQUIRED** header to the base64 string and return status **402**.
+
+```python
+def send_402(start_response, payment_required_b64: str) -> None:
+    status = "402 Payment Required"
+    headers = [
+        ("Content-Type", "application/json"),
+        ("PAYMENT-REQUIRED", payment_required_b64),
+    ]
+    start_response(status, headers)
+    # WSGI: return body as iterable; Flask/FastAPI use their own response API
+```
+
+Example with Flask:
+
+```python
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route("/weather")
+def weather():
+    if not request.headers.get("PAYMENT-SIGNATURE"):
+        return (
+            jsonify({"error": "Payment required"}),
+            402,
+            {"PAYMENT-REQUIRED": payment_required_b64},
+        )
+    # Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
+    return jsonify({"weather": "sunny", "temperature": 70})
+```
+
+Example with FastAPI:
+
+```python
+from fastapi import FastAPI, Request, Response
+
+app = FastAPI()
+
+@app.get("/weather")
+def weather(request: Request):
+    if not request.headers.get("payment-signature"):
+        return Response(
+            content='{"error":"Payment required"}',
+            status_code=402,
+            media_type="application/json",
+            headers={"PAYMENT-REQUIRED": payment_required_b64},
+        )
+    # Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
+    return {"weather": "sunny", "temperature": 70}
+```
+
+---
+
+## Summary
+
+| Step | Action |
+| ---- | ------ |
+| 1 | Decide when payment is required (no or invalid PAYMENT-SIGNATURE). |
+| 2 | Build the payment-requirements dict: `x402Version`, `error`, `resource`, `accepts`, `extensions`. |
+| 3 | Base64-encode `json.dumps(payment_required)` and set the **PAYMENT-REQUIRED** header. |
+| 4 | Respond with status **402**. |
+
+For exact field types and facilitator behavior, see the [x402 Reference](/x402/reference). For a ready-made server, use the [Flask](/x402/servers/python/flask) or [FastAPI](/x402/servers/python/fastapi) quickstarts.
+
+## Need help?
+
+<DiscordHelpCard />
