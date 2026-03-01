@@ -38,8 +38,10 @@
 - [x402 Introduction](https://docs.payai.network/x402/introduction.md): Learn about the x402 protocol
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
 - [x402 Reference](https://docs.payai.network/x402/reference.md): Reference documentation for the x402 protocol
-- [Entire x402 flow in TypeScript](https://docs.payai.network/x402/manual-flow-typescript.md): Manual x402 client flow in TypeScript (no starter kit).
-- [Entire x402 flow in Python](https://docs.payai.network/x402/manual-flow-python.md): Manual x402 client flow in Python (no starter kit).
+- [x402 client flow (TypeScript)](https://docs.payai.network/x402/manual-flow-client-typescript.md): Manual x402 client flow in TypeScript (no starter kit).
+- [x402 client flow (Python)](https://docs.payai.network/x402/manual-flow-client-python.md): Manual Manual x402 client flow in Python (no starter kit).
+- [x402 server flow (TypeScript)](https://docs.payai.network/x402/manual-flow-server-typescript.md): Build the PAYMENT-REQUIRED header by hand in TypeScript (no server SDK).
+- [x402 server flow (Python)](https://docs.payai.network/x402/manual-flow-server-python.md): Build the PAYMENT-REQUIRED header by hand in Python (no server SDK).
 - [Gin server quickstart (Go)](https://docs.payai.network/x402/servers/go/gin.md): Accept x402 payments with Gin (Go).
 - [Merchant Introduction](https://docs.payai.network/x402/servers/introduction.md): Learn how to sell services with x402.
 - [FastAPI server quickstart (Python)](https://docs.payai.network/x402/servers/python/fastapi.md): Accept x402 payments with FastAPI.

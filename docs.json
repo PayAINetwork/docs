@@ -25,8 +25,10 @@
             "pages": [
               "x402/introduction",
               "x402/quickstart",
-              "x402/manual-flow-typescript",
-              "x402/manual-flow-python"
+              "x402/manual-flow-client-typescript",
+              "x402/manual-flow-client-python",
+              "x402/manual-flow-server-typescript",
+              "x402/manual-flow-server-python"
             ]
           },
           {
