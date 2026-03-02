@@ -1,6 +1,6 @@
 ---
-title: "Entire x402 flow in TypeScript"
-description: "Implement the full x402 payment flow in TypeScript without using starter kits or SDK client wrappers."
+title: "Manual Flow"
+description: "Step-by-step guide to implementing the x402 payment protocol manually in TypeScript without SDK wrappers."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
@@ -31,7 +31,7 @@ If the server requires payment, it returns **402 Payment Required** and puts the
 ```ts
 if (response.status !== 402) {
   // 200: already paid or free; 4xx/5xx: handle as needed
-  return response;
+  console.log(await response.json());
 }
 
 const paymentRequiredB64 = response.headers.get("PAYMENT-REQUIRED");
@@ -98,7 +98,7 @@ const payload = {
   payload: {
     signature: "0x...", // EIP-712 signature from signTypedData
     authorization: {
-      from: payerAddress,
+      from: payerAddress, // Replace with your wallet address
       to: accepted.payTo,
       value: accepted.amount,
       validAfter: "0",
@@ -195,7 +195,7 @@ if (paymentResponseB64) {
   ) as { success: boolean; transaction?: string; network?: string; payer?: string };
   console.log("Settlement:", paymentResponse);
 }
-return body;
+console.log(body);
 ```
 
 **Decoded PAYMENT-RESPONSE examples**

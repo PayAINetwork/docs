@@ -1,6 +1,6 @@
 ---
-title: "Entire x402 flow in Python"
-description: "Implement the full x402 payment flow in Python without using starter kits or SDK client wrappers."
+title: "Manual Flow"
+description: "Step-by-step guide to implementing the x402 payment protocol manually in Python without SDK wrappers."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
@@ -36,7 +36,7 @@ import json
 
 if response.status_code != 402:
     # 200: already paid or free; 4xx/5xx: handle as needed
-    return response
+    print(response.json())
 
 payment_required_b64 = response.headers.get("PAYMENT-REQUIRED")
 if not payment_required_b64:
@@ -95,7 +95,7 @@ payload = {
     "payload": {
         "signature": "0x...",  # EIP-712 signature
         "authorization": {
-            "from": payer_address,
+            "from": payer_address,  # Replace with your wallet address
             "to": accepted["payTo"],
             "value": accepted["amount"],
             "validAfter": "0",
@@ -190,7 +190,7 @@ if payment_response_b64:
     # success, transaction, network, payer
     print("Settlement:", payment_response)
 
-return body
+print(body)
 ```
 
 **Decoded PAYMENT-RESPONSE examples**
