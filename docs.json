@@ -36,14 +36,16 @@
                 "pages": [
                   "x402/servers/typescript/express",
                   "x402/servers/typescript/hono",
-                  "x402/servers/typescript/nextjs"
+                  "x402/servers/typescript/nextjs",
+                  "x402/servers/typescript/manual-flow"
                 ]
               },
               {
                 "group": "Python",
                 "pages": [
                   "x402/servers/python/fastapi",
-                  "x402/servers/python/flask"
+                  "x402/servers/python/flask",
+                  "x402/servers/python/manual-flow"
                 ]
               },
               {
@@ -62,14 +64,16 @@
                 "group": "Typescript",
                 "pages": [
                   "x402/clients/typescript/axios",
-                  "x402/clients/typescript/fetch"
+                  "x402/clients/typescript/fetch",
+                  "x402/clients/typescript/manual-flow"
                 ]
               },
               {
                 "group": "Python",
                 "pages": [
                   "x402/clients/python/httpx",
-                  "x402/clients/python/requests"
+                  "x402/clients/python/requests",
+                  "x402/clients/python/manual-flow"
                 ]
               },
               {

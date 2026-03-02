@@ -1,0 +1,141 @@
+---
+title: "Manual Flow"
+description: "Step-by-step guide to building the x402 PAYMENT-REQUIRED response manually in TypeScript without server SDK or middleware."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Manual x402 server flow (TypeScript)
+
+This page shows how to respond with **402 Payment Required** and build the **PAYMENT-REQUIRED** header by hand in TypeScript—no `@x402/express` or other server SDK. You decide when payment is required, construct the payment-requirements payload, base64-encode it, and send it in the response.
+
+For production you’ll usually use the [Express](/x402/servers/typescript/express), [Hono](/x402/servers/typescript/hono), or [Next.js](/x402/servers/typescript/nextjs) quickstarts; this tutorial is for agents or environments that need a minimal implementation or want to understand the protocol from the server’s perspective.
+
+---
+
+## 1. When to return 402
+
+When a request hits a protected route:
+
+- If the request **does not** include a valid **PAYMENT-SIGNATURE** header (or the payment is invalid/expired), respond with **402** and a **PAYMENT-REQUIRED** header so the client knows how to pay.
+- If the request **does** include a valid payment, you (or your facilitator) verify/settle it and then respond with **200** and the resource. Verification and settlement are typically done via the [PayAI Facilitator](/x402/facilitators/introduction) or your own backend; this page focuses only on building the 402 response.
+
+---
+
+## 2. Build the payment-requirements payload
+
+The **PAYMENT-REQUIRED** header must contain **base64-encoded JSON**. The JSON object has this shape (see [x402 Reference §5.1](/x402/reference)):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `x402Version` | `number` | Protocol version; use **2** |
+| `error` | `string` | Human-readable message (e.g. why payment is required) |
+| `resource` | `object` | `url`, `description`, and optional `mimeType` for the protected resource |
+| `accepts` | `array` | List of payment options (scheme, network, amount, asset, payTo, maxTimeoutSeconds, optional extra) |
+| `extensions` | `object` | Reserved; use `{}` |
+
+Each item in **accepts** describes one way the client can pay (e.g. USDC on Base Sepolia, or USDC on Solana). The client will choose one and send it back in PAYMENT-SIGNATURE.
+
+---
+
+## 3. Example: building the payload in TypeScript
+
+Define the payload object, then encode it as base64 and set the header. Use your own recipient addresses (`payTo`), asset addresses, and amounts.
+
+```ts
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+function b64Encode(s: string): string {
+  return Buffer.from(s, "utf-8").toString("base64");
+}
+
+// Your wallet addresses (from env or config)
+const EVM_PAY_TO = process.env.EVM_ADDRESS ?? "0x209693Bc6afc0C5328bA36FaF03C514EF312287C";
+const SVM_PAY_TO = process.env.SVM_ADDRESS ?? "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2";
+
+// Example: protected resource URL and metadata
+const resourceUrl = "https://api.example.com/weather";
+const resourceDescription = "Weather data";
+const resourceMimeType = "application/json";
+
+const paymentRequired = {
+  x402Version: 2,
+  error: "PAYMENT-SIGNATURE header is required",
+  resource: {
+    url: resourceUrl,
+    description: resourceDescription,
+    mimeType: resourceMimeType,
+  },
+  accepts: [
+    {
+      scheme: "exact",
+      network: "eip155:84532",
+      amount: "10000",
+      asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      payTo: EVM_PAY_TO,
+      maxTimeoutSeconds: 60,
+      extra: { name: "USDC", version: "2" },
+    },
+    {
+      scheme: "exact",
+      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+      amount: "1000000",
+      asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      payTo: SVM_PAY_TO,
+      maxTimeoutSeconds: 60,
+      extra: { feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" },
+    },
+  ],
+  extensions: {},
+};
+
+const paymentRequiredB64 = b64Encode(JSON.stringify(paymentRequired));
+```
+
+---
+
+## 4. Send the 402 response with PAYMENT-REQUIRED
+
+Set the **PAYMENT-REQUIRED** header to the base64 string and return status **402**.
+
+```ts
+function send402(res: ServerResponse, paymentRequiredB64: string): void {
+  res.writeHead(402, {
+    "Content-Type": "application/json",
+    "PAYMENT-REQUIRED": paymentRequiredB64,
+  });
+  res.end(JSON.stringify({ error: "Payment required" }));
+}
+```
+
+Example in a minimal request handler:
+
+```ts
+function handleGetWeather(req: IncomingMessage, res: ServerResponse): void {
+  const hasPayment = req.headers["payment-signature"];
+  if (!hasPayment) {
+    send402(res, paymentRequiredB64);
+    return;
+  }
+  // Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ weather: "sunny", temperature: 70 }));
+}
+```
+
+---
+
+## Summary
+
+| Step | Action |
+| ---- | ------ |
+| 1 | Decide when payment is required (no or invalid PAYMENT-SIGNATURE). |
+| 2 | Build the payment-requirements object: `x402Version`, `error`, `resource`, `accepts`, `extensions`. |
+| 3 | Base64-encode `JSON.stringify(paymentRequired)` and set the **PAYMENT-REQUIRED** header. |
+| 4 | Respond with status **402**. |
+
+For exact field types and facilitator behavior, see the [x402 Reference](/x402/reference). For a ready-made server, use the [Express](/x402/servers/typescript/express), [Hono](/x402/servers/typescript/hono), or [Next.js](/x402/servers/typescript/nextjs) quickstarts.
+
+## Need help?
+
+<DiscordHelpCard />
