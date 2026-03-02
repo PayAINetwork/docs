@@ -1,6 +1,6 @@
 ---
-title: "x402 server flow (Python)"
-description: "Build the PAYMENT-REQUIRED response by hand in Python—no server SDK or middleware."
+title: "Manual Flow"
+description: "Step-by-step guide to building the x402 PAYMENT-REQUIRED response manually in Python without server SDK or middleware."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
@@ -49,7 +49,7 @@ import os
 
 # Your wallet addresses (from env or config)
 EVM_PAY_TO = os.environ.get("EVM_ADDRESS", "0x209693Bc6afc0C5328bA36FaF03C514EF312287C")
-SVM_PAY_TO = os.environ.get("SVM_ADDRESS", "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k")
+SVM_PAY_TO = os.environ.get("SVM_ADDRESS", "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2")
 
 # Example: protected resource URL and metadata
 resource_url = "https://api.example.com/weather"
@@ -76,7 +76,7 @@ payment_required = {
         },
         {
             "scheme": "exact",
-            "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
             "amount": "1000000",
             "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "payTo": SVM_PAY_TO,
