@@ -1,0 +1,470 @@
+---
+title: "Dynamic pricing with x402"
+description: "Charge different prices for the same endpoint using tier, headers, or other request data (TypeScript, Python, Go)."
+---
+
+# How to Charge Different Prices for the Same Endpoint with x402
+
+A common question from developers building paid APIs with [x402](/x402/introduction) is: **how do I charge different prices for the same endpoint based on some criteria?**
+
+With **x402 SDK v2**, you can do exactly that by using a **custom function** for the price (and optionally for the payment recipient) instead of a fixed value. The middleware calls your function on each request and uses the returned price when returning the `402 Payment Required` response and when verifying and settling the payment.
+
+This article shows how to implement **dynamic pricing** in every supported stack: TypeScript (Next.js, Express, Hono, and by hand), Python (Flask, FastAPI, and by hand), and Go (Gin and by hand).
+
+---
+
+## Use case: tier-based pricing
+
+We'll use one scenario for all examples so you can compare approaches:
+
+- **Endpoint:** `GET /api/insight` (or the framework's equivalent).
+- **Behavior:** The client sends a tier via query parameter or header: `basic`, `plus`, or `pro`.
+- **Prices:**  
+  - `basic` → $0.01  
+  - `plus`  → $0.05  
+  - `pro`   → $0.10  
+
+If no tier is provided, we default to `basic`.
+
+The same pattern works for other criteria (e.g. authenticated user, plan, or custom header).
+
+---
+
+## TypeScript
+
+### Next.js
+
+Use `withX402` for API routes so payment is settled only after a successful response. The route config can use a **function** for `price` (and `payTo` if needed). The function receives a request context with `adapter` (headers, query, body, path, method).
+
+Example: `app/api/insight/route.ts` (or under your `api` directory):
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { server, paywall, evmAddress, svmAddress } from "../../../proxy";
+
+const TIER_PRICES: Record<string, string> = {
+  basic: "$0.01",
+  plus: "$0.05",
+  pro: "$0.10",
+};
+
+function getTierPrice(context: { adapter: { getQueryParam?: (name: string) => string | string[] | undefined; getHeader?: (name: string) => string | undefined } }) {
+  const raw = context.adapter.getQueryParam?.("tier") ?? context.adapter.getHeader?.("x-tier");
+  const tier = Array.isArray(raw) ? raw[0] : raw;
+  return TIER_PRICES[tier ?? "basic"] ?? TIER_PRICES.basic;
+}
+
+const handler = async (_: NextRequest) => {
+  return NextResponse.json({ insight: "Your tier-based insight here." });
+};
+
+export const GET = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: getTierPrice,
+        network: "eip155:84532",
+        payTo: evmAddress,
+      },
+      {
+        scheme: "exact",
+        price: getTierPrice,
+        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        payTo: svmAddress,
+      },
+    ],
+    description: "Tier-based insight (basic / plus / pro)",
+    mimeType: "application/json",
+  },
+  server,
+  undefined,
+  paywall
+);
+```
+
+Your `proxy.ts` (or shared server setup) should export `server`, `paywall`, and `evmAddress` / `svmAddress` as in the [Next.js x402 example](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next).
+
+---
+
+### Express
+
+Use `paymentMiddleware` with a route config where `accepts[].price` is a function. The middleware passes a context whose `adapter` exposes the request (e.g. `getQueryParam`, `getHeader`).
+
+```typescript
+import { config } from "dotenv";
+import express from "express";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { facilitator } from "@payai/facilitator";
+
+config();
+
+const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+const svmAddress = process.env.SVM_ADDRESS;
+if (!evmAddress || !svmAddress) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register("eip155:84532", new ExactEvmScheme())
+  .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+
+const TIER_PRICES: Record<string, string> = {
+  basic: "$0.01",
+  plus: "$0.05",
+  pro: "$0.10",
+};
+
+function getTierPrice(context: { adapter: { getQueryParam?: (name: string) => string | string[] | undefined; getHeader?: (name: string) => string | undefined } }) {
+  const raw = context.adapter.getQueryParam?.("tier") ?? context.adapter.getHeader?.("tier");
+  const tier = Array.isArray(raw) ? raw[0] : raw;
+  return TIER_PRICES[tier ?? "basic"] ?? TIER_PRICES.basic;
+}
+
+const app = express();
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /api/insight": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: getTierPrice,
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+          {
+            scheme: "exact",
+            price: getTierPrice,
+            network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            payTo: svmAddress,
+          },
+        ],
+        description: "Tier-based insight (basic / plus / pro)",
+        mimeType: "application/json",
+      },
+    },
+    resourceServer
+  )
+);
+
+app.get("/api/insight", (req, res) => {
+  res.json({ insight: "Your tier-based insight here." });
+});
+
+app.listen(4021, () => {
+  console.log("Server listening at http://localhost:4021");
+});
+```
+
+---
+
+### Hono
+
+Same idea as Express: use `paymentMiddleware` with a route whose `accepts[].price` is a function. The context type is the same.
+
+```typescript
+import { config } from "dotenv";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { facilitator } from "@payai/facilitator";
+
+config();
+
+const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+const svmAddress = process.env.SVM_ADDRESS;
+if (!evmAddress || !svmAddress) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register("eip155:84532", new ExactEvmScheme())
+  .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+
+const TIER_PRICES: Record<string, string> = {
+  basic: "$0.01",
+  plus: "$0.05",
+  pro: "$0.10",
+};
+
+function getTierPrice(context: { adapter: { getQueryParam?: (name: string) => string | string[] | undefined; getHeader?: (name: string) => string | undefined } }) {
+  const raw = context.adapter.getQueryParam?.("tier") ?? context.adapter.getHeader?.("tier");
+  const tier = Array.isArray(raw) ? raw[0] : raw;
+  return TIER_PRICES[tier ?? "basic"] ?? TIER_PRICES.basic;
+}
+
+const app = new Hono();
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /api/insight": {
+        accepts: [
+          {
+            scheme: "exact",
+            price: getTierPrice,
+            network: "eip155:84532",
+            payTo: evmAddress,
+          },
+          {
+            scheme: "exact",
+            price: getTierPrice,
+            network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            payTo: svmAddress,
+          },
+        ],
+        description: "Tier-based insight (basic / plus / pro)",
+        mimeType: "application/json",
+      },
+    },
+    resourceServer
+  )
+);
+
+app.get("/api/insight", (c) => c.json({ insight: "Your tier-based insight here." }));
+
+serve({ fetch: app.fetch, port: 4021 });
+console.log("Server listening at http://localhost:4021");
+```
+
+---
+
+### Custom (by hand)
+
+Without Express, Hono, or Next.js, you can still use the same **dynamic price** support from the SDK.
+
+1. Create an `x402ResourceServer` and register schemes (EVM, SVM, etc.).
+2. Create an `x402HTTPResourceServer` from `@x402/core/server` with a **single route** whose `accepts[].price` is your `getTierPrice` function (and optionally `payTo` as a function).
+3. Use `paymentMiddlewareFromHTTPServer(httpServer)` from `@x402/express` (or the Hono equivalent) to plug that HTTP server into any stack that can run the middleware, **or** drive it yourself: on each request, build an `HTTPRequestContext` with an adapter that implements `getHeader`, `getMethod`, `getPath`, `getUrl`, and optionally `getQueryParam` / `getBody`, then call `httpServer.processHTTPRequest(context)` and handle the result (402, payment-verified, or no-payment-required).
+4. If the result is payment-verified, run your handler, then call `httpServer.processSettlement(...)` with the captured payload and requirements.
+
+The important part is that `RouteConfig.accepts[].price` (and optionally `payTo`) can be a **function** `(context: HTTPRequestContext) => Price | Promise<Price>`. The HTTP resource server calls it when building the payment requirements for that request. So "by hand" you are just wiring the same `x402HTTPResourceServer` + dynamic route config into your own HTTP stack instead of using Express/Hono/Next.
+
+---
+
+## Python
+
+### Flask
+
+Use `payment_middleware` with a `RouteConfig` whose `PaymentOption.price` is a **callable** that receives `HTTPRequestContext`. The context has `adapter` (e.g. `get_query_param`, `get_header`). Use the sync server and sync callables for Flask.
+
+```python
+import os
+from dotenv import load_dotenv
+from flask import Flask, jsonify
+from x402.http import FacilitatorConfig, HTTPFacilitatorClientSync, PaymentOption
+from x402.http.middleware.flask import payment_middleware
+from x402.http.types import HTTPRequestContext, RouteConfig
+from x402.mechanisms.evm.exact import ExactEvmServerScheme
+from x402.mechanisms.svm.exact import ExactSvmServerScheme
+from x402.schemas import Network
+from x402.server import x402ResourceServerSync
+
+load_dotenv()
+
+EVM_ADDRESS = os.getenv("EVM_ADDRESS")
+SVM_ADDRESS = os.getenv("SVM_ADDRESS")
+EVM_NETWORK: Network = "eip155:84532"
+SVM_NETWORK: Network = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://facilitator.payai.network")
+
+if not EVM_ADDRESS or not SVM_ADDRESS:
+    raise ValueError("Missing required environment variables")
+
+app = Flask(__name__)
+
+facilitator = HTTPFacilitatorClientSync(FacilitatorConfig(url=FACILITATOR_URL))
+server = x402ResourceServerSync(facilitator)
+server.register(EVM_NETWORK, ExactEvmServerScheme())
+server.register(SVM_NETWORK, ExactSvmServerScheme())
+
+TIER_PRICES = {"basic": "$0.01", "plus": "$0.05", "pro": "$0.10"}
+
+
+def get_tier_price(context: HTTPRequestContext) -> str:
+    tier = context.adapter.get_query_param("tier") or context.adapter.get_header("x-tier") or "basic"
+    if isinstance(tier, list):
+        tier = tier[0] if tier else "basic"
+    return TIER_PRICES.get(tier, TIER_PRICES["basic"])
+
+
+routes = {
+    "GET /api/insight": RouteConfig(
+        accepts=[
+            PaymentOption(
+                scheme="exact",
+                pay_to=EVM_ADDRESS,
+                price=get_tier_price,
+                network=EVM_NETWORK,
+            ),
+            PaymentOption(
+                scheme="exact",
+                pay_to=SVM_ADDRESS,
+                price=get_tier_price,
+                network=SVM_NETWORK,
+            ),
+        ],
+        mime_type="application/json",
+        description="Tier-based insight (basic / plus / pro)",
+    ),
+}
+payment_middleware(app, routes=routes, server=server)
+
+
+@app.route("/api/insight")
+def get_insight():
+    return jsonify({"insight": "Your tier-based insight here."})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=4021, debug=False)
+```
+
+---
+
+### FastAPI
+
+Same idea as Flask, but use the **async** HTTP resource server and `PaymentMiddlewareASGI`. Your price callable can be sync or async (return a coroutine); the server will await it.
+
+```python
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
+from x402.http.middleware.fastapi import PaymentMiddlewareASGI
+from x402.http.types import HTTPRequestContext, RouteConfig
+from x402.mechanisms.evm.exact import ExactEvmServerScheme
+from x402.mechanisms.svm.exact import ExactSvmServerScheme
+from x402.schemas import Network
+from x402.server import x402ResourceServer
+
+load_dotenv()
+
+EVM_ADDRESS = os.getenv("EVM_ADDRESS")
+SVM_ADDRESS = os.getenv("SVM_ADDRESS")
+EVM_NETWORK: Network = "eip155:84532"
+SVM_NETWORK: Network = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://facilitator.payai.network")
+
+if not EVM_ADDRESS or not SVM_ADDRESS:
+    raise ValueError("Missing required environment variables")
+
+app = FastAPI()
+
+facilitator = HTTPFacilitatorClient(FacilitatorConfig(url=FACILITATOR_URL))
+server = x402ResourceServer(facilitator)
+server.register(EVM_NETWORK, ExactEvmServerScheme())
+server.register(SVM_NETWORK, ExactSvmServerScheme())
+
+TIER_PRICES = {"basic": "$0.01", "plus": "$0.05", "pro": "$0.10"}
+
+
+def get_tier_price(context: HTTPRequestContext) -> str:
+    tier = context.adapter.get_query_param("tier") or context.adapter.get_header("x-tier") or "basic"
+    if isinstance(tier, list):
+        tier = tier[0] if tier else "basic"
+    return TIER_PRICES.get(tier, TIER_PRICES["basic"])
+
+
+routes = {
+    "GET /api/insight": RouteConfig(
+        accepts=[
+            PaymentOption(
+                scheme="exact",
+                pay_to=EVM_ADDRESS,
+                price=get_tier_price,
+                network=EVM_NETWORK,
+            ),
+            PaymentOption(
+                scheme="exact",
+                pay_to=SVM_ADDRESS,
+                price=get_tier_price,
+                network=SVM_NETWORK,
+            ),
+        ],
+        mime_type="application/json",
+        description="Tier-based insight (basic / plus / pro)",
+    ),
+}
+app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
+
+
+@app.get("/api/insight")
+async def get_insight():
+    return {"insight": "Your tier-based insight here."}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=4021)
+```
+
+---
+
+### Custom (by hand)
+
+Without Flask/FastAPI middleware, you still use the same **dynamic price** support:
+
+1. Build an `x402ResourceServer` (sync or async) and register schemes.
+2. Build an `x402HTTPResourceServer` or `x402HTTPResourceServerSync` with a single route whose `PaymentOption.price` is your `get_tier_price(context)` callable.
+3. For each request, wrap the request in the framework's adapter, build an `HTTPRequestContext`, and call `http_server.process_http_request(context)` (or the async variant).
+4. If the result is payment-verified, run your handler, then call `process_settlement` with the returned payload and requirements.
+
+The server will call your price callable when building payment requirements, so the same endpoint can return different prices per request.
+
+---
+
+## Go
+
+### Gin
+
+The Go x402 HTTP layer currently expects **static** route configs (no function type for price in the public API). You can still implement tier-based pricing in two ways:
+
+**Option A – Multiple route patterns (static configs)**  
+Register separate route patterns per tier, e.g. `GET /api/insight/basic`, `GET /api/insight/plus`, `GET /api/insight/pro`, each with its own fixed price in `RoutesConfig`. The client then calls the path that matches their tier. This is "different prices" by using different routes, not one endpoint with a dynamic function.
+
+**Option B – One route, dynamic price by hand**  
+Use a single route that does **not** go through the middleware's static route table for payment. In the handler, read `tier` from the request, compute the price, build payment requirements (and optionally call the facilitator's verify/settle), and return 402 or proceed. That means you implement the 402 flow yourself for that route while still using the same facilitator and schemes elsewhere.
+
+Example sketch for **Option B** with Gin: in a handler, get the tier from query or header, map it to a price string, build a `RouteConfig`-like struct for that request, then use the Go HTTP server's low-level APIs (if exposed) to run verify/settle with that config. The [Gin example](https://github.com/coinbase/x402/tree/main/examples/go/servers/gin) uses static `RoutesConfig`; for true per-request price you'd call the resource server's verify/settle with requirements you build from the current request's tier.
+
+---
+
+### Custom (by hand)
+
+Fully by hand in Go you:
+
+1. Parse the request (path, method, query, headers) and decide the price (e.g. from `tier`).
+2. Build the payment requirements (scheme, network, payTo, **price**, etc.) for that request.
+3. If there is no valid `PAYMENT-SIGNATURE` (or equivalent), respond with **402** and the `PAYMENT-REQUIRED` body/header.
+4. If the client sends a payment, call the facilitator's **verify** endpoint with the payload and your requirements; if valid, run your business logic, then call **settle**, and return the resource with the settlement response.
+
+So in Go, "custom" dynamic pricing is: compute price per request, build requirements, then drive verify/settle yourself. The [x402 reference](/x402/reference) and [facilitator docs](/x402/facilitators/introduction) describe the message shapes and endpoints.
+
+---
+
+## Summary
+
+| Stack     | How to get different prices for the same endpoint |
+|----------|---------------------------------------------------|
+| **TS (Next/Express/Hono)** | Use a **function** for `accepts[].price` (and optionally `payTo`) in the route config. The middleware passes a request context; your function returns the price for that request. |
+| **Python (Flask/FastAPI)** | Use a **callable** for `PaymentOption.price` (and optionally `pay_to`) that takes `HTTPRequestContext`. Sync for Flask (sync server), sync or async for FastAPI (async server). |
+| **Go (Gin)**              | Use multiple static routes (different paths per tier) or implement one route "by hand": compute price from the request, build requirements, then verify/settle via the facilitator. |
+
+The TypeScript and Python SDKs support **dynamic price (and payTo) functions** out of the box; in Go you achieve the same behavior by building requirements per request and using the low-level verify/settle flow.
+
+For more examples, see the [x402 examples](https://github.com/coinbase/x402/tree/main/examples) (TypeScript: [Express](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/express), [Hono](https://github.com/coinbase/x402/tree/main/examples/typescript/servers/hono), [Next](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next); Python: [Flask](https://github.com/coinbase/x402/tree/main/examples/python/servers/flask), [FastAPI](https://github.com/coinbase/x402/tree/main/examples/python/servers/fastapi); Go: [Gin](https://github.com/coinbase/x402/tree/main/examples/go/servers/gin)). For protocol details, see the [PayAI x402 docs](/x402/introduction) and [x402 reference](/x402/reference).
