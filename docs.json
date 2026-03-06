@@ -88,6 +88,7 @@
             "group": "x402 Facilitator",
             "pages": [
               "x402/facilitators/introduction",
+              "x402/facilitators/authentication",
               "x402/supported-networks",
               "x402/facilitators/pricing"
             ]
