@@ -1,0 +1,521 @@
+---
+title: "Facilitator Authentication"
+description: "How to authenticate with the PayAI facilitator using your merchant API key — protocol reference and standalone examples in TypeScript, Python, Go, and Rust."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+## Overview
+
+The [PayAI facilitator](https://facilitator.payai.network) authenticates merchants using short-lived **JWTs signed with Ed25519** (the EdDSA algorithm). If you use the `@payai/facilitator` TypeScript package, this is handled automatically. This guide explains the underlying protocol so you can implement authentication in **any language** without depending on PayAI packages.
+
+<Note>
+  Authentication is only required beyond the [free tier](/x402/facilitators/pricing) (1,000 settlements/month). Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys.
+</Note>
+
+## API key structure
+
+Your API key has two parts, available from the [merchant dashboard](https://merchant.payai.network):
+
+| Part | Environment Variable | Description |
+|------|---------------------|-------------|
+| **API Key ID** | `PAYAI_API_KEY_ID` | A string identifier for your key |
+| **API Key Secret** | `PAYAI_API_KEY_SECRET` | An Ed25519 private key in PKCS#8/DER format, base64-encoded |
+
+The secret may be prefixed with `payai_sk_` as shown in the dashboard. Strip this prefix before use — the remaining string is a standard base64-encoded PKCS#8 DER key.
+
+---
+
+## Protocol steps
+
+### 1. Normalize the API key secret
+
+If the secret starts with `payai_sk_`, remove that prefix. The result is a base64-encoded Ed25519 private key in PKCS#8/DER format.
+
+### 2. Build the JWT header
+
+```json
+{
+  "alg": "EdDSA",
+  "typ": "JWT",
+  "kid": "<your_api_key_id>"
+}
+```
+
+### 3. Build the JWT payload
+
+```json
+{
+  "sub": "<your_api_key_id>",
+  "iss": "payai-merchant",
+  "iat": 1709700000,
+  "exp": 1709700120,
+  "jti": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+| Claim | Description |
+|-------|-------------|
+| `sub` | Your API Key ID |
+| `iss` | Always `"payai-merchant"` |
+| `iat` | Current time as a Unix timestamp (seconds) |
+| `exp` | Expiration — `iat + 120` (2 minutes recommended) |
+| `jti` | A random UUID v4 for replay protection |
+
+### 4. Encode and sign
+
+1. Base64url-encode the header JSON -> `headerB64`
+2. Base64url-encode the payload JSON -> `payloadB64`
+3. Form the signing input: `headerB64 + "." + payloadB64`
+4. Sign the UTF-8 bytes of the signing input with your Ed25519 private key
+5. Base64url-encode the 64-byte signature -> `signatureB64`
+6. The JWT is: `headerB64.payloadB64.signatureB64`
+
+**Base64url encoding** uses the standard Base64 alphabet with `+` replaced by `-`, `/` replaced by `_`, and no `=` padding.
+
+### 5. Send the request
+
+Include the JWT as a Bearer token on all facilitator requests:
+
+```
+Authorization: Bearer <jwt>
+```
+
+This header is required on all authenticated facilitator endpoints: `POST /verify`, `POST /settle`, and `GET /supported`.
+
+---
+
+## Token caching
+
+JWTs are valid for the full `exp - iat` window (default: 120 seconds). To avoid signing on every request, cache the token and refresh it ~30 seconds before expiry.
+
+---
+
+## Code examples
+
+The following examples implement the full authentication flow with **no PayAI-specific dependencies**.
+
+<Tabs>
+  <Tab title="TypeScript">
+    Uses the Web Crypto API — works in Node.js 18+, Deno, Bun, and browsers with zero dependencies.
+
+    ```typescript
+    // payai-auth.ts — zero dependencies, Web Crypto API only
+
+    function base64UrlEncode(data: Uint8Array): string {
+      let binary = "";
+      for (let i = 0; i < data.byteLength; i++) {
+        binary += String.fromCharCode(data[i]);
+      }
+      return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    }
+
+    function base64UrlEncodeString(str: string): string {
+      return base64UrlEncode(new TextEncoder().encode(str));
+    }
+
+    function base64ToUint8Array(base64: string): Uint8Array {
+      const standardized = base64.replace(/-/g, "+").replace(/_/g, "/");
+      const binary = atob(standardized);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function normalizeSecret(secret: string): string {
+      const trimmed = secret.trim();
+      return trimmed.startsWith("payai_sk_")
+        ? trimmed.slice("payai_sk_".length)
+        : trimmed;
+    }
+
+    export async function generatePayAIJwt(
+      apiKeyId: string,
+      apiKeySecret: string,
+    ): Promise<string> {
+      const now = Math.floor(Date.now() / 1000);
+
+      const header = JSON.stringify({
+        alg: "EdDSA",
+        typ: "JWT",
+        kid: apiKeyId,
+      });
+      const payload = JSON.stringify({
+        sub: apiKeyId,
+        iss: "payai-merchant",
+        iat: now,
+        exp: now + 120,
+        jti: crypto.randomUUID(),
+      });
+
+      const headerB64 = base64UrlEncodeString(header);
+      const payloadB64 = base64UrlEncodeString(payload);
+      const message = `${headerB64}.${payloadB64}`;
+
+      const keyBytes = base64ToUint8Array(normalizeSecret(apiKeySecret));
+      const privateKey = await crypto.subtle.importKey(
+        "pkcs8",
+        keyBytes.buffer,
+        { name: "Ed25519" },
+        false,
+        ["sign"],
+      );
+
+      const signature = await crypto.subtle.sign(
+        "Ed25519",
+        privateKey,
+        new TextEncoder().encode(message),
+      );
+
+      return `${message}.${base64UrlEncode(new Uint8Array(signature))}`;
+    }
+
+    // --- Usage ---
+
+    const jwt = await generatePayAIJwt(
+      "your-api-key-id",
+      "payai_sk_your-api-key-secret",
+    );
+
+    const response = await fetch(
+      "https://facilitator.payai.network/verify",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          x402Version: 2,
+          paymentPayload: {
+            /* ... */
+          },
+          paymentRequirements: {
+            /* ... */
+          },
+        }),
+      },
+    );
+    ```
+  </Tab>
+  <Tab title="Python">
+    Requires the [`cryptography`](https://pypi.org/project/cryptography/) package:
+
+    ```bash
+    pip install cryptography
+    ```
+
+    ```python
+    # payai_auth.py
+    import base64
+    import json
+    import time
+    import uuid
+
+    from cryptography.hazmat.primitives.serialization import load_der_private_key
+
+
+    def base64url_encode(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+    def normalize_secret(secret: str) -> str:
+        s = secret.strip()
+        return s.removeprefix("payai_sk_")
+
+
+    def generate_payai_jwt(api_key_id: str, api_key_secret: str) -> str:
+        now = int(time.time())
+
+        header = json.dumps(
+            {"alg": "EdDSA", "typ": "JWT", "kid": api_key_id},
+            separators=(",", ":"),
+        )
+        payload = json.dumps(
+            {
+                "sub": api_key_id,
+                "iss": "payai-merchant",
+                "iat": now,
+                "exp": now + 120,
+                "jti": str(uuid.uuid4()),
+            },
+            separators=(",", ":"),
+        )
+
+        header_b64 = base64url_encode(header.encode())
+        payload_b64 = base64url_encode(payload.encode())
+        message = f"{header_b64}.{payload_b64}"
+
+        key_bytes = base64.b64decode(normalize_secret(api_key_secret))
+        private_key = load_der_private_key(key_bytes, password=None)
+        signature = private_key.sign(message.encode())
+
+        return f"{message}.{base64url_encode(signature)}"
+
+
+    # --- Usage ---
+
+    if __name__ == "__main__":
+        import requests
+
+        jwt = generate_payai_jwt(
+            "your-api-key-id",
+            "payai_sk_your-api-key-secret",
+        )
+
+        response = requests.post(
+            "https://facilitator.payai.network/verify",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {jwt}",
+            },
+            json={
+                "x402Version": 2,
+                "paymentPayload": {},   # ...
+                "paymentRequirements": {},  # ...
+            },
+        )
+        print(response.json())
+    ```
+  </Tab>
+  <Tab title="Go">
+    Uses the Go standard library plus `github.com/google/uuid` for UUID generation.
+
+    ```go
+    package payaiauth
+
+    import (
+    	"crypto/ed25519"
+    	"crypto/x509"
+    	"encoding/base64"
+    	"encoding/json"
+    	"fmt"
+    	"strings"
+    	"time"
+
+    	"github.com/google/uuid"
+    )
+
+    func base64URLEncode(data []byte) string {
+    	return strings.TrimRight(
+    		base64.URLEncoding.EncodeToString(data), "=",
+    	)
+    }
+
+    func normalizeSecret(secret string) string {
+    	s := strings.TrimSpace(secret)
+    	return strings.TrimPrefix(s, "payai_sk_")
+    }
+
+    func GeneratePayAIJwt(apiKeyID, apiKeySecret string) (string, error) {
+    	now := time.Now().Unix()
+
+    	header, _ := json.Marshal(map[string]string{
+    		"alg": "EdDSA",
+    		"typ": "JWT",
+    		"kid": apiKeyID,
+    	})
+    	payload, _ := json.Marshal(map[string]interface{}{
+    		"sub": apiKeyID,
+    		"iss": "payai-merchant",
+    		"iat": now,
+    		"exp": now + 120,
+    		"jti": uuid.New().String(),
+    	})
+
+    	headerB64 := base64URLEncode(header)
+    	payloadB64 := base64URLEncode(payload)
+    	message := headerB64 + "." + payloadB64
+
+    	keyBytes, err := base64.StdEncoding.DecodeString(
+    		normalizeSecret(apiKeySecret),
+    	)
+    	if err != nil {
+    		keyBytes, err = base64.URLEncoding.DecodeString(
+    			normalizeSecret(apiKeySecret),
+    		)
+    		if err != nil {
+    			return "", fmt.Errorf("decode API key secret: %w", err)
+    		}
+    	}
+
+    	parsed, err := x509.ParsePKCS8PrivateKey(keyBytes)
+    	if err != nil {
+    		return "", fmt.Errorf("parse PKCS#8 key: %w", err)
+    	}
+
+    	privateKey, ok := parsed.(ed25519.PrivateKey)
+    	if !ok {
+    		return "", fmt.Errorf("key is not Ed25519")
+    	}
+
+    	signature := ed25519.Sign(privateKey, []byte(message))
+    	return message + "." + base64URLEncode(signature), nil
+    }
+    ```
+
+    Usage:
+
+    ```go
+    package main
+
+    import (
+    	"bytes"
+    	"encoding/json"
+    	"fmt"
+    	"net/http"
+
+    	payaiauth "your-module/payaiauth"
+    )
+
+    func main() {
+    	jwt, err := payaiauth.GeneratePayAIJwt(
+    		"your-api-key-id",
+    		"payai_sk_your-api-key-secret",
+    	)
+    	if err != nil {
+    		panic(err)
+    	}
+
+    	body, _ := json.Marshal(map[string]interface{}{
+    		"x402Version":         2,
+    		"paymentPayload":      map[string]interface{}{},
+    		"paymentRequirements": map[string]interface{}{},
+    	})
+
+    	req, _ := http.NewRequest(
+    		"POST",
+    		"https://facilitator.payai.network/verify",
+    		bytes.NewReader(body),
+    	)
+    	req.Header.Set("Content-Type", "application/json")
+    	req.Header.Set("Authorization", "Bearer "+jwt)
+
+    	resp, err := http.DefaultClient.Do(req)
+    	if err != nil {
+    		panic(err)
+    	}
+    	defer resp.Body.Close()
+    	fmt.Println("Status:", resp.Status)
+    }
+    ```
+
+    <Note>
+      You can replace `github.com/google/uuid` with `crypto/rand` to generate a UUID v4 manually and avoid the external dependency entirely.
+    </Note>
+  </Tab>
+  <Tab title="Rust">
+    Add to `Cargo.toml`:
+
+    ```toml
+    [dependencies]
+    ed25519-dalek = { version = "2", features = ["pkcs8"] }
+    base64 = "0.22"
+    serde_json = "1"
+    uuid = { version = "1", features = ["v4"] }
+    ```
+
+    ```rust
+    use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
+    use base64::Engine;
+    use ed25519_dalek::pkcs8::DecodePrivateKey;
+    use ed25519_dalek::{Signer, SigningKey};
+    use serde_json::json;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use uuid::Uuid;
+
+    fn normalize_secret(secret: &str) -> &str {
+        let s = secret.trim();
+        s.strip_prefix("payai_sk_").unwrap_or(s)
+    }
+
+    pub fn generate_payai_jwt(
+        api_key_id: &str,
+        api_key_secret: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)?
+            .as_secs();
+
+        let header = json!({
+            "alg": "EdDSA",
+            "typ": "JWT",
+            "kid": api_key_id,
+        });
+        let payload = json!({
+            "sub": api_key_id,
+            "iss": "payai-merchant",
+            "iat": now,
+            "exp": now + 120,
+            "jti": Uuid::new_v4().to_string(),
+        });
+
+        let header_b64 = URL_SAFE_NO_PAD.encode(
+            header.to_string().as_bytes(),
+        );
+        let payload_b64 = URL_SAFE_NO_PAD.encode(
+            payload.to_string().as_bytes(),
+        );
+        let message = format!("{header_b64}.{payload_b64}");
+
+        let key_bytes = STANDARD.decode(
+            normalize_secret(api_key_secret),
+        )?;
+        let signing_key = SigningKey::from_pkcs8_der(&key_bytes)?;
+        let signature = signing_key.sign(message.as_bytes());
+
+        Ok(format!(
+            "{message}.{}",
+            URL_SAFE_NO_PAD.encode(signature.to_bytes()),
+        ))
+    }
+
+    // Usage:
+    // let jwt = generate_payai_jwt("your-api-key-id", "payai_sk_...")?;
+    // Set header: Authorization: Bearer {jwt}
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Facilitator endpoints
+
+All endpoints are at `https://facilitator.payai.network` and require the `Authorization: Bearer <jwt>` header when authenticated.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/verify` | POST | Verify a payment payload against payment requirements |
+| `/settle` | POST | Settle a verified payment on-chain |
+| `/supported` | GET | List supported networks, tokens, and schemes |
+
+### Request body (`/verify` and `/settle`)
+
+```json
+{
+  "x402Version": 2,
+  "paymentPayload": { "..." },
+  "paymentRequirements": { "..." }
+}
+```
+
+For full payload schemas, see the [x402 Reference](/x402/reference).
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `401 Unauthorized` | Missing or expired JWT | Generate a fresh token (check `exp` claim) |
+| Failed to parse key | Secret not valid PKCS#8/DER | Ensure you stripped the `payai_sk_` prefix and the remaining string is valid base64 |
+| Signature verification failed | Wrong key or corrupted secret | Verify your API Key ID and Secret match the [merchant dashboard](https://merchant.payai.network) |
+
+## Need help?
+
+<DiscordHelpCard />
