@@ -250,6 +250,11 @@
       "linkedin": "https://linkedin.com/company/PayAINetwork"
     }
   },
+  "integrations": {
+    "gtm": {
+      "tagId": "GTM-N5V93RM6"
+    }
+  },
   "banner": {
       "content": "🎉 x402 is now live on Solana!"
   }
