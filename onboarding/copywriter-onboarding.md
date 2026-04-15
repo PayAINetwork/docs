@@ -84,7 +84,7 @@ x402 is a payment protocol that enables **pay-per-use API transactions**. The na
 
 **Key features:**
 - Solana-first, multi-network support (Base, Polygon, SKALE, Avalanche, and more)
-- Free tier: Up to 1,000 settlements/month at no cost, no API key required
+- Free tier: Up to 10,000 settlements/month at no cost, no API key required
 - Beyond free tier: $0.001 per transaction
 - Credit system: 1 credit = 1 settled transaction, credits never expire
 - Merchants top up credits via the dashboard at merchant.payai.network
