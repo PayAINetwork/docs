@@ -4,13 +4,14 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 Start accepting x402 payments in your Gin server in 2 minutes.
 
-<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/go/servers/gin).</Note>
+<Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/go/servers/gin).</Note>
 
 ### Step 1: Create a Go module and install dependencies
 
 ```bash
 go mod init myserver
-go get github.com/coinbase/x402/go github.com/gin-gonic/gin github.com/joho/godotenv
+go get github.com/x402-foundation/x402/go github.com/gin-gonic/gin github.com/joho/godotenv
+go mod tidy
 ```
 
 ### Step 2: Set your environment variables
@@ -36,11 +37,11 @@ import (
 	"os"
 	"time"
 
-	x402 "github.com/coinbase/x402/go"
-	x402http "github.com/coinbase/x402/go/http"
-	ginmw "github.com/coinbase/x402/go/http/gin"
-	evm "github.com/coinbase/x402/go/mechanisms/evm/exact/server"
-	svm "github.com/coinbase/x402/go/mechanisms/svm/exact/server"
+	x402 "github.com/x402-foundation/x402/go"
+	x402http "github.com/x402-foundation/x402/go/http"
+	ginmw "github.com/x402-foundation/x402/go/http/gin"
+	evm "github.com/x402-foundation/x402/go/mechanisms/evm/exact/server"
+	svm "github.com/x402-foundation/x402/go/mechanisms/svm/exact/server"
 	ginfw "github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -191,7 +192,7 @@ go run .
 
 ### Step 5: Test the server
 
-You can test payments against your server locally by following the [fetch example](/x402/clients/typescript/fetch) or the [axios example](/x402/clients/typescript/axios), or by using the Go client examples in the [x402 repository](https://github.com/coinbase/x402/tree/main/examples/go/clients).
+You can test payments against your server locally by following the [fetch example](/x402/clients/typescript/fetch) or the [axios example](/x402/clients/typescript/axios), or by using the Go client examples in the [x402 repository](https://github.com/x402-foundation/x402/tree/main/examples/go/clients).
 
 ## x402 reference
 

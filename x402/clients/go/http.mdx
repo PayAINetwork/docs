@@ -4,16 +4,16 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 Make x402 payments with Go's standard `net/http` client in 2 minutes.
 
-<Note>You can find the full code for this example [here](https://github.com/coinbase/x402/tree/main/examples/go/clients/http).</Note>
+<Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/go/clients/http).</Note>
 
 ### Step 1: Create a Go module and install dependencies
 
 ```bash
 go mod init myclient
-go get github.com/coinbase/x402/go github.com/joho/godotenv
+go get github.com/x402-foundation/x402/go github.com/joho/godotenv
 ```
 
-To run from the x402 repo instead: clone [coinbase/x402](https://github.com/coinbase/x402), then `cd examples/go/clients/http`, copy `.env-example` to `.env`, and run `go run . mechanism-helper-registration` (or `go run . builder-pattern`).
+To run from the x402 repo instead: clone [x402-foundation/x402](https://github.com/x402-foundation/x402), then `cd examples/go/clients/http`, copy `.env-example` to `.env`, and run `go run . mechanism-helper-registration` (or `go run . builder-pattern`).
 
 ### Step 2: Set your environment variables
 
@@ -48,12 +48,12 @@ import (
 	"os"
 	"time"
 
-	x402 "github.com/coinbase/x402/go"
-	x402http "github.com/coinbase/x402/go/http"
-	evm "github.com/coinbase/x402/go/mechanisms/evm/exact/client"
-	svm "github.com/coinbase/x402/go/mechanisms/svm/exact/client"
-	evmsigners "github.com/coinbase/x402/go/signers/evm"
-	svmsigners "github.com/coinbase/x402/go/signers/svm"
+	x402 "github.com/x402-foundation/x402/go"
+	x402http "github.com/x402-foundation/x402/go/http"
+	evm "github.com/x402-foundation/x402/go/mechanisms/evm/exact/client"
+	svm "github.com/x402-foundation/x402/go/mechanisms/svm/exact/client"
+	evmsigners "github.com/x402-foundation/x402/go/signers/evm"
+	svmsigners "github.com/x402-foundation/x402/go/signers/svm"
 	"github.com/joho/godotenv"
 )
 
@@ -132,7 +132,7 @@ func main() {
 }
 ```
 
-For a full runnable example with payment-response decoding and both builder-pattern and mechanism-helper registration, see the [upstream Go HTTP client](https://github.com/coinbase/x402/tree/main/examples/go/clients/http) (`main.go`, `utils.go`, `mechanism_helper_registration.go`, `builder_pattern.go`).
+For a full runnable example with payment-response decoding and both builder-pattern and mechanism-helper registration, see the [upstream Go HTTP client](https://github.com/x402-foundation/x402/tree/main/examples/go/clients/http) (`main.go`, `utils.go`, `mechanism_helper_registration.go`, `builder_pattern.go`).
 
 ### Step 4: Run the client
 
