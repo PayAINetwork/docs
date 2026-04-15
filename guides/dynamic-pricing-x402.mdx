@@ -108,7 +108,7 @@ export const GET = withX402(
 );
 ```
 
-Your `proxy.ts` (or shared server setup) should export `server`, `paywall`, and `evmAddress` / `svmAddress` as in the [Next.js x402 example](https://github.com/coinbase/x402/tree/main/examples/typescript/fullstack/next).
+Your `proxy.ts` (or shared server setup) should export `server`, `paywall`, and `evmAddress` / `svmAddress` as in the [Next.js x402 example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/fullstack/next).
 
 ---
 
@@ -463,7 +463,7 @@ Register separate route patterns per tier, e.g. `GET /api/insight/basic`, `GET /
 **Option B – One route, dynamic price by hand**  
 Use a single route that does **not** go through the middleware's static route table for payment. In the handler, read `tier` from the request, compute the price, build payment requirements (and optionally call the facilitator's verify/settle), and return 402 or proceed. That means you implement the 402 flow yourself for that route while still using the same facilitator and schemes elsewhere.
 
-Example sketch for **Option B** with Gin: in a handler, get the tier from query or header, map it to a price string, build a `RouteConfig`-like struct for that request, then use the Go HTTP server's low-level APIs (if exposed) to run verify/settle with that config. The [Gin example](https://github.com/coinbase/x402/tree/main/examples/go/servers/gin) uses static `RoutesConfig`; for true per-request price you'd call the resource server's verify/settle with requirements you build from the current request's tier.
+Example sketch for **Option B** with Gin: in a handler, get the tier from query or header, map it to a price string, build a `RouteConfig`-like struct for that request, then use the Go HTTP server's low-level APIs (if exposed) to run verify/settle with that config. The [Gin example](https://github.com/x402-foundation/x402/tree/main/examples/go/servers/gin) uses static `RoutesConfig`; for true per-request price you'd call the resource server's verify/settle with requirements you build from the current request's tier.
 
 ---
 
@@ -494,4 +494,4 @@ For more on x402, see the [x402 introduction](/x402/introduction), [x402 referen
 
 ### Still looking for more?
 
-Check out the [Coinbase x402 repository](https://github.com/coinbase/x402) for the official protocol spec, SDK source, and additional examples.
+Check out the [x402 repository](https://github.com/x402-foundation/x402) for the official protocol spec, SDK source, and additional examples.
