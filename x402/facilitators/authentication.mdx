@@ -13,6 +13,10 @@ The [PayAI facilitator](https://facilitator.payai.network) authenticates merchan
   Authentication is only required beyond the [free tier](/x402/facilitators/pricing) (1,000 settlements/month). Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys.
 </Note>
 
+<Tip>
+  If you're using one of the TypeScript server guides or starter kits ([Express](/x402/servers/typescript/express), [Hono](/x402/servers/typescript/hono), [Next.js](/x402/servers/typescript/nextjs)), facilitator authentication is already built in. Just set the `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` environment variables and the middleware handles the rest. Refer to those guides for setup instructions.
+</Tip>
+
 ## API key structure
 
 Your API key has two parts, available from the [merchant dashboard](https://merchant.payai.network):
