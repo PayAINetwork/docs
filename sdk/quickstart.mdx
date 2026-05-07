@@ -1,0 +1,128 @@
+---
+title: "Quickstart"
+description: "Set up a paid Express endpoint with x402 + MPP in under 10 minutes."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+This guide walks you from zero to a working testnet payment. By the end you'll have an Express server that returns a `402 Payment Required` challenge, and you'll hit it with a real payment.
+
+## Prerequisites
+
+- Node.js 22+ and npm
+- An EVM wallet (MetaMask, Coinbase Wallet, or any wallet that can hold testnet tokens)
+- A Solana wallet (optional — Phantom, Backpack, Solflare, or any wallet that supports Solana devnet)
+
+## Step 1: Install
+
+```bash
+npm install @payai/agentic-payments
+```
+
+## Step 2: Create your server
+
+```typescript
+import express from "express";
+import { agentPayments } from "@payai/agentic-payments/express";
+
+const app = express();
+
+app.use(
+  agentPayments({
+    payTo: {
+      evm: process.env.PAY_TO_EVM!,   // your EVM wallet address
+      solana: process.env.PAY_TO_SVM!, // your Solana wallet address
+    },
+    endpoints: {
+      "GET /weather": {
+        price: "$0.01",
+        description: "Current weather data",
+      },
+    },
+  }),
+);
+
+app.get("/weather", (_req, res) => {
+  res.json({ temp: 72, condition: "sunny" });
+});
+
+app.listen(4000, () => console.log("listening on :4000"));
+```
+
+Set your wallet addresses in `.env`:
+
+```env
+PAY_TO_EVM=0xYourEvmWallet
+PAY_TO_SVM=YourSolanaWallet
+```
+
+## Step 3: Start the server
+
+```bash
+node --env-file=.env server.ts
+```
+
+## Step 4: Probe the 402
+
+```bash
+curl -i http://localhost:4000/weather
+```
+
+You'll see a `402 Payment Required` response with two challenge headers:
+
+```
+HTTP/1.1 402 Payment Required
+PAYMENT-REQUIRED: <base64-encoded x402 challenge>
+WWW-Authenticate: Payment id="...", realm="...", method="tempo", ...
+```
+
+The `PAYMENT-REQUIRED` header encodes the full x402 payment requirements — decode it to see the list of accepted assets, networks, amounts, and your wallet address. The `WWW-Authenticate: Payment` header encodes the MPP payment requirements for the Tempo chain.
+
+```bash
+echo '<value>' | base64 -d | python3 -m json.tool
+```
+
+## Step 5: Send a testnet payment
+
+Use an x402 client to pay and receive the response:
+
+```bash
+# Install a client if you don't have one
+npm install -g @x402/cli
+
+x402 pay http://localhost:4000/weather \
+  --key $YOUR_PRIVATE_KEY \
+  --network eip155:84532
+```
+
+<Check>You should get a `200 OK` with a `PAYMENT-RESPONSE` header containing the settlement receipt.</Check>
+
+## Going to mainnet
+
+When you're ready to accept real payments, set `live: true`:
+
+```typescript
+agentPayments({
+  live: true, // switches all networks to mainnet
+  payTo: {
+    evm: process.env.PAY_TO_EVM!,
+    solana: process.env.PAY_TO_SVM!,
+  },
+  endpoints: { ... },
+})
+```
+
+`live: true` switches x402 to mainnet chains (Solana, Base, Avalanche, Polygon, Sei, and more) and MPP to Tempo mainnet. Your `payTo` addresses stay the same — the SDK routes each payment to the right network automatically.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration reference" icon="sliders" href="/sdk/configuration">
+    Every config option explained with types and examples.
+  </Card>
+  <Card title="Dynamic pricing example" icon="tag" href="/guides/dynamic-pricing-x402">
+    Charge different prices per request based on headers, query params, or user identity.
+  </Card>
+</CardGroup>
+
+<DiscordHelpCard />

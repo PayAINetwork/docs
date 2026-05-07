@@ -21,6 +21,14 @@
             ]
           },
           {
+            "group": "Agent SDK",
+            "pages": [
+              "sdk/introduction",
+              "sdk/quickstart",
+              "sdk/configuration"
+            ]
+          },
+          {
             "group": "x402",
             "pages": [
               "x402/introduction",
