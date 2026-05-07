@@ -1,0 +1,248 @@
+---
+title: "Configuration"
+description: "Full reference for AgentPaymentsConfig — every option with types, defaults, and examples."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+`AgentPaymentsConfig` is the object you pass to `agentPayments()` (Express middleware) or `new AgentPayments(config)` (framework-agnostic).
+
+## Top-level options
+
+### `endpoints` (required)
+
+A map from route pattern strings to per-endpoint payment config.
+
+```typescript
+endpoints: {
+  "GET /weather": { price: "$0.01", description: "Weather data" },
+  "POST /generate": { price: "$0.10", description: "AI text generation" },
+  "GET /reports/*": { price: "$1.00", description: "Analytics report" },
+}
+```
+
+Route patterns support `*` as a wildcard segment. Method is case-insensitive. See [`EndpointConfig`](#endpointconfig) below for all per-endpoint options.
+
+---
+
+### `payTo` (required unless all endpoints override it)
+
+Where payments are sent. Three forms are supported:
+
+```typescript
+// 1. Single EVM address — all EVM chains share this wallet
+payTo: "0xYourWallet"
+
+// 2. Shorthand — separate EVM and Solana wallets
+payTo: { evm: "0xYourEvmWallet", solana: "YourSolanaWallet" }
+
+// 3. Explicit CAIP-2 map — different address per network
+payTo: {
+  "eip155:8453": "0xBaseWallet",
+  "eip155:4217": "0xTempoWallet",
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "YourSolanaWallet",
+}
+
+// 4. Dynamic — function called per request (e.g. multi-tenant routing)
+payTo: async (req) => {
+  const tenant = await getTenant(req.headers["x-tenant-id"]);
+  return tenant.walletAddress;
+}
+```
+
+---
+
+### `live`
+
+`boolean` — defaults to `false` (testnet).
+
+```typescript
+live: true   // mainnet: Base, Avalanche, Polygon, Sei, Tempo mainnet, Solana mainnet-beta, …
+live: false  // testnet: Base Sepolia, Avalanche Fuji, Tempo testnet, Solana devnet, …
+```
+
+Set via environment variable for safe deployment:
+
+```typescript
+live: process.env.MODE === "live"
+```
+
+---
+
+### `assets`
+
+`string[]` — which assets to accept. Defaults to `["USDC"]`.
+
+```typescript
+assets: ["USDC"]              // stablecoin on every supported chain
+assets: ["USDC", "USDT"]     // USDC or USDT
+assets: ["USDC", "pathUSD"]  // adds Tempo's pathUSD for MPP
+assets: [
+  "USDC",
+  {
+    name: "MY_TOKEN",
+    addresses: {
+      "eip155:8453": { address: "0x...", decimals: 18 },
+    },
+  },
+]
+```
+
+Built-in assets: `USDC`, `USDT`, `pathUSD`.
+
+---
+
+### `networks`
+
+`string[]` — CAIP-2 network IDs to advertise in challenges. Defaults to all networks compatible with your `payTo` and `live` setting.
+
+```typescript
+// Accept payments only on Base (testnet)
+networks: ["eip155:84532"]
+
+// EVM only, no Solana
+networks: ["eip155:84532", "eip155:43113"]
+```
+
+---
+
+### `protocols`
+
+`("x402" | "mpp")[]` — which payment protocols to enable. The SDK auto-detects based on your `payTo` and `assets`:
+
+- MPP is enabled automatically when `pathUSD` is in `assets` and a Tempo network is reachable.
+- x402 is always enabled unless explicitly excluded.
+
+```typescript
+protocols: ["x402"]        // disable MPP
+protocols: ["x402", "mpp"] // both (default when MPP is eligible)
+```
+
+---
+
+### `hooks`
+
+Lifecycle hooks called at key stages of every payment flow. All hooks are optional and async-safe.
+
+```typescript
+hooks: {
+  // Called before payment is checked. Return { grant: true } to bypass payment.
+  onRequest: async (ctx) => {
+    if (ctx.request.headers["x-internal-key"] === process.env.INTERNAL_KEY) {
+      return { grant: true };
+    }
+  },
+
+  // Called after verification succeeds, before your handler runs.
+  // Return { reject: true, reason: "..." } to deny the payment.
+  onPaymentVerified: async (ctx) => {
+    if (isBlocked(ctx.payment.payer)) {
+      return { reject: true, reason: "Wallet blocked" };
+    }
+  },
+
+  // Called after settlement succeeds. Informational — cannot modify the response.
+  onPaymentSettled: async (ctx) => {
+    await db.record(ctx.payment);
+  },
+
+  // Called when verification or settlement fails.
+  onPaymentFailed: async (ctx) => {
+    console.error("Payment failed", ctx.error?.message);
+  },
+}
+```
+
+The `ctx` object in each hook has `request`, `endpoint`, `payment` (populated from `onPaymentVerified` onward), and `error` (in `onPaymentFailed`).
+
+---
+
+## `EndpointConfig`
+
+Per-endpoint options. `price` is the only required field; everything else inherits from the top-level config.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `price` | `string \| function` | — (required) | Static (`"$0.01"`) or dynamic (function of request). |
+| `description` | `string` | — | Shown to clients in the payment challenge. Keep it short and ASCII-only (MPP requirement). |
+| `assets` | `string[]` | top-level `assets` | Override which assets this endpoint accepts. |
+| `payTo` | `PayTo` | top-level `payTo` | Override the payment recipient for this endpoint. |
+| `networks` | `string[]` | top-level `networks` | Override which chains to advertise for this endpoint. |
+| `protocols` | `Protocol[]` | top-level `protocols` | Override which protocols to require for this endpoint. |
+
+### Dynamic pricing example
+
+```typescript
+"GET /report": {
+  price: async (req) => {
+    const tier = req.query.tier ?? "basic";
+    return tier === "pro" ? "$1.00" : "$0.10";
+  },
+  description: "Analytics report",
+}
+```
+
+---
+
+## `x402` options
+
+Fine-tune the x402 adapter. Usually not needed.
+
+```typescript
+x402: {
+  facilitatorUrl: "https://facilitator.payai.network", // default
+  scheme: "exact",  // default; "upto" for pre-authorized spend limits
+  networks: ["eip155:84532", "eip155:43113"], // override supported networks
+}
+```
+
+---
+
+## `mpp` options
+
+Configure the MPP adapter. The SDK auto-generates and stores an HMAC key on first run.
+
+```typescript
+mpp: {
+  secretKey: process.env.MPP_SECRET_KEY, // 64-char hex; auto-generated if omitted
+  realm: "my-api.example.com",           // shown in WWW-Authenticate challenges
+}
+```
+
+<Warning>
+  The auto-generated secret key is stored in `.payai/mpp_secret.key` and added to `.gitignore` automatically. Back it up — losing it invalidates all outstanding payment credentials.
+</Warning>
+
+---
+
+## Full example
+
+```typescript
+import { agentPayments } from "@payai/agentic-payments/express";
+
+export default agentPayments({
+  live: process.env.MODE === "live",
+  payTo: {
+    evm: process.env.PAY_TO_EVM!,
+    solana: process.env.PAY_TO_SVM!,
+  },
+  assets: ["USDC", "pathUSD"],
+  endpoints: {
+    "GET /weather": {
+      price: "$0.01",
+      description: "Current weather data",
+    },
+    "POST /generate": {
+      price: async (req) => req.headers["x-tier"] === "pro" ? "$0.50" : "$0.05",
+      description: "AI text generation",
+    },
+  },
+  hooks: {
+    onPaymentSettled: async ({ payment }) => {
+      console.log(`Received ${payment.amount} on ${payment.network} from ${payment.payer}`);
+    },
+  },
+});
+```
+
+<DiscordHelpCard />

@@ -1,0 +1,48 @@
+---
+title: "Agent SDK"
+description: "Accept x402 and MPP payments in any Node.js server with a single middleware."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+`@payai/agentic-payments` is a TypeScript SDK for monetizing HTTP APIs with stablecoin payments. It speaks two protocols simultaneously — [x402](https://x402.org) and [MPP](https://paymentauth.org) — so clients that implement either standard can pay your endpoints without extra configuration.
+
+By using it you will automatically accept payments on 10+ networks and be included in 6+ agentic catalogs.
+
+## When to use this SDK
+
+| Situation | Recommendation |
+|-----------|---------------|
+| You want x402 only, on one chain, with a fixed price | Use `@x402/express` directly |
+| You want x402 + MPP, multiple chains, dynamic pricing, lifecycle hooks | **Use this SDK** |
+| You're building an AI agent that needs to pay APIs | Use this SDK on the server; pair with an x402 client on the agent |
+
+## How it works
+
+Every protected request goes through a five-step flow:
+
+1. **Route match** — check whether the request path is configured as a paid endpoint.
+2. **onRequest hook** — optionally grant free access (e.g. internal callers).
+3. **Protocol detection** — read the `PAYMENT-SIGNATURE` / `Authorization: Payment` header to determine which protocol the client is using. No header → return `402 Payment Required` with challenge headers for every enabled protocol.
+4. **Verify** — call the protocol adapter (PayAI facilitator for x402; mppx HMAC + Tempo on-chain for MPP).
+5. **Settle & receipt** — after your handler succeeds, finalize settlement and attach the receipt header before flushing the response.
+
+## Supported protocols
+
+| Protocol | Challenge header | Payment header | Settlement |
+|----------|-----------------|----------------|------------|
+| [x402](https://x402.org) | `PAYMENT-REQUIRED` | `PAYMENT-SIGNATURE` | Deferred — after handler succeeds |
+| [MPP](https://paymentauth.org) | `WWW-Authenticate: Payment …` | `Authorization: Payment …` | Pre-settled on Tempo chain |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/sdk/quickstart">
+    Install → first testnet payment in under 10 minutes.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/sdk/configuration">
+    Full reference for every config option.
+  </Card>
+</CardGroup>
+
+<DiscordHelpCard />
