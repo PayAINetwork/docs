@@ -9,8 +9,10 @@ Make x402 payments with an httpx client in 2 minutes.
 ### Step 1: Install dependencies
 
 ```bash
-pip install x402 httpx eth-account python-dotenv
+pip install 'x402[evm,svm]' httpx eth-account python-dotenv
 ```
+
+<Note>The `[evm,svm]` extras pull in the EVM and SVM payment mechanisms used below. Without them, the `x402.mechanisms.evm` / `x402.mechanisms.svm` imports fail. Install only the extra you need (e.g. `'x402[svm]'`) if you're paying on a single network. The quotes keep shells like zsh from expanding the brackets.</Note>
 
 ### Step 2: Set your environment variables
 
