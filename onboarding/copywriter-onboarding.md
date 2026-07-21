@@ -460,7 +460,6 @@ Our content is organized into four main pillars:
 - SKALE
 - Avalanche
 - Sei
-- IoTeX
 
 ### Ecosystem Projects
 
