@@ -1,0 +1,184 @@
+---
+title: "Counterparty screening for x402 clients"
+description: "Screen x402 sellers before paying: spend caps, asset and network allowlists, payTo checks, and origin verification. Wire screening into @x402/fetch with PaymentPolicy, or into a manual TypeScript flow."
+---
+
+# How to Screen a Seller Before Your x402 Client Pays
+
+The x402 client wrappers are deliberately eager: wrap `fetch` with `wrapFetchWithPayment`, call a paid endpoint, and the client pays whatever the `402 Payment Required` response asks for. That is exactly right for development and for endpoints you already trust — and it is worth pausing on for autonomous agents, because **by default the payment decision is made entirely by the seller's 402 response**.
+
+This guide shows how to add a screening step between "received a 402" and "signed a payment" — without giving up the wrapper ergonomics. Everything here uses the standard x402 SDK v2 surface; no extra dependencies.
+
+---
+
+## Why screen at all?
+
+A 402 response is an unauthenticated claim: *"pay this amount, in this asset, on this network, to this address."* Nothing in the protocol guarantees that:
+
+- the **amount** is what you expected when you decided to call the endpoint (sellers can reprice between your catalog read and your call);
+- the **asset** is the token you think it is (an unknown mint address with 6 decimals looks a lot like USDC in logs);
+- the **payTo** belongs to the service you meant to buy from (a compromised or look-alike origin pays an attacker, not the seller);
+- the **resource** being quoted is the URL you actually requested.
+
+A human clicking a paywall sanity-checks these implicitly. An agent in a loop does not — unless you wire the check in. The failure mode isn't hypothetical: an agent with a funded wallet and an unscreened payment path will drain itself against any endpoint that answers 402.
+
+---
+
+## The core concept: policies filter, then the selector chooses
+
+The v2 client already has the right seam. Before the client picks a payment option, it runs your **policies** over the `accepts[]` array from the 402:
+
+```ts
+/**
+ * A policy function that filters or transforms payment requirements.
+ * Policies are applied in order before the selector chooses the final option.
+ */
+export type PaymentPolicy = (
+  x402Version: number,
+  paymentRequirements: PaymentRequirements[],
+) => PaymentRequirements[];
+```
+
+A policy receives every option the seller offered and returns the ones you are willing to pay. Return a filtered array to constrain the choice; return an **empty array** to refuse — no payment is created, nothing is signed, and the original 402 surfaces to your code as the refusal path.
+
+Because policies run inside the client, the same screening applies whether you use `wrapFetchWithPayment`, the axios wrapper, or the HTTP client directly.
+
+---
+
+## Screening checks that need no external service
+
+These four checks cover the common failure modes and run entirely on data already in the 402:
+
+### 1. Spend cap
+
+Never let a single 402 exceed your per-call budget:
+
+```ts
+import type { PaymentPolicy } from "@x402/core/client";
+
+const MAX_MICRO = 50_000n; // 0.05 USDC (6 decimals)
+
+const spendCap: PaymentPolicy = (_v, reqs) =>
+  reqs.filter((r) => {
+    try {
+      return BigInt(r.amount) <= MAX_MICRO;
+    } catch {
+      return false; // unparseable amount → not payable
+    }
+  });
+```
+
+### 2. Asset and network allowlist
+
+Only pay in tokens and on networks you chose in advance:
+
+```ts
+const ALLOWED = new Set([
+  // network → asset pairs you accept
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp|EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC on Solana mainnet
+  "eip155:8453|0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+]);
+
+const assetAllowlist: PaymentPolicy = (_v, reqs) =>
+  reqs.filter((r) => ALLOWED.has(`${r.network}|${r.asset}`));
+```
+
+### 3. Seller (payTo) screening
+
+The simplest version is a denylist of addresses you've had problems with, or an allowlist for high-value flows:
+
+```ts
+const BLOCKED_SELLERS = new Set<string>([
+  // addresses you refuse to pay
+]);
+
+const sellerScreen: PaymentPolicy = (_v, reqs) =>
+  reqs.filter((r) => !BLOCKED_SELLERS.has(r.payTo));
+```
+
+For anything beyond a static list — seller payment history, marketplace reputation scores, your own settlement records — do the lookup **before** the paid call (the data you need is `payTo`, which you can read from a free unpaid probe of the endpoint), cache the verdict, and let this policy consult the cache. Keeping policies synchronous and fast means the paying path stays simple.
+
+### 4. Origin consistency
+
+Check that the resource being quoted is the URL you called. A 402 quoting a different resource than the one you requested is a red flag:
+
+```ts
+const originMatches = (expectedUrl: string): PaymentPolicy => {
+  const expectedOrigin = new URL(expectedUrl).origin;
+  return (_v, reqs) =>
+    reqs.filter((r) => {
+      try {
+        return new URL(r.resource ?? expectedUrl).origin === expectedOrigin;
+      } catch {
+        return false;
+      }
+    });
+};
+```
+
+---
+
+## Wiring it into the fetch wrapper
+
+Policies go in the client config; the wrapper stays exactly as in the [Fetch quickstart](/x402/clients/typescript/fetch):
+
+```ts
+import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
+
+const fetchWithPay = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [
+    /* your ExactEvmScheme / ExactSvmScheme registrations, as in the quickstart */
+  ],
+  policies: [spendCap, assetAllowlist, sellerScreen],
+});
+
+const response = await fetchWithPay("https://api.example.com/paid-endpoint");
+
+if (response.status === 402) {
+  // Every offered option was filtered out by policy: this is your refusal
+  // path. Nothing was signed and nothing was spent.
+}
+```
+
+Policies run in order, so put the cheapest checks first. If all options survive, the selector (default: first available) picks one and payment proceeds as usual.
+
+---
+
+## Wiring it into a manual flow
+
+If you follow the [manual client flow](/x402/clients/typescript/manual-flow), screening is just code between step 2 (decode `PAYMENT-REQUIRED`) and step 3 (choose an option):
+
+```ts
+const paymentRequired = JSON.parse(
+  Buffer.from(response.headers.get("PAYMENT-REQUIRED")!, "base64").toString("utf-8"),
+);
+
+const candidates = paymentRequired.accepts
+  .filter((r) => BigInt(r.amount) <= MAX_MICRO)
+  .filter((r) => ALLOWED.has(`${r.network}|${r.asset}`))
+  .filter((r) => !BLOCKED_SELLERS.has(r.payTo));
+
+if (candidates.length === 0) {
+  throw new Error(`refusing to pay: ${paymentRequired.resource?.url ?? "unknown resource"}`);
+}
+// continue with candidates[0] as in the manual-flow guide
+```
+
+The same pattern applies to the Python `httpx`/`requests` manual flows: decode the header, filter the `accepts` list against your caps and lists, and only build a payment for a survivor.
+
+---
+
+## A free probe before the paid call
+
+One property of x402 worth exploiting: **the 402 itself is free.** You can send an unauthenticated request with no payment header, read the seller's current price, asset, and `payTo`, run every check above — and only then decide to pay. For agents making repeated calls to the same endpoint, probe once, cache the screened requirements, and re-verify when the quoted values change. A price or `payTo` that changed between probes is exactly the moment a human would stop and look.
+
+---
+
+## Practical defaults
+
+If you adopt nothing else from this guide:
+
+1. **Set a spend cap policy.** One line of config protects the whole wallet.
+2. **Pin your asset list.** Agents should never pay in a token they didn't plan to hold.
+3. **Log every refusal** with the resource URL and the offered `payTo` — refusals are the data you'll want when deciding whether a seller belongs on a list.
+4. **Fund the paying key like a spending account, not a treasury.** Screening bounds each payment; a small wallet bounds the blast radius of everything you didn't foresee.
