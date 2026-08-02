@@ -1,0 +1,143 @@
+---
+title: "Bazaar Discovery"
+description: "How resources get listed, refreshed, and found in the PayAI Bazaar"
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+The Bazaar is the PayAI facilitator's public catalog of x402 resources. AI agents and clients browse it via [`/discovery/resources`](#get-discoveryresources) to find paid APIs and MCP tools they can use.
+
+Listing is automatic: there is no registration form, account, or manual submission. The facilitator indexes your resource from the payments it processes — if they carry your discovery declaration.
+
+## How listing works
+
+Three parties cooperate to get a resource listed:
+
+1. **Your server declares.** Your 402 response includes a bazaar discovery declaration describing the endpoint (method, input/output shape, service metadata).
+2. **The buyer's client echoes.** The client copies your declaration from the 402 response into the payment payload it sends to the facilitator. This is required client behavior in x402 v2 — the client must include at least the extension info it received.
+3. **The facilitator catalogs.** On `/verify` and `/settle`, the facilitator extracts the declaration from the payment payload and upserts your catalog entry asynchronously.
+
+<Note>
+Step 2 is where most "my resource never appears" reports come from. If the buyer's client drops the `extensions` object when building its payment payload, the facilitator never sees your declaration — no matter how many payments settle successfully. Use the [`EXTENSION-RESPONSES` header](#reading-extension-responses) to tell the cases apart.
+</Note>
+
+Since 2026-07-29, cataloging runs on `/verify` as well as `/settle`. Verification moves no funds, so you can list or refresh a resource without a settled payment.
+
+## Declaring your resource
+
+**x402 v2** servers declare via the `bazaar` extension on the 402 response. The `@x402/extensions` package builds a valid declaration for you (`declareDiscoveryExtension`), including the JSON schema the facilitator validates against. The declaration lives in the 402 body's top-level `extensions` object:
+
+```json
+{
+  "x402Version": 2,
+  "resource": {
+    "url": "https://api.example.com/convert",
+    "description": "Convert PDFs to markdown",
+    "mimeType": "application/json",
+    "serviceName": "Example Converter",
+    "tags": ["pdf", "markdown"],
+    "iconUrl": "https://api.example.com/icon.png"
+  },
+  "accepts": [ ... ],
+  "extensions": {
+    "bazaar": {
+      "info": {
+        "input": { "type": "http", "method": "POST", "bodyType": "json", "body": { ... } },
+        "output": { "type": "json", "example": { ... } }
+      },
+      "schema": { ... }
+    }
+  }
+}
+```
+
+The optional `serviceName`, `tags`, and `iconUrl` fields on the `resource` object are service-level metadata the Bazaar uses to present your listing; they are persisted along with `description` and `mimeType`.
+
+**x402 v1** servers declare through `outputSchema.input` on the payment requirements themselves (with `type` and `method` required). Because v1 discovery info rides inside the payment requirements — which your server controls end to end — v1 listing does not depend on the buyer's client echoing anything.
+
+**MCP servers** declare per tool. The catalog key is `(resource, toolName)`, so a server exposing several tools at one URL gets one entry per tool.
+
+## Reading EXTENSION-RESPONSES
+
+Every `/verify` and `/settle` response from the facilitator reports what happened to your declaration via the `EXTENSION-RESPONSES` header — a base64-encoded JSON object keyed by extension:
+
+```
+EXTENSION-RESPONSES: eyJiYXphYXIiOnsic3RhdHVzIjoicHJvY2Vzc2luZyJ9fQ==
+                     → {"bazaar":{"status":"processing"}}
+```
+
+| What you get | Meaning |
+| --- | --- |
+| `{"bazaar":{"status":"processing"}}` | Declaration accepted and queued for cataloging. Your entry appears or refreshes within seconds. |
+| `{"bazaar":{"status":"rejected","rejectedReason":"..."}}` | Declaration received but failed validation. The reason says why (truncated to 256 characters). Payment is unaffected. |
+| No header at all | The payment payload carried no bazaar extension — the buyer's client dropped your declaration. |
+
+A rejected or missing declaration never affects the payment itself: verification and settlement succeed or fail on their own terms.
+
+## What gets catalogued
+
+Each entry in `/discovery/resources` carries:
+
+| Field | Description |
+| --- | --- |
+| `resource` | The endpoint URL |
+| `toolName` | MCP tool name; `null` for HTTP resources |
+| `type` | `http` or `mcp` |
+| `x402Version` | Protocol version of the indexing payment |
+| `accepts` | Payment requirements from the indexing payment |
+| `description`, `mimeType`, `serviceName`, `tags`, `iconUrl` | Service metadata from your declaration (`null` when not declared) |
+| `method` | HTTP method (`null` for MCP) |
+| `inputSchema`, `outputSchema` | Input/output shapes from your declaration |
+| `lastUpdated` | ISO timestamp of the last refresh |
+
+## Refresh semantics
+
+- Entries are **upserted on every payment that carries the extension** — `accepts`, schemas, metadata, and `lastUpdated` all refresh.
+- Refresh is **forward-only**. Correcting your declaration does not rewrite the catalog until the next extension-carrying payment arrives.
+- There is **no TTL and no eviction**: an entry persists at its last-written state indefinitely.
+- There is **no re-index endpoint**. To force a refresh, make one verify-shaped payment against your own endpoint through a client that echoes extensions — `/verify` catalogs and moves no funds. Confirm with the `processing` header status.
+
+## Endpoints
+
+### GET /discovery/resources
+
+| Parameter | Type | Required | Description | Default |
+| --- | --- | --- | --- | --- |
+| `limit` | `number` | Optional | Results per page (1–1000) | 100 |
+| `offset` | `number` | Optional | Results to skip | 0 |
+
+Returns `{ items, pagination: { limit, offset, total }, x402Version }`, newest first. Responses are cached for about a minute. The legacy `/list` path redirects here permanently.
+
+### GET /discovery/stats
+
+Aggregate catalog and settlement statistics. Note the three catalog counts:
+
+```json
+"merchants": {
+  "hosts": 1505,          // distinct services — the "how many merchants" number
+  "resources": 25086,     // distinct paid endpoint URLs
+  "catalogEntries": 25086, // rows: one per (resource, toolName)
+  "total": 25086          // deprecated alias of catalogEntries
+}
+```
+
+An MCP server with N tools contributes N `catalogEntries` but one `resource` and at most one new `host`.
+
+## Opting out and delisting
+
+- **v1**: declare `discoverable: false` inside `outputSchema.input` and the facilitator will not index the resource.
+- **v2**: simplest is to omit the `bazaar` extension from your 402 — with nothing to echo, nothing is indexed.
+- **Delisting an existing entry is a known gap.** Removing or omitting your declaration stops refreshes but does not evict what is already catalogued, and the x402 specification currently defines no delisting semantics at all. Until that is standardized upstream, removal is a manual request — reach out on Discord or open an issue with proof of resource ownership.
+
+## Troubleshooting
+
+| Symptom | Likely cause | What to do |
+| --- | --- | --- |
+| Payments settle but the resource never appears | Buyer's client is not echoing `extensions` into the payment payload | Check a payment response: no `EXTENSION-RESPONSES` header confirms it. Pay once through an echoing client (any `@x402/*` 2.x, `x402-solana` ≥ 2.0.5) |
+| Entry exists but is stale after you changed your declaration | No extension-carrying payment since the change | Trigger a refresh via `/verify` with an echoing client; look for `processing` |
+| Header says `rejected` | Declaration failed schema validation | Fix the declaration per `rejectedReason`; validate locally with `@x402/extensions` |
+| Entry shows `metadata: {}` and `null` service fields | Entry predates metadata persistence (2026-08-01) or declaration omits the fields | Any extension-carrying payment after declaring `serviceName`/`tags`/`iconUrl` populates them |
+
+## Need help?
+
+<DiscordHelpCard />
