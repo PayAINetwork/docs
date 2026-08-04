@@ -72,7 +72,20 @@ for p in sorted(ROOT.rglob("*.mdx")):
             continue
         broken[rel].append(raw)
 
-print(f"scanned {total} internal links across {len(list(ROOT.rglob('*.mdx')))} mdx files")
+# ---- llms.txt: served verbatim to agents, so its URLs must resolve too ------
+llms = ROOT / "llms.txt"
+if llms.exists():
+    for m in re.finditer(r'https://docs\.payai\.network(/[^)\s]*)', llms.read_text()):
+        raw = m.group(1)
+        total += 1
+        target = raw.split("#")[0].rstrip("/")
+        if not target:
+            continue
+        probe = target[:-3] if target.endswith(".md") else target
+        if probe not in valid:
+            broken["llms.txt"].append(raw)
+
+print(f"scanned {total} internal links across {len(list(ROOT.rglob('*.mdx')))} mdx files + llms.txt")
 print(f"valid routes known: {len(pages)} pages, {len(assets)} assets, {len(redirects)} redirects\n")
 
 if not broken:
