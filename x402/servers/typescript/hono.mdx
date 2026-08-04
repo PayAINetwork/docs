@@ -6,41 +6,50 @@ Start accepting x402 payments in your Hono server in 2 minutes.
 
 <Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/typescript/servers/hono).</Note>
 
-### Step 1: Create a new server from the starter template
+### Step 1: Create a project and install dependencies
 
 Use your favorite package manager:
 
-##### npm (npx)
+##### npm
 ```bash
-npx @payai/x402-hono-starter@latest my-server
+mkdir my-server && cd my-server
+npm init -y && npm pkg set type=module
+npm install hono @hono/node-server dotenv @payai/facilitator @x402/core @x402/evm @x402/extensions @x402/hono @x402/svm
+npm install -D typescript tsx
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-hono-starter@latest my-server
+mkdir my-server && cd my-server
+pnpm init && pnpm pkg set type=module
+pnpm add hono @hono/node-server dotenv @payai/facilitator @x402/core @x402/evm @x402/extensions @x402/hono @x402/svm
+pnpm add -D typescript tsx
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-hono-starter@latest my-server
+mkdir my-server && cd my-server
+bun init -y
+bun add hono @hono/node-server dotenv @payai/facilitator @x402/core @x402/evm @x402/extensions @x402/hono @x402/svm
+bun add -d typescript
 ```
 
-The starter mirrors the [upstream example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/servers/hono) and bootstraps a ready-to-run Hono server.
+This is the same dependency set as the [upstream Hono example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/servers/hono).
 
 ### Step 2: Set your environment variables
 
-Open your generated project's `.env` and set:
+Create a `.env` file in the project root and set:
 
 ```env
 EVM_ADDRESS=0x...   # EVM wallet address to receive payments
 SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
-<Tip>The starter uses `@payai/facilitator` which automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
+<Tip>`@payai/facilitator` automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
 
 ### Step 3: Preview the server code
 
-This is the `index.ts` the starter generates. It loads your env, applies the x402 payment middleware, defines example routes, and logs the server URL.
+Create `index.ts`: It loads your env, applies the x402 payment middleware, defines example routes, and logs the server URL.
 
 ```ts
 import { config } from "dotenv";
@@ -113,7 +122,7 @@ console.log(`Server listening at http://localhost:4021`);
 ### Step 4: Run the server
 
 ```bash
-npm run dev
+npx tsx index.ts
 ```
 
 <Check>
@@ -129,7 +138,7 @@ You can test payments against your server locally by:
 
 ## Going to production
 
-The starter works on the **free tier** out of the box — no API keys required.
+This setup works on the **free tier** out of the box — no API keys required.
 
 When you're ready for production, create a merchant account at [merchant.payai.network](https://merchant.payai.network), get your API keys, and add them to your `.env`:
 
