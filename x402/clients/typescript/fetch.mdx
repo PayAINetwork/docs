@@ -6,28 +6,39 @@ Make x402 payments with a Fetch client in 2 minutes.
 
 <Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/fetch).</Note>
 
-### Step 1: Create a new client
+### Step 1: Create a project and install dependencies
 
-##### npm (npx)
+Use your favorite package manager:
+
+##### npm
 ```bash
-npx @payai/x402-fetch-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+npm init -y && npm pkg set type=module
+npm install dotenv viem @solana/kit @scure/base @x402/evm @x402/fetch @x402/svm
+npm install -D typescript tsx
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-fetch-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+pnpm init && pnpm pkg set type=module
+pnpm add dotenv viem @solana/kit @scure/base @x402/evm @x402/fetch @x402/svm
+pnpm add -D typescript tsx
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-fetch-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+bun init -y
+bun add dotenv viem @solana/kit @scure/base @x402/evm @x402/fetch @x402/svm
+bun add -d typescript
 ```
 
-The starter mirrors the [upstream fetch example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/fetch) and bootstraps a ready-to-run Fetch client.
+This is the same dependency set as the [upstream Fetch example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/fetch).
 
 ### Step 2: Set your environment variables
 
-Open your generated project's `.env` and set the following:
+Create a `.env` file in the project root and set the following:
 
 - `EVM_PRIVATE_KEY`: Hex EVM private key of the paying account
 - `SVM_PRIVATE_KEY`: Base58 Solana private key of the paying account
@@ -43,7 +54,7 @@ ENDPOINT_PATH=/weather
 
 ### Step 3: Preview the client code
 
-This is the `index.ts` the starter generates. It loads your env, creates an x402 client with EVM and SVM schemes, wraps `fetch` with `wrapFetchWithPayment`, calls your endpoint, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
+Create `index.ts`: It loads your env, creates an x402 client with EVM and SVM schemes, wraps `fetch` with `wrapFetchWithPayment`, calls your endpoint, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
 
 ```ts
 import { config } from "dotenv";
@@ -106,7 +117,7 @@ main().catch(error => {
 ### Step 4: Run the client
 
 ```bash
-npm run dev
+npx tsx index.ts
 ```
 
 <Check>
