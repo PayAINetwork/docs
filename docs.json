@@ -254,6 +254,10 @@
   "integrations": {
     "gtm": {
       "tagId": "GTM-N5V93RM6"
+    },
+    "posthog": {
+      "apiKey": "phc_R2aP3x5CY2NTFkjuMT3mmnxdB5WuSdwIKCj0kNWWZlv",
+      "apiHost": "https://us.i.posthog.com"
     }
   },
   "banner": {
