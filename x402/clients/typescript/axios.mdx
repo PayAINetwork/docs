@@ -6,28 +6,39 @@ Make x402 payments with an Axios client in 2 minutes.
 
 <Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/axios).</Note>
 
-### Step 1: Create a new client
+### Step 1: Create a project and install dependencies
 
-##### npm (npx)
+Use your favorite package manager:
+
+##### npm
 ```bash
-npx @payai/x402-axios-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+npm init -y && npm pkg set type=module
+npm install axios dotenv viem @solana/kit @scure/base @x402/axios @x402/evm @x402/svm
+npm install -D typescript tsx
 ```
 
 ##### pnpm
 ```bash
-pnpm dlx @payai/x402-axios-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+pnpm init && pnpm pkg set type=module
+pnpm add axios dotenv viem @solana/kit @scure/base @x402/axios @x402/evm @x402/svm
+pnpm add -D typescript tsx
 ```
 
 ##### bun
 ```bash
-bunx @payai/x402-axios-starter@latest my-first-client
+mkdir my-first-client && cd my-first-client
+bun init -y
+bun add axios dotenv viem @solana/kit @scure/base @x402/axios @x402/evm @x402/svm
+bun add -d typescript
 ```
 
-The starter mirrors the [upstream axios example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/axios) and bootstraps a ready-to-run Axios client.
+This is the same dependency set as the [upstream Axios example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/clients/axios).
 
 ### Step 2: Set your environment variables
 
-Open your generated project's `.env` and set the following:
+Create a `.env` file in the project root and set the following:
 
 - `RESOURCE_SERVER_URL`: Base URL of the server to call (e.g. http://localhost:4021)
 - `ENDPOINT_PATH`: Path to a paid endpoint (e.g. /weather)
@@ -43,7 +54,7 @@ ENDPOINT_PATH=/weather
 
 ### Step 3: Preview the client code
 
-This is the `index.ts` the starter generates. It loads your env, creates an x402 client with EVM and SVM schemes, wraps Axios with `wrapAxiosWithPayment`, calls your endpoint, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
+Create `index.ts`: It loads your env, creates an x402 client with EVM and SVM schemes, wraps Axios with `wrapAxiosWithPayment`, calls your endpoint, and logs the response body and payment settlement from the `PAYMENT-RESPONSE` header.
 
 ```ts
 import { config } from "dotenv";
@@ -107,7 +118,7 @@ main().catch(error => {
 ### Step 4: Run the client
 
 ```bash
-npm run dev
+npx tsx index.ts
 ```
 
 <Check>
