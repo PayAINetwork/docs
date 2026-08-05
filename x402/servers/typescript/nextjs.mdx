@@ -6,37 +6,28 @@ Start accepting x402 payments in your Next.js app in 2 minutes.
 
 <Note>You can find the full code for this example [here](https://github.com/x402-foundation/x402/tree/main/examples/typescript/fullstack/next).</Note>
 
-### Step 1: Create a new app
+### Step 1: Create an app and install dependencies
 
-Use your favorite package manager:
+Scaffold a Next.js app, then add the x402 packages:
 
-##### npm (npx)
 ```bash
-npx @payai/x402-next-starter@latest my-server
+npx create-next-app@latest my-app --typescript --app
+cd my-app
+npm install @payai/facilitator @x402/core @x402/evm @x402/extensions @x402/next @x402/paywall @x402/svm
 ```
 
-##### pnpm
-```bash
-pnpm dlx @payai/x402-next-starter@latest my-server
-```
-
-##### bun
-```bash
-bunx @payai/x402-next-starter@latest my-server
-```
-
-The starter mirrors the [upstream example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/fullstack/next) and boostraps a ready-to-run NextJS app.
+This is the same dependency set as the [upstream Next.js example](https://github.com/x402-foundation/x402/tree/main/examples/typescript/fullstack/next).
 
 ### Step 2: Set your environment variables
 
-Copy the example env and fill in your values (e.g. `cp .env-local .env` or `cp env.example .env.local`).
+Create a `.env.local` file in the project root and fill in your values.
 
 ```env
 EVM_ADDRESS=0x...   # EVM wallet address to receive payments
 SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
-<Tip>The starter uses `@payai/facilitator` which automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
+<Tip>`@payai/facilitator` automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
 
 ### Step 3: Explore the app structure
 
@@ -192,13 +183,13 @@ npm run dev
 
 ### Step 6: Test the server
 
-The starter includes a built-in paywall at the home page. Navigate to http://localhost:3000 to test payments directly.
+The example includes a built-in paywall at the home page. Navigate to http://localhost:3000 to test payments directly.
 
 You can also test programmatically by following the [fetch example](/x402/clients/typescript/fetch) or [axios example](/x402/clients/typescript/axios).
 
 ## Going to production
 
-The starter works on the **free tier** out of the box — no API keys required.
+This setup works on the **free tier** out of the box — no API keys required.
 
 When you're ready for production, create a merchant account at [merchant.payai.network](https://merchant.payai.network), get your API keys, and add them to your `.env`:
 
