@@ -27,6 +27,13 @@ EVM_ADDRESS=0x...   # EVM wallet address to receive payments
 SVM_ADDRESS=...    # Solana wallet address to receive payments
 ```
 
+Optionally set `APP_NAME` and `APP_LOGO` to brand the paywall shown to buyers:
+
+```env
+APP_NAME=Next x402 Demo
+APP_LOGO=/x402-icon-blue.png
+```
+
 <Tip>`@payai/facilitator` automatically connects to the PayAI facilitator — no URL configuration needed.</Tip>
 
 ### Step 3: Explore the app structure
@@ -47,6 +54,9 @@ The example uses a **proxy** for page routes and **withX402** for API routes:
 - **paymentProxy** (in `proxy.ts`) protects page routes and returns a paywall when payment is required.
 - **withX402** wraps individual API route handlers so payment is settled only after a successful response.
 
+Both routes also call `declareDiscoveryExtension`, which lists them in the
+[PayAI bazaar](/x402/facilitators/bazaar) so buyers and agents can discover them.
+
 ### Step 4: Preview the example routes
 
 #### Protected Page Route
@@ -59,31 +69,44 @@ The proxy in `proxy.ts` configures the resource server, paywall, and protected r
 // proxy.ts
 import { paymentProxy } from "@x402/next";
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
-import { registerExactEvmScheme } from "@x402/evm/exact/server";
-import { registerExactSvmScheme } from "@x402/svm/exact/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { createPaywall } from "@x402/paywall";
 import { evmPaywall } from "@x402/paywall/evm";
 import { svmPaywall } from "@x402/paywall/svm";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { facilitator } from "@payai/facilitator";
 
+export const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+export const svmAddress = process.env.SVM_ADDRESS;
+
+if (!evmAddress || !svmAddress) {
+  console.error("❌ EVM_ADDRESS and SVM_ADDRESS environment variables are required");
+  process.exit(1);
+}
+
+// Connect to the PayAI facilitator (no URL configuration needed)
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
-const server = new x402ResourceServer(facilitatorClient);
+
+// Create x402 resource server
+export const server = new x402ResourceServer(facilitatorClient);
 
 // Register schemes
-registerExactEvmScheme(server);
-registerExactSvmScheme(server);
+server.register("eip155:*", new ExactEvmScheme());
+server.register("solana:*", new ExactSvmScheme());
 
-// Build paywall using builder pattern
-const paywall = createPaywall()
+// Build paywall
+export const paywall = createPaywall()
   .withNetwork(evmPaywall)
   .withNetwork(svmPaywall)
   .withConfig({
-    appName: "Next x402 Demo",
-    appLogo: "/x402-icon-blue.png",
+    appName: process.env.APP_NAME || "Next x402 Demo",
+    appLogo: process.env.APP_LOGO || "/x402-icon-blue.png",
     testnet: true,
   })
   .build();
 
+// Build proxy
 export const proxy = paymentProxy(
   {
     "/protected": {
@@ -91,25 +114,29 @@ export const proxy = paymentProxy(
         {
           scheme: "exact",
           price: "$0.001",
-          network: "eip155:84532",
+          network: "eip155:84532", // base-sepolia
           payTo: evmAddress,
         },
         {
           scheme: "exact",
           price: "$0.001",
-          network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", // solana devnet
           payTo: svmAddress,
         },
       ],
       description: "Premium music: x402 Remix",
       mimeType: "text/html",
+      extensions: {
+        ...declareDiscoveryExtension({}),
+      },
     },
   },
   server,
   undefined, // paywallConfig (using custom paywall instead)
-  paywall,   // custom paywall provider
+  paywall, // custom paywall provider
 );
 
+// Configure which paths the proxy should run on
 export const config = {
   matcher: ["/protected/:path*"],
 };
@@ -123,17 +150,37 @@ The `/api/weather` route demonstrates the `withX402` wrapper for individual API 
 // app/api/weather/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { server, paywall, evmAddress, svmAddress } from "../../../proxy";
 
+/**
+ * Weather API endpoint handler
+ *
+ * This handler returns weather data after payment verification.
+ * Payment is only settled after a successful response (status < 400).
+ *
+ * @param _ - Incoming Next.js request
+ * @returns JSON response with weather data
+ */
 const handler = async (_: NextRequest) => {
-  return NextResponse.json({
-    report: {
-      weather: "sunny",
-      temperature: 72,
+  return NextResponse.json(
+    {
+      report: {
+        weather: "sunny",
+        temperature: 72,
+      },
     },
-  });
+    { status: 200 },
+  );
 };
 
+/**
+ * Protected weather API endpoint using withX402 wrapper
+ *
+ * This demonstrates the v2 withX402 wrapper for individual API routes.
+ * Unlike middleware, withX402 guarantees payment settlement only after
+ * the handler returns a successful response (status < 400).
+ */
 export const GET = withX402(
   handler,
   {
@@ -141,18 +188,30 @@ export const GET = withX402(
       {
         scheme: "exact",
         price: "$0.001",
-        network: "eip155:84532",
+        network: "eip155:84532", // base-sepolia
         payTo: evmAddress,
       },
       {
         scheme: "exact",
         price: "$0.001",
-        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", // solana devnet
         payTo: svmAddress,
       },
     ],
     description: "Access to weather API",
     mimeType: "application/json",
+    extensions: {
+      ...declareDiscoveryExtension({
+        output: {
+          example: {
+            report: {
+              weather: "sunny",
+              temperature: 72,
+            },
+          },
+        },
+      }),
+    },
   },
   server,
   undefined, // paywallConfig (using custom paywall from proxy.ts)
