@@ -1,0 +1,126 @@
+name: Sync upstream examples
+
+# Upstream touches these example files a handful of times a year, so this runs
+# weekly rather than continuously. A previous hourly sync on the starter repos
+# burned ~1,600 runs a month and shipped nothing; don't repeat that.
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Apply upstream changes
+        id: sync
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          python3 scripts/sync_upstream.py --write 2>&1 | tee sync.log
+          code=${PIPESTATUS[0]}
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "0" ] && ! git diff --quiet; then
+            echo "drifted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      # A patch that no longer applies means upstream moved the ground under our
+      # customization. That is a human decision, not something to auto-resolve.
+      - name: Open an issue on patch conflict
+        if: steps.sync.outputs.code == '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Upstream sync: PayAI patch no longer applies" \
+            --label docs-sync \
+            --body "The weekly upstream sync could not apply our delta.
+
+          Upstream has most likely restructured an example around the lines we patch.
+          Decide whether the PayAI delta should be reapplied differently or whether our
+          guidance should change, then regenerate the patch in \`patches/\`.
+
+          \`\`\`
+          $(cat sync.log)
+          \`\`\`"
+          exit 1
+
+      - name: Nothing drifted
+        if: steps.sync.outputs.drifted == 'false' && steps.sync.outputs.code == '0'
+        run: echo "Examples are in step with upstream. No PR needed."
+
+      - name: Examples still compile
+        if: steps.sync.outputs.drifted == 'true'
+        run: python3 scripts/check-examples.py
+
+      - name: PayAI delta survived
+        if: steps.sync.outputs.drifted == 'true'
+        run: python3 scripts/check_deltas.py
+
+      - name: Links still resolve
+        if: steps.sync.outputs.drifted == 'true'
+        run: python3 scripts/check-links.py
+
+      - name: Build PR body
+        if: steps.sync.outputs.drifted == 'true'
+        run: |
+          {
+            echo "Automated weekly sync from [x402-foundation/x402](https://github.com/x402-foundation/x402)."
+            echo
+            echo "Upstream changed one or more example files. Our PayAI delta was reapplied"
+            echo "from \`patches/\` and the result passed:"
+            echo
+            echo "- \`check-examples.py\` — every covered page still compiles"
+            echo "- \`check_deltas.py\` — facilitator, discovery and both networks intact"
+            echo "- \`check-links.py\` — no broken internal links"
+            echo
+            echo "The live-payment gate runs on this PR. That is the one proving the"
+            echo "documented code actually takes a payment, not merely that it builds."
+            echo
+            echo "<details><summary>sync log</summary>"
+            echo
+            echo '```'
+            cat sync.log
+            echo '```'
+            echo "</details>"
+          } > pr-body.md
+
+      - name: Open pull request
+        if: steps.sync.outputs.drifted == 'true'
+        id: pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: docs/sync-upstream-examples
+          commit-message: "docs: sync examples from x402-foundation/x402"
+          title: "docs: sync examples from upstream"
+          labels: docs-sync
+          body-path: pr-body.md
+          add-paths: |
+            x402/**
+            patches/**
+
+      # Auto-merge is opt-in. Set the repo variable DOCS_SYNC_AUTOMERGE to 'true'
+      # once you have watched a few cycles and trust what this produces. Merge
+      # still waits on every required check, including the live payment.
+      - name: Arm auto-merge
+        if: steps.pr.outputs.pull-request-number && vars.DOCS_SYNC_AUTOMERGE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge ${{ steps.pr.outputs.pull-request-number }} --squash --auto
