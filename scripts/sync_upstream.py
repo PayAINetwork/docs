@@ -33,10 +33,21 @@ PAGES = {
                 "examples/typescript/clients/fetch/index.ts", "ts", 0),
     "axios":   ("x402/clients/typescript/axios.mdx",
                 "examples/typescript/clients/axios/index.ts", "ts", 0),
-    # Expansion path — each is data, not code:
-    #   nextjs  (multi-file: proxy.ts + app/api/weather/route.ts)
-    #   fastapi, flask, httpx, requests   (python)
-    #   gin, go-http                       (go)
+    "fastapi":  ("x402/servers/python/fastapi.mdx",
+                 "examples/python/servers/fastapi/main.py", "python", 0),
+    "flask":    ("x402/servers/python/flask.mdx",
+                 "examples/python/servers/flask/main.py", "python", 0),
+    "httpx":    ("x402/clients/python/httpx.mdx",
+                 "examples/python/clients/httpx/main.py", "python", 0),
+    "requests": ("x402/clients/python/requests.mdx",
+                 "examples/python/clients/requests/main.py", "python", 0),
+    "gin":      ("x402/servers/go/gin.mdx",
+                 "examples/go/servers/gin/main.go", "go", 0),
+    # Deliberately NOT synced:
+    #   go-http  upstream splits this across main.go, builder_pattern.go and
+    #            utils.go while our page condenses it into one block. The diff
+    #            is 151% of the page, so it is an adaptation, not a mirror.
+    #   nextjs   two code blocks from two upstream files; the sync assumes one.
 }
 
 
@@ -66,9 +77,12 @@ def page_block(page, lang, index):
     return blocks[index], text, blocks
 
 
-def expected_code(key, up_text, work):
+EXT = {"ts": "ts", "typescript": "ts", "python": "py", "go": "go"}
+
+
+def expected_code(key, up_text, work, lang="ts"):
     """upstream + our patch = what the page should show."""
-    f = work / f"{key}.ts"
+    f = work / f"{key}.{EXT[lang]}"
     f.write_text(up_text)
     patch = ROOT / "patches" / f"{key}.patch"
     if not patch.exists() or not patch.read_text().strip():
@@ -88,7 +102,7 @@ def sync(keys, write):
             page, up_path, lang, idx = PAGES[key]
             up_text = upstream_file(up_path)
             sha = upstream_sha(up_path)
-            expected, err = expected_code(key, up_text, work)
+            expected, err = expected_code(key, up_text, work, lang)
 
             if expected is None:
                 conflicts.append(key)
@@ -149,11 +163,12 @@ def main():
         try:
             for key in keys:
                 page, up_path, lang, idx = PAGES[key]
+                ext = EXT[lang]
                 up = work / f"{key}.up"; up.write_text(upstream_file(up_path))
                 ours = work / f"{key}.ours"
                 ours.write_text(page_block(page, lang, idx)[0])
                 r = subprocess.run(
-                    ["diff", "-u", "--label", f"a/{key}.ts", "--label", f"b/{key}.ts",
+                    ["diff", "-u", "--label", f"a/{key}.{ext}", "--label", f"b/{key}.{ext}",
                      str(up), str(ours)], capture_output=True, text=True)
                 out = ROOT / "patches" / f"{key}.patch"
                 out.write_text(r.stdout)

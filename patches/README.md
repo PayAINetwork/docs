@@ -17,6 +17,32 @@ buyer talks to no facilitator.
 | `hono.patch` | `x402/servers/typescript/hono.mdx` | facilitator swap + bazaar discovery |
 | `fetch.patch` | `x402/clients/typescript/fetch.mdx` | *(empty — pure mirror)* |
 | `axios.patch` | `x402/clients/typescript/axios.mdx` | *(empty — pure mirror)* |
+| `fastapi.patch` | `x402/servers/python/fastapi.mdx` | small prose/wiring edits |
+| `flask.patch` | `x402/servers/python/flask.mdx` | *(empty — pure mirror)* |
+| `httpx.patch` | `x402/clients/python/httpx.mdx` | condensed from upstream |
+| `requests.patch` | `x402/clients/python/requests.mdx` | condensed from upstream |
+| `gin.patch` | `x402/servers/go/gin.mdx` | condensed from upstream |
+
+**Python and Go carry the delta differently.** There is no `@payai/*` package to
+import, so the PayAI-ness lives in the page's `.env` block as
+`FACILITATOR_URL=https://facilitator.payai.network` rather than in the code. That
+is why `flask.patch` is empty despite the page being PayAI-specific — and why
+`check_deltas.py` scopes those rules to the whole page instead of the code block.
+
+It also means the failure mode is quiet: the upstream `fastapi` and `flask` code
+falls back to `https://x402.org/facilitator` when `FACILITATOR_URL` is unset, so
+losing that env line points readers at someone else's facilitator without
+anything breaking.
+
+## Deliberately not synced
+
+| page | why |
+|---|---|
+| `x402/clients/go/http.mdx` | upstream splits this across `main.go`, `builder_pattern.go` and `utils.go`; our page condenses it into one block. The diff is **151%** of the page, so it is an adaptation, not a mirror. |
+| `x402/servers/typescript/nextjs.mdx` | two code blocks from two upstream files; the sync assumes one block per page. |
+
+Both are still covered by `check-examples.py`, so they cannot silently stop
+compiling — they just are not auto-updated.
 
 ## If you hand-edit an example
 
