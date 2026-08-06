@@ -46,17 +46,19 @@ MANIFEST = {
                     extra_deps=["next", "react", "react-dom"],
                     extra_dev_deps=["@types/react"]),
     # ---- Python -----------------------------------------------------------
+    # block 1 is the PayAI auth provider from the production section; block 2 is
+    # a usage fragment, not a standalone file, so it is not compiled.
     "fastapi":  dict(page="x402/servers/python/fastapi.mdx", lang="python",
-                     files={0: "main.py"}),
+                     files={0: "main.py", 1: "payai_auth.py"}),
     "flask":    dict(page="x402/servers/python/flask.mdx", lang="python",
-                     files={0: "main.py"}),
+                     files={0: "main.py", 1: "payai_auth.py"}),
     "httpx":    dict(page="x402/clients/python/httpx.mdx", lang="python",
                      files={0: "main.py"}),
     "requests": dict(page="x402/clients/python/requests.mdx", lang="python",
                      files={0: "main.py"}),
     # ---- Go ---------------------------------------------------------------
     "gin":     dict(page="x402/servers/go/gin.mdx", lang="go",
-                    files={0: "main.go"}),
+                    files={0: "main.go", 1: "payaiauth/provider.go"}),
     "go-http": dict(page="x402/clients/go/http.mdx", lang="go",
                     files={0: "main.go"}),
 }
@@ -164,20 +166,20 @@ def check_python(cfg, text, d):
         if (r := run(cmd, d)).returncode:
             return False, f"page's own install failed: `{line}`\n{r.stderr[-400:]}"
 
-    src_path = d / list(cfg["files"].values())[0]
-    src = src_path.read_text()
-    try:
-        tree = ast.parse(src)
-    except SyntaxError as e:
-        return False, f"source does not parse: line {e.lineno}: {e.msg}"
-
     imported = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported |= {a.name.split(".")[0] for a in node.names}
-        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            imported.add(node.module.split(".")[0])
-    third_party = sorted(imported - PY_STDLIB_OK)
+    local = {pathlib.Path(f).stem for f in cfg["files"].values()}
+    for rel in cfg["files"].values():
+        src = (d / rel).read_text()
+        try:
+            tree = ast.parse(src)
+        except SyntaxError as e:
+            return False, f"{rel} does not parse: line {e.lineno}: {e.msg}"
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported |= {a.name.split(".")[0] for a in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".")[0])
+    third_party = sorted(imported - PY_STDLIB_OK - local)
 
     probe = ("import importlib.util,sys;"
              "missing=[m for m in sys.argv[1:] if importlib.util.find_spec(m) is None];"
@@ -190,7 +192,7 @@ def check_python(cfg, text, d):
     show = run(f"{py} -m pip show x402", d).stdout
     v = next((l.split(": ", 1)[1].strip() for l in show.splitlines()
               if l.startswith("Version:")), None)
-    return True, (f"parses; all {len(third_party)} third-party imports resolve"
+    return True, (f"{len(cfg['files'])} file(s) parse; all {len(third_party)} third-party imports resolve"
                   + (f" against x402=={v}" if v else "") + f" [py{ver}]")
 
 
