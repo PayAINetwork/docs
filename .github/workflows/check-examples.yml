@@ -10,10 +10,11 @@ on:
   push:
     branches: [main]
   schedule:
-    # Weekly. The examples pin nothing, so they resolve whatever @x402/* is
-    # current — this catches an upstream release breaking them even when no
-    # docs change was made.
-    - cron: "0 6 * * 1"
+    # Tuesday morning UTC. Upstream publishes @x402/* mostly on Fridays (49%)
+    # with Monday second (25%); a Tuesday run covers both clusters in one pass.
+    # The examples pin nothing — they resolve whatever @x402/* is current — so
+    # this catches a release breaking them even when no docs change was made.
+    - cron: "0 6 * * 2"
   workflow_dispatch:
 
 jobs:

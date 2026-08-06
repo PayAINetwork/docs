@@ -60,6 +60,53 @@ def prepare(page, d, extra_env):
     return d
 
 
+FACILITATOR_SUPPORTED = "https://facilitator.payai.network/supported"
+
+
+def diagnose_failure(client_output):
+    """Say which repo to go and look in.
+
+    A failed payment has two very different causes, and the client output alone
+    does not distinguish them:
+
+      * our documented example is wrong, or
+      * upstream shipped a protocol change and the PayAI facilitator has not
+        absorbed it yet.
+
+    The second is real: the facilitator runs PayAI's own @payai/x402-* line,
+    which is versioned and released separately from upstream's @x402/*. So ask
+    the facilitator what it currently supports and compare against what the
+    documented example just offered.
+    """
+    offered = sorted(set(re.findall(r"network: '([^']+)'", client_output)))
+    try:
+        with urllib.request.urlopen(FACILITATOR_SUPPORTED, timeout=20) as r:
+            kinds = json.load(r).get("kinds", [])
+        supported = {(k.get("scheme"), k.get("network")) for k in kinds}
+    except Exception as e:
+        return f"    (could not reach {FACILITATOR_SUPPORTED} to diagnose: {e})"
+
+    if not offered:
+        return "    Could not read the offered networks from the client output."
+
+    unsupported = [n for n in offered if not any(net == n for _, net in supported)]
+    lines = [f"    example offered: {', '.join(offered)}"]
+    if unsupported:
+        lines += [
+            f"    NOT supported by the facilitator right now: {', '.join(unsupported)}",
+            "",
+            "    This points at the facilitator, not the docs. Upstream has most likely",
+            "    shipped a protocol or network change that @payai/x402-* has not picked up.",
+            "    Check payai-x402-facilitator before editing these pages.",
+        ]
+    else:
+        lines += [
+            "    All offered networks ARE supported by the facilitator, so the lag theory",
+            "    does not explain this. Treat it as a problem with the documented example.",
+        ]
+    return "\n".join(lines)
+
+
 def main():
     require = "--require" in sys.argv
     missing = [k for k in NEEDED if not os.environ.get(k)]
@@ -119,14 +166,14 @@ def main():
         # appears even on a 402.
         if r.returncode != 0:
             raise RuntimeError("client exited non-zero")
-        if "payment_required" in out:
-            raise RuntimeError("server still demanded payment — nothing settled")
         if "insufficient_balance" in out:
             raise RuntimeError("payer wallet is not funded — top up the CI testnet wallets")
-        if "status: 402" in out:
-            raise RuntimeError("client received a 402 — payment did not complete")
+        if "payment_required" in out or "status: 402" in out:
+            raise RuntimeError("server still demanded payment — nothing settled\n"
+                               + diagnose_failure(out))
         if "status: 200" not in out:
-            raise RuntimeError("client never saw a 200 — the paid resource was not served")
+            raise RuntimeError("client never saw a 200 — the paid resource was not served\n"
+                               + diagnose_failure(out))
 
         print("\n✓ live payment settled: the documented client paid the documented server "
               "through the PayAI facilitator and received the protected resource.")
