@@ -85,7 +85,7 @@ Include the JWT as a Bearer token on all facilitator requests:
 Authorization: Bearer <jwt>
 ```
 
-This header is required on all authenticated facilitator endpoints: `POST /verify`, `POST /settle`, and `GET /supported`.
+Send this header on `POST /verify` and `POST /settle`. `GET /supported` is currently readable without a token — it returns the same catalogue either way — so authenticating it is harmless but not required.
 
 ---
 
@@ -490,13 +490,13 @@ The following examples implement the full authentication flow with **no PayAI-sp
 
 ## Facilitator endpoints
 
-All endpoints are at `https://facilitator.payai.network` and require the `Authorization: Bearer <jwt>` header when authenticated.
+All endpoints are at `https://facilitator.payai.network`. Note that `/verify` validates the request body before the token, so a malformed request returns `400` rather than `401` even when the token is missing or bad.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/verify` | POST | Verify a payment payload against payment requirements |
-| `/settle` | POST | Settle a verified payment on-chain |
-| `/supported` | GET | List supported networks, tokens, and schemes |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/verify` | POST | required beyond the free tier | Verify a payment payload against payment requirements |
+| `/settle` | POST | required beyond the free tier | Settle a verified payment on-chain |
+| `/supported` | GET | not required | List supported networks, tokens, and schemes |
 
 ### Request body (`/verify` and `/settle`)
 

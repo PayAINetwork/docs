@@ -159,6 +159,103 @@ You can test payments against your server locally by following the [httpx exampl
 
 Just set your environment variables to match your local server, install the dependencies, and run the examples.
 
+## Going to production
+
+This setup works on the **free tier** out of the box — no API keys required.
+
+Beyond the free tier the facilitator authenticates merchants with short-lived
+Ed25519 JWTs. Create a merchant account at
+[merchant.payai.network](https://merchant.payai.network), then add your keys to
+your `.env`:
+
+```env
+PAYAI_API_KEY_ID=your-key-id
+PAYAI_API_KEY_SECRET=payai_sk_your-api-key-secret
+```
+
+There is no PayAI package for Python — the x402 SDK takes an `auth_provider`, so
+signing the token is all you need. Install `cryptography` and drop this file
+beside your `main.py`:
+
+```bash
+pip install cryptography
+```
+
+```python
+import base64, json, time, uuid
+from cryptography.hazmat.primitives.serialization import load_der_private_key
+from x402.http.facilitator_client_base import AuthHeaders
+
+
+class PayAIAuthProvider:
+    """Signs short-lived EdDSA JWTs for the PayAI facilitator.
+
+    Implements the x402 AuthProvider protocol, so the facilitator client
+    attaches the token to every request without further wiring.
+    """
+
+    def __init__(self, api_key_id: str, api_key_secret: str, ttl: int = 120):
+        self._kid = api_key_id
+        secret = api_key_secret.strip()
+        if secret.startswith("payai_sk_"):
+            secret = secret[len("payai_sk_"):]
+        self._key = load_der_private_key(base64.b64decode(secret), password=None)
+        self._ttl = ttl
+        self._token: str | None = None
+        self._renew_at = 0.0
+
+    @staticmethod
+    def _b64(raw: bytes) -> str:
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+    def _mint(self) -> str:
+        now = int(time.time())
+        header = self._b64(json.dumps(
+            {"alg": "EdDSA", "typ": "JWT", "kid": self._kid},
+            separators=(",", ":")).encode())
+        payload = self._b64(json.dumps(
+            {"sub": self._kid, "iss": "payai-merchant", "iat": now,
+             "exp": now + self._ttl, "jti": str(uuid.uuid4())},
+            separators=(",", ":")).encode())
+        message = f"{header}.{payload}"
+        self._token = f"{message}.{self._b64(self._key.sign(message.encode()))}"
+        # refresh a little early so an in-flight request never carries a token
+        # that expires mid-lifetime
+        self._renew_at = now + self._ttl - 30
+        return self._token
+
+    def _jwt(self) -> str:
+        if self._token and time.time() < self._renew_at:
+            return self._token
+        return self._mint()
+
+    def get_auth_headers(self) -> AuthHeaders:
+        h = {"Authorization": f"Bearer {self._jwt()}"}
+        return AuthHeaders(verify=h, settle=h, supported=h, bazaar=h)
+```
+
+Then pass it to the facilitator client:
+
+```python
+from payai_auth import PayAIAuthProvider
+
+facilitator = HTTPFacilitatorClient(
+    FacilitatorConfig(
+        url=FACILITATOR_URL,
+        auth_provider=PayAIAuthProvider(
+            os.environ["PAYAI_API_KEY_ID"],
+            os.environ["PAYAI_API_KEY_SECRET"],
+        ),
+    )
+)
+```
+
+The provider caches each token and re-signs 30 seconds before expiry, so a
+long-running server signs roughly once every two minutes rather than on every
+request. See [Facilitator Pricing](/x402/facilitators/pricing) for tier details
+and [Facilitator Authentication](/x402/facilitators/authentication) for the
+protocol reference.
+
 ## x402 reference
 
 For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
