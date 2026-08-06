@@ -1,0 +1,28 @@
+--- a/requests.py
++++ b/requests.py
+@@ -83,13 +83,18 @@
+         print(f"Response body: {response.text}")
+ 
+         # Extract and print payment response if present
+-        try:
+-            settle_response = http_client.get_payment_settle_response(
+-                lambda name: response.headers.get(name)
+-            )
+-            print(f"\nPayment response: {settle_response.model_dump_json(indent=2)}")
+-        except ValueError:
+-            print("\nNo payment response header found")
++        if response.ok:
++            try:
++                settle_response = http_client.get_payment_settle_response(
++                    lambda name: response.headers.get(name)
++                )
++                print(
++                    f"\nPayment response: {settle_response.model_dump_json(indent=2)}"
++                )
++            except ValueError:
++                print("\nNo payment response header found")
++        else:
++            print(f"\nRequest failed (status: {response.status_code})")
+ 
+ 
+ if __name__ == "__main__":
