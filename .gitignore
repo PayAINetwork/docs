@@ -1,1 +1,6 @@
 .DS_Store
+
+# upstream-sync scratch output
+sync.log
+pr-body.md
+.sync-result.json
