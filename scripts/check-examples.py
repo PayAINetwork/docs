@@ -176,23 +176,45 @@ def check_python(cfg, text, d):
             return False, f"{rel} does not parse: line {e.lineno}: {e.msg}"
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                imported |= {a.name.split(".")[0] for a in node.names}
+                imported |= {a.name for a in node.names}
             elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                imported.add(node.module.split(".")[0])
-    third_party = sorted(imported - PY_STDLIB_OK - local)
+                imported.add(node.module)
+    modules = sorted(m for m in imported
+                     if m.split(".")[0] not in PY_STDLIB_OK
+                     and m.split(".")[0] not in local)
 
-    probe = ("import importlib.util,sys;"
-             "missing=[m for m in sys.argv[1:] if importlib.util.find_spec(m) is None];"
-             "print(','.join(missing))")
-    r = run(f"{py} -c {json.dumps(probe)} {' '.join(third_party)}", d)
-    missing = [m for m in (r.stdout or "").strip().split(",") if m]
-    if missing:
-        return False, (f"code imports {', '.join(missing)} but the page's install "
-                       f"line does not provide it")
+    # Import each module for real rather than find_spec-ing the top-level name.
+    # find_spec("x402") succeeds even when the page forgot an optional extra, and
+    # the failure only surfaces when x402.mechanisms.evm executes its __init__ and
+    # raises "requires ethereum packages. Install with: pip install x402[evm]".
+    #
+    # The probe goes in a file, not `python -c`: passing a multi-line program
+    # through the shell delivers literal backslash-n, the probe dies on a syntax
+    # error, and empty stdout reads as "nothing failed" — a check that silently
+    # passes everything.
+    probe = d / "_probe_imports.py"
+    probe.write_text(
+        "import importlib, sys\n"
+        "bad = []\n"
+        "for m in sys.argv[1:]:\n"
+        "    try:\n"
+        "        importlib.import_module(m)\n"
+        "    except Exception as e:\n"
+        "        bad.append(f'{m}: {type(e).__name__}: {e}')\n"
+        "print('\\n'.join(bad))\n")
+    r = run(f"{py} {probe} {' '.join(modules)}", d)
+    if r.returncode != 0:
+        return False, ("import probe itself failed — treat as a checker bug, not a "
+                       f"passing page:\n{(r.stderr or r.stdout)[-400:]}")
+    failures = [l for l in (r.stdout or "").strip().splitlines() if l.strip()]
+    if failures:
+        return False, ("the page's install line does not satisfy its own imports:\n    "
+                       + "\n    ".join(failures[:6]))
+
     show = run(f"{py} -m pip show x402", d).stdout
     v = next((l.split(": ", 1)[1].strip() for l in show.splitlines()
               if l.startswith("Version:")), None)
-    return True, (f"{len(cfg['files'])} file(s) parse; all {len(third_party)} third-party imports resolve"
+    return True, (f"{len(cfg['files'])} file(s) parse; all {len(modules)} imported module(s) load"
                   + (f" against x402=={v}" if v else "") + f" [py{ver}]")
 
 
