@@ -58,6 +58,7 @@ import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { ExactSvmScheme } from "@x402/svm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { facilitator } from "@payai/facilitator";
 
 config();
@@ -93,6 +94,20 @@ app.use(
         ],
         description: "Weather data",
         mimeType: "application/json",
+        serviceName: "Weather API",
+        tags: ["weather", "api"],
+        extensions: {
+          ...declareDiscoveryExtension({
+            output: {
+              example: {
+                report: {
+                  weather: "sunny",
+                  temperature: 70,
+                },
+              },
+            },
+          }),
+        },
       },
     },
     new x402ResourceServer(facilitatorClient)
