@@ -81,7 +81,9 @@ func main() {
 		os.Exit(1)
 	}
 	client := x402.Newx402Client()
-	client.Register("eip155:*", evm.NewExactEvmScheme(evmSigner))
+	// nil = no JSON-RPC config; pass one to enable onchain reads for
+	// gas-sponsoring extensions.
+	client.Register("eip155:*", evm.NewExactEvmScheme(evmSigner, nil))
 	if svmPrivateKey != "" {
 		svmSigner, err := svmsigners.NewClientSignerFromPrivateKey(svmPrivateKey)
 		if err != nil {

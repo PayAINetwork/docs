@@ -3,8 +3,8 @@ name: Compile docs examples
 on:
   pull_request:
     paths:
-      - "x402/servers/typescript/**"
-      - "x402/clients/typescript/**"
+      - "x402/servers/**"
+      - "x402/clients/**"
       - "scripts/check-examples.py"
       - ".github/workflows/check-examples.yml"
   push:
@@ -12,22 +12,23 @@ on:
   schedule:
     # Tuesday morning UTC. Upstream publishes @x402/* mostly on Fridays (49%)
     # with Monday second (25%); a Tuesday run covers both clusters in one pass.
-    # The examples pin nothing — they resolve whatever @x402/* is current — so
-    # this catches a release breaking them even when no docs change was made.
+    # The examples pin nothing — they resolve whatever is current — so this
+    # catches a release breaking them even when no docs change was made.
     - cron: "0 6 * * 2"
   workflow_dispatch:
 
 jobs:
   compile:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        with: { node-version: 20 }
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Compile every TypeScript example
+        # x402 on PyPI requires >=3.10
+        with: { python-version: "3.12" }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - name: Compile every documented example
         run: python3 scripts/check-examples.py
