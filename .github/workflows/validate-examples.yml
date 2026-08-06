@@ -39,6 +39,7 @@ jobs:
           SVM_PRIVATE_KEY: ${{ secrets.TESTNET_SVM_PRIVATE_KEY }}
           EVM_ADDRESS: ${{ secrets.TESTNET_EVM_ADDRESS }}
           SVM_ADDRESS: ${{ secrets.TESTNET_SVM_ADDRESS }}
-        # Skips cleanly until the testnet wallets are provisioned. Add --require
-        # to make a missing wallet a hard failure once they exist.
-        run: python3 scripts/check_live_payment.py
+        # --require: the wallets are provisioned, so a missing one is now a hard
+        # failure rather than a silent skip. Without this the gate can quietly
+        # stop testing anything the moment a secret is renamed or removed.
+        run: python3 scripts/check_live_payment.py --require
