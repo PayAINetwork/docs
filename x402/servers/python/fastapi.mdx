@@ -9,8 +9,16 @@ Start accepting x402 payments in your FastAPI server in 2 minutes.
 ### Step 1: Install dependencies
 
 ```bash
-pip install x402 fastapi uvicorn python-dotenv pydantic
+pip install 'x402[evm,svm]' 'solana<0.40' fastapi uvicorn python-dotenv pydantic
 ```
+
+<Note>
+  `solana<0.40` is a temporary pin. `x402[svm]` requires `solana>=0.36.0` with no
+  upper bound, but `solana` 0.40 removed `solana.rpc.api` and `rpc.types.TxOpts`,
+  which `x402`'s SVM signer still imports — so an unpinned install resolves to a
+  version the SDK cannot use. Drop the pin once upstream constrains it.
+</Note>
+
 
 ### Step 2: Set your environment variables
 
