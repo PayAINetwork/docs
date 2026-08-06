@@ -1,0 +1,44 @@
+name: Validate examples
+
+on:
+  pull_request:
+    paths:
+      - "x402/servers/typescript/**"
+      - "x402/clients/typescript/**"
+      - "patches/**"
+      - "scripts/**"
+      - ".github/workflows/validate-examples.yml"
+  workflow_dispatch:
+
+jobs:
+  delta:
+    name: PayAI delta intact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 scripts/check_deltas.py
+
+  live-payment:
+    name: Live payment through the PayAI facilitator
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Fork PRs never see these secrets, and shouldn't.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment: docs-live-payment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Boot the documented server, pay it with the documented client
+        env:
+          EVM_PRIVATE_KEY: ${{ secrets.TESTNET_EVM_PRIVATE_KEY }}
+          SVM_PRIVATE_KEY: ${{ secrets.TESTNET_SVM_PRIVATE_KEY }}
+          EVM_ADDRESS: ${{ secrets.TESTNET_EVM_ADDRESS }}
+          SVM_ADDRESS: ${{ secrets.TESTNET_SVM_ADDRESS }}
+        # Skips cleanly until the testnet wallets are provisioned. Add --require
+        # to make a missing wallet a hard failure once they exist.
+        run: python3 scripts/check_live_payment.py
