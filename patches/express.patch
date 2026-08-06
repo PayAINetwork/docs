@@ -1,0 +1,47 @@
+--- a/express.ts
++++ b/express.ts
+@@ -4,6 +4,9 @@
+ import { ExactEvmScheme } from "@x402/evm/exact/server";
+ import { ExactSvmScheme } from "@x402/svm/exact/server";
+ import { HTTPFacilitatorClient } from "@x402/core/server";
++import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
++import { facilitator } from "@payai/facilitator";
++
+ config();
+ 
+ const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
+@@ -13,12 +16,7 @@
+   process.exit(1);
+ }
+ 
+-const facilitatorUrl = process.env.FACILITATOR_URL;
+-if (!facilitatorUrl) {
+-  console.error("❌ FACILITATOR_URL environment variable is required");
+-  process.exit(1);
+-}
+-const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
++const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+ 
+ const app = express();
+ 
+@@ -42,6 +40,20 @@
+         ],
+         description: "Weather data",
+         mimeType: "application/json",
++        serviceName: "Weather API",
++        tags: ["weather", "api"],
++        extensions: {
++          ...declareDiscoveryExtension({
++            output: {
++              example: {
++                report: {
++                  weather: "sunny",
++                  temperature: 70,
++                },
++              },
++            },
++          }),
++        },
+       },
+     },
+     new x402ResourceServer(facilitatorClient)
