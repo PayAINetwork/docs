@@ -43,3 +43,25 @@ jobs:
         # failure rather than a silent skip. Without this the gate can quietly
         # stop testing anything the moment a secret is renamed or removed.
         run: python3 scripts/check_live_payment.py --require
+
+  auth:
+    name: Authenticated settlement (PayAI JWT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment: docs-live-payment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Boot the documented FastAPI server with the PayAI auth provider
+        env:
+          PAYAI_API_KEY_ID: ${{ secrets.PAYAI_API_KEY_ID }}
+          PAYAI_API_KEY_SECRET: ${{ secrets.PAYAI_API_KEY_SECRET }}
+          EVM_PRIVATE_KEY: ${{ secrets.TESTNET_EVM_PRIVATE_KEY }}
+          SVM_PRIVATE_KEY: ${{ secrets.TESTNET_SVM_PRIVATE_KEY }}
+          EVM_ADDRESS: ${{ secrets.TESTNET_EVM_ADDRESS }}
+          SVM_ADDRESS: ${{ secrets.TESTNET_SVM_ADDRESS }}
+        run: python3 scripts/check_auth_live.py --require
