@@ -3,9 +3,12 @@ name: Sync upstream examples
 # Upstream touches these example files a handful of times a year, so this runs
 # weekly rather than continuously. A previous hourly sync on the starter repos
 # burned ~1,600 runs a month and shipped nothing; don't repeat that.
+#
+# Tuesday morning UTC, an hour after the compile check, so both the Friday and
+# Monday release clusters are covered by a single weekly pass.
 on:
   schedule:
-    - cron: "0 7 * * 1"
+    - cron: "0 7 * * 2"
   workflow_dispatch:
 
 permissions:
