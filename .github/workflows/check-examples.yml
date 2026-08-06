@@ -1,0 +1,32 @@
+name: Compile docs examples
+
+on:
+  pull_request:
+    paths:
+      - "x402/servers/typescript/**"
+      - "x402/clients/typescript/**"
+      - "scripts/check-examples.py"
+      - ".github/workflows/check-examples.yml"
+  push:
+    branches: [main]
+  schedule:
+    # Weekly. The examples pin nothing, so they resolve whatever @x402/* is
+    # current — this catches an upstream release breaking them even when no
+    # docs change was made.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile every TypeScript example
+        run: python3 scripts/check-examples.py
