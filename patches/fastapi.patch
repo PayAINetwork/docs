@@ -1,0 +1,35 @@
+--- a/fastapi.py
++++ b/fastapi.py
+@@ -5,7 +5,7 @@
+ from pydantic import BaseModel
+ 
+ from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
+-from x402.http.middleware.fastapi import PaymentMiddlewareASGI, payment_middleware  # noqa: F401
++from x402.http.middleware.fastapi import PaymentMiddlewareASGI
+ from x402.http.types import RouteConfig
+ from x402.mechanisms.evm.exact import ExactEvmServerScheme
+ from x402.mechanisms.svm.exact import ExactSvmServerScheme
+@@ -50,7 +50,6 @@
+ server.register(SVM_NETWORK, ExactSvmServerScheme())
+ 
+ routes = {
+-    # a first way to pay for the weather report, it's a string
+     "GET /weather": RouteConfig(
+         accepts=[
+             PaymentOption(
+@@ -69,7 +68,6 @@
+         mime_type="application/json",
+         description="Weather report",
+     ),
+-    # a second way to pay for the premium content, it's an AssetAmount object
+     "GET /premium/*": RouteConfig(
+         accepts=[
+             PaymentOption(
+@@ -94,7 +92,6 @@
+     ),
+ }
+ app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
+-# app.middleware("http")(payment_middleware(routes=routes, server=server))  # Alternative way to register the middleware
+ 
+ 
+ # Routes

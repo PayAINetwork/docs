@@ -1,0 +1,30 @@
+--- a/gin.go
++++ b/gin.go
+@@ -6,13 +6,13 @@
+ 	"os"
+ 	"time"
+ 
++	x402 "github.com/x402-foundation/x402/go"
++	x402http "github.com/x402-foundation/x402/go/http"
++	ginmw "github.com/x402-foundation/x402/go/http/gin"
++	evm "github.com/x402-foundation/x402/go/mechanisms/evm/exact/server"
++	svm "github.com/x402-foundation/x402/go/mechanisms/svm/exact/server"
+ 	ginfw "github.com/gin-gonic/gin"
+ 	"github.com/joho/godotenv"
+-	x402 "github.com/x402-foundation/x402/go/v2"
+-	x402http "github.com/x402-foundation/x402/go/v2/http"
+-	ginmw "github.com/x402-foundation/x402/go/v2/http/gin"
+-	evm "github.com/x402-foundation/x402/go/v2/mechanisms/evm/exact/server"
+-	svm "github.com/x402-foundation/x402/go/v2/mechanisms/svm/exact/server"
+ )
+ 
+ const (
+@@ -96,7 +96,7 @@
+ 			ginmw.SchemeConfig{Network: "eip155:84532", Server: evm.NewExactEvmScheme()},
+ 			ginmw.SchemeConfig{Network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", Server: svm.NewExactSvmScheme()},
+ 		},
+-		Timeout: 30 * time.Second,
++		Timeout:    30 * time.Second,
+ 	}))
+ 
+ 	/**
