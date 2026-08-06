@@ -6,6 +6,10 @@ on:
       - "x402/servers/**"
       - "x402/clients/**"
       - "scripts/check-examples.py"
+      # patches/ decides what a sync writes into the pages, so a change here can
+      # break an example just as surely as editing the page directly.
+      - "patches/**"
+      - "scripts/sync_upstream.py"
       - ".github/workflows/check-examples.yml"
   push:
     branches: [main]

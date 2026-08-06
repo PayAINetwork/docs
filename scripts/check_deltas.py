@@ -49,11 +49,41 @@ RULES = {
         ("can pay on EVM",   '@x402/evm'),
         ("can pay on Solana", '@x402/svm'),
     ]),
+
+    # Python and Go carry the delta differently. There is no @payai/* package to
+    # import, so the PayAI-ness lives in the page's .env block as
+    # FACILITATOR_URL. Scope "page" checks the whole file, not just code blocks.
+    # This matters: the upstream fastapi/flask code falls back to
+    # https://x402.org/facilitator when FACILITATOR_URL is unset, so if that env
+    # line ever goes missing the example silently uses someone else's facilitator.
+    "fastapi": ("x402/servers/python/fastapi.mdx", "python", [
+        ("points at the PayAI facilitator", 'FACILITATOR_URL=https://facilitator.payai.network'),
+    ], "page"),
+    "flask": ("x402/servers/python/flask.mdx", "python", [
+        ("points at the PayAI facilitator", 'FACILITATOR_URL=https://facilitator.payai.network'),
+    ], "page"),
+    "gin": ("x402/servers/go/gin.mdx", "go", [
+        ("points at the PayAI facilitator", 'FACILITATOR_URL=https://facilitator.payai.network'),
+    ], "page"),
+    "httpx": ("x402/clients/python/httpx.mdx", "python", [
+        ("can pay on EVM",    'evm'),
+        ("can pay on Solana", 'svm'),
+    ]),
+    "requests": ("x402/clients/python/requests.mdx", "python", [
+        ("can pay on EVM",    'evm'),
+        ("can pay on Solana", 'svm'),
+    ]),
+    "go-http": ("x402/clients/go/http.mdx", "go", [
+        ("can pay on EVM",    'evm'),
+        ("can pay on Solana", 'svm'),
+    ]),
 }
 
 
-def page_code(page, lang):
+def haystack(page, lang, scope):
     text = (ROOT / page).read_text()
+    if scope == "page":
+        return text
     blocks = re.findall(r"```" + lang + r"\n(.*?)```", text, re.S)
     return "\n".join(blocks)          # all blocks — nextjs splits across two
 
@@ -67,8 +97,10 @@ def main():
 
     failures = []
     for key in keys:
-        page, lang, rules = RULES[key]
-        code = page_code(page, lang)
+        entry = RULES[key]
+        page, lang, rules = entry[0], entry[1], entry[2]
+        scope = entry[3] if len(entry) > 3 else "code"
+        code = haystack(page, lang, scope)
         missing = [desc for desc, needle in rules if needle not in code]
         if missing:
             failures.append(key)
