@@ -3,8 +3,19 @@ name: Validate examples
 on:
   pull_request:
     paths:
-      - "x402/servers/typescript/**"
-      - "x402/clients/typescript/**"
+      # All languages, not just typescript. check_deltas.py covers 11 pages
+      # across ts/python/go, and the auth gate is built on the FastAPI page —
+      # but this filter still said "typescript", so a PR touching only Python
+      # or Go pages skipped every job here. #57 and #58 ran these gates only
+      # because they happened to touch scripts/ as well.
+      #
+      # That gap was worst exactly where it was least visible: the Python and
+      # Go delta is the FACILITATOR_URL line in the .env block, and upstream
+      # falls back to x402.org/facilitator when it is unset — so losing it
+      # breaks nothing loudly. check_deltas.py exists to catch that, and it
+      # was not running on those pages.
+      - "x402/servers/**"
+      - "x402/clients/**"
       - "patches/**"
       - "scripts/**"
       - ".github/workflows/validate-examples.yml"
@@ -47,6 +58,10 @@ jobs:
   auth:
     name: Authenticated settlement (PayAI JWT)
     runs-on: ubuntu-latest
+    # This blocks. It failed on #57 and #58 and I suspected the gate; the gate
+    # was right. Once it reported what it actually saw, the answer was
+    # ModuleNotFoundError: httpx on the first request to a paid route — the
+    # install lines omitted it. Both server pages were genuinely broken.
     timeout-minutes: 25
     if: github.event.pull_request.head.repo.full_name == github.repository
     environment: docs-live-payment
