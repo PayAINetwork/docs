@@ -3,8 +3,19 @@ name: Validate examples
 on:
   pull_request:
     paths:
-      - "x402/servers/typescript/**"
-      - "x402/clients/typescript/**"
+      # All languages, not just typescript. check_deltas.py covers 11 pages
+      # across ts/python/go, and the auth gate is built on the FastAPI page —
+      # but this filter still said "typescript", so a PR touching only Python
+      # or Go pages skipped every job here. #57 and #58 ran these gates only
+      # because they happened to touch scripts/ as well.
+      #
+      # That gap was worst exactly where it was least visible: the Python and
+      # Go delta is the FACILITATOR_URL line in the .env block, and upstream
+      # falls back to x402.org/facilitator when it is unset — so losing it
+      # breaks nothing loudly. check_deltas.py exists to catch that, and it
+      # was not running on those pages.
+      - "x402/servers/**"
+      - "x402/clients/**"
       - "patches/**"
       - "scripts/**"
       - ".github/workflows/validate-examples.yml"
