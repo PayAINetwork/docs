@@ -16,7 +16,9 @@ pip install 'x402[evm,svm]' 'solana<0.40' flask python-dotenv
   `solana<0.40` is a temporary pin. `x402[svm]` requires `solana>=0.36.0` with no
   upper bound, but `solana` 0.40 removed `solana.rpc.api` and `rpc.types.TxOpts`,
   which `x402`'s SVM signer still imports — so an unpinned install resolves to a
-  version the SDK cannot use. Drop the pin once upstream constrains it.
+  version the SDK cannot use. A fix is proposed upstream in
+  [x402-foundation/x402#3071](https://github.com/x402-foundation/x402/pull/3071) —
+  drop the pin once it ships in an `x402` release.
 </Note>
 
 
