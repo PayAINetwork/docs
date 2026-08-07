@@ -86,6 +86,18 @@ def wire_auth(main_src):
     return new
 
 
+def _drain(proc):
+    """Best-effort read of the server's output so a failure carries evidence."""
+    import fcntl, os as _os
+    try:
+        fd = proc.stdout.fileno()
+        fcntl.fcntl(fd, fcntl.F_SETFL,
+                    fcntl.fcntl(fd, fcntl.F_GETFL) | _os.O_NONBLOCK)
+        return proc.stdout.read() or "(no output)"
+    except Exception as e:
+        return f"(could not read server output: {e})"
+
+
 def main():
     require = "--require" in sys.argv
     missing = [k for k in NEEDED if not os.environ.get(k)]
@@ -138,20 +150,38 @@ def main():
             text=True, env=env, preexec_fn=os.setsid)
 
         url = f"http://localhost:{PORT}/weather"
+        seen = []          # what the server actually said, so a failure is diagnosable
         for _ in range(60):
             time.sleep(1)
             if proc.poll() is not None:
                 raise RuntimeError("server exited early:\n" + (proc.stdout.read() or "")[-1500:])
             try:
-                urllib.request.urlopen(url, timeout=3)
+                r = urllib.request.urlopen(url, timeout=5)
+                seen.append(f"{r.status} (unprotected?)")
             except urllib.error.HTTPError as e:
                 if e.code == 402:
                     print("   server is up and returning 402 (auth provider active)")
                     break
-            except Exception:
-                continue
+                body = ""
+                try:
+                    body = e.read().decode()[:200]
+                except Exception:
+                    pass
+                seen.append(f"{e.code} {body}".strip())
+            except Exception as e:
+                seen.append(type(e).__name__)
         else:
-            raise RuntimeError("server never returned a 402")
+            tally = {}
+            for s in seen:
+                tally[s] = tally.get(s, 0) + 1
+            summary = "; ".join(f"{n}x {s}" for s, n in
+                                sorted(tally.items(), key=lambda kv: -kv[1])[:4])
+            raise RuntimeError(
+                "server never returned a 402.\n"
+                f"    what it did return: {summary or '(nothing)'}\n"
+                "    server output:\n"
+                + "\n".join("      " + l for l in
+                             _drain(proc).splitlines()[-25:]))
 
         print("→ paying it with the documented Fetch client")
         r = sh("npx tsx index.ts", cli)
