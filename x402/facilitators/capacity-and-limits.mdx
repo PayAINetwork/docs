@@ -33,7 +33,9 @@ Treat edge rejections as retryable with backoff: the payment was never processed
 
 ## The `settlement_pending` response
 
-`POST /settle` waits for the on-chain outcome, but only up to a bounded response budget (currently 100 seconds). If the settlement is still in flight when the budget expires — for example during network congestion — the facilitator answers instead of letting the connection time out:
+`POST /settle` waits for the on-chain outcome, but only up to a bounded response budget (currently 100 seconds). If the settlement is still in flight when the budget expires — for example during network congestion — the facilitator answers instead of letting the connection time out.
+
+**This applies to every supported network** — Solana and all EVM chains alike. The response shape and the reconciliation procedure are identical everywhere; the only per-chain difference is whether the `transaction` field can be populated, covered [below](#solana-vs-evm-whether-transaction-is-populated).
 
 ```json
 {
