@@ -1,0 +1,82 @@
+---
+title: "Capacity & Limits"
+description: "Facilitator rate limits, what a limit response looks like, and how to reconcile a settlement_pending response"
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+The PayAI facilitator applies per-client rate limits at its edge, and bounds how long a `/settle` request will wait for an on-chain outcome before answering. This page documents both behaviors so you can build clients that handle them correctly.
+
+## Per-IP rate limits
+
+The facilitator's edge (nginx ingress) enforces the following limits **per client IP address**:
+
+| Limit | Value | Behavior when exceeded |
+|-------|-------|------------------------|
+| Requests per second | **50 r/s** | Requests above the sustained rate are absorbed by a burst allowance of **250** (5× the rate); beyond that, the edge rejects the request |
+| Concurrent connections | **100** | New connections beyond the limit are rejected |
+
+These are per-source-IP limits, not account-wide limits. If your infrastructure sends from multiple IPs (multiple servers, regions, or NAT gateways), each IP gets its own 50 r/s / 100-connection budget.
+
+<Note>
+  Sustained throughput well above 50 r/s from a single machine usually indicates the limit you are hitting is the edge, not the facilitator itself. Spreading traffic across source IPs, or getting in touch with us, are both reasonable next steps — the settlement lanes behind the edge have significantly more capacity than a single IP's allowance.
+</Note>
+
+### Telling an edge rejection apart from a facilitator error
+
+The two look very different on the wire:
+
+- **Edge (rate-limit) rejection** — an HTTP **503** (rate exceeded) or connection-level rejection produced by nginx. The body is nginx's own error page (HTML or plain text), **not JSON**, and contains no x402 fields. If you see a non-JSON error body, you were stopped at the edge and the facilitator never saw the request.
+- **Facilitator error** — always a JSON x402 response body. Unsuccessful settlements return HTTP 200 with `success: false` and a machine-readable `errorReason` (for example `transaction_failed`, `duplicate_settlement`, or `settlement_pending`).
+
+Treat edge rejections as retryable with backoff: the payment was never processed, so re-submitting the identical payload is safe.
+
+## The `settlement_pending` response
+
+`POST /settle` waits for the on-chain outcome, but only up to a bounded response budget (currently 100 seconds). If the settlement is still in flight when the budget expires — for example during network congestion — the facilitator answers instead of letting the connection time out.
+
+**This applies to every supported network** — Solana and all EVM chains alike. The response shape and the reconciliation procedure are identical everywhere; the only per-chain difference is whether the `transaction` field can be populated, covered [below](#solana-vs-evm-whether-transaction-is-populated).
+
+```json
+{
+  "success": false,
+  "errorReason": "settlement_pending",
+  "errorMessage": "Settlement did not complete within 100000ms and is still in flight; ...",
+  "transaction": "",
+  "network": "solana",
+  "payer": "..."
+}
+```
+
+Key properties of this response:
+
+- It arrives with **HTTP 200**, like every other unsuccessful settlement, so standard x402 clients surface it in the normal `!success` path rather than as a thrown transport error.
+- It is **not a verdict**. The settlement job keeps running after the response is sent — the payment may still land on-chain. Do not treat `settlement_pending` as a failure, and do not treat it as a success.
+
+### How to reconcile: re-submit the identical payload
+
+To learn the real outcome, **re-POST the exact same payload** (the same payment payload and payment requirements) to `/settle`:
+
+1. While the original attempt is still in flight, you receive **`409 duplicate_settlement`** — keep polling with backoff.
+2. Once the attempt resolves, the facilitator serves the **recorded outcome**: the cached success response (including the transaction hash) if the payment landed, or the recorded failure if it did not.
+
+Replaying the identical payload is always safe: settlement is idempotent, and a replay can never cause a second on-chain payment.
+
+### Solana vs EVM: whether `transaction` is populated
+
+The `transaction` field of a `settlement_pending` response differs by chain family:
+
+- **Solana** — `transaction` is **always empty**. Send and confirmation happen inside a single settlement job, so no signature is available to the API before the outcome is known. **Re-submitting the payload is the only reconciliation path on Solana** — there is no hash to look up on-chain.
+- **EVM** (Base, Polygon, Arbitrum, Avalanche, Sei) — if the transaction was already broadcast when the budget expired, `transaction` carries the broadcast hash. You can watch that hash on-chain directly, in addition to (or instead of) polling `/settle`.
+
+<Note>
+  On EVM, a populated `transaction` means the transaction was **broadcast**, not that it landed. Wait for confirmation on-chain, or poll `/settle` for the recorded outcome.
+</Note>
+
+## Client-side timeouts
+
+Some x402 client libraries default to shorter timeouts than the facilitator's response budget (for example, 30 seconds in `@x402/core`'s `HTTPFacilitatorClient`). A client-side timeout behaves like an edge timeout: you get no response body, but the settlement is still in flight. The reconciliation procedure is the same — re-submit the identical payload to retrieve the recorded outcome.
+
+## Need help?
+
+<DiscordHelpCard />
