@@ -17,7 +17,7 @@ The facilitator's edge (nginx ingress) enforces limits **per client IP address**
 | `POST /verify`, `GET /supported` | **200 r/s** | 100 |
 | `GET /discovery/*` and everything else | **25 r/s** | 50 |
 
-Each rate has a burst allowance of 5× (short spikes above the sustained rate are absorbed; the edge rejects with **HTTP 429** only once the burst allowance is exhausted).
+Each rate has a burst allowance of 5× (short spikes above the sustained rate are absorbed; the edge rejects with **HTTP 429** only once the burst allowance is exhausted). Limits may be tuned over time as capacity grows; any reduction will be announced in advance.
 
 Because verify and settle draw from **separate buckets**, the common verify-then-settle pattern costs one request from each — a merchant settling 40 payments per second from a single IP stays inside both budgets. These are per-source-IP limits, not account-wide: if your infrastructure sends from multiple IPs, each IP gets its own set of buckets.
 
