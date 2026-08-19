@@ -9,27 +9,39 @@ The PayAI facilitator applies per-client rate limits at its edge, and bounds how
 
 ## Per-IP rate limits
 
-The facilitator's edge (nginx ingress) enforces the following limits **per client IP address**:
+The facilitator's edge (nginx ingress) enforces limits **per client IP address**, with a separate budget for each endpoint group so that cheap read-only calls never compete with settlement for the same allowance:
 
-| Limit | Value | Behavior when exceeded |
-|-------|-------|------------------------|
-| Requests per second | **50 r/s** | Requests above the sustained rate are absorbed by a burst allowance of **250** (5× the rate); beyond that, the edge rejects the request |
-| Concurrent connections | **100** | New connections beyond the limit are rejected |
+| Endpoint group | Requests per second | Concurrent connections |
+|----------------|--------------------:|-----------------------:|
+| `POST /settle` | **50 r/s** | 100 |
+| `POST /verify`, `GET /supported` | **200 r/s** | 100 |
+| `GET /discovery/*` and everything else | **25 r/s** | 50 |
 
-These are per-source-IP limits, not account-wide limits. If your infrastructure sends from multiple IPs (multiple servers, regions, or NAT gateways), each IP gets its own 50 r/s / 100-connection budget.
+Each rate has a burst allowance of 5× (short spikes above the sustained rate are absorbed; the edge rejects with **HTTP 429** only once the burst allowance is exhausted). Limits may be tuned over time as capacity grows; any reduction will be announced in advance.
+
+Because verify and settle draw from **separate buckets**, the common verify-then-settle pattern costs one request from each — a merchant settling 40 payments per second from a single IP stays inside both budgets. These are per-source-IP limits, not account-wide: if your infrastructure sends from multiple IPs, each IP gets its own set of buckets.
 
 <Note>
-  Sustained throughput well above 50 r/s from a single machine usually indicates the limit you are hitting is the edge, not the facilitator itself. Spreading traffic across source IPs, or getting in touch with us, are both reasonable next steps — the settlement lanes behind the edge have significantly more capacity than a single IP's allowance.
+  If you expect sustained single-IP volume near the `/settle` budget, get in touch — the settlement lanes behind the edge have significantly more capacity than a single IP's allowance, and we can set up a dedicated allowance for your address range.
 </Note>
 
-### Telling an edge rejection apart from a facilitator error
+<Tip>
+  Reuse connections. Keep-alive and HTTP/2 are both supported at the edge; a client that opens a fresh TLS connection per request pays an extra round trip on every call and consumes its concurrent-connection budget far faster than a pooled client.
+</Tip>
 
-The two look very different on the wire:
+### Telling responses apart: 402 vs 429 vs 5xx
 
-- **Edge (rate-limit) rejection** — an HTTP **503** (rate exceeded) or connection-level rejection produced by nginx. The body is nginx's own error page (HTML or plain text), **not JSON**, and contains no x402 fields. If you see a non-JSON error body, you were stopped at the edge and the facilitator never saw the request.
-- **Facilitator error** — always a JSON x402 response body. Unsuccessful settlements return HTTP 200 with `success: false` and a machine-readable `errorReason` (for example `transaction_failed`, `duplicate_settlement`, or `settlement_pending`).
+The status code alone tells you how to react:
 
-Treat edge rejections as retryable with backoff: the payment was never processed, so re-submitting the identical payload is safe.
+| Status | Meaning | What to do |
+|--------|---------|------------|
+| **402** with a JSON x402 body | The facilitator judged the payment invalid | Terminal — do not retry the same payment |
+| **429** | Rate limited at the edge; the facilitator never saw the request | Back off and retry — always safe |
+| **5xx** | Something transient (edge or facilitator) | Retry with backoff — also safe |
+
+Retrying is safe in both non-402 cases even for `/settle`: verification is read-only, and settlement is idempotent — re-submitting an identical payload returns the recorded outcome of the original attempt and can never cause a second on-chain payment.
+
+Unsuccessful settlements that the facilitator *did* process return HTTP 200 with `success: false` and a machine-readable `errorReason` (for example `transaction_failed`, `duplicate_settlement`, or `settlement_pending`) — a JSON x402 body always means the facilitator handled the request.
 
 ## The `settlement_pending` response
 
