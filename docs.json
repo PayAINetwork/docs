@@ -31,6 +31,7 @@
             "group": "x402 Merchants",
             "pages": [
               "x402/servers/introduction",
+              "x402/servers/batch-settlement",
               {
                 "group": "Typescript",
                 "pages": [
