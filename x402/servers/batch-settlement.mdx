@@ -1,0 +1,98 @@
+---
+title: "Solana Batch Settlement"
+description: "Metered payments with merchant-signed vouchers, public discovery, authenticated settlement, and USDC payout."
+---
+
+Batch settlement lets a customer fund a reusable Solana channel and pay for multiple requests before the merchant claims and distributes the accumulated charges. It supports metered APIs, inference, and other services where the final charge is known after the work finishes.
+
+<Note>
+  This is a public preview with bounded channel capacity. Anyone with a valid PayAI merchant API key can use it; no Block Run-specific enrollment is required. The SDK is pinned to a preview build while the upstream changes are under review.
+</Note>
+
+## 1. Create your merchant API key
+
+Sign in to the [merchant portal](https://merchant.payai.network) and create an API key. The merchant's server uses that key to sign short-lived Bearer JWTs for facilitator `POST /verify` and `POST /settle`, including payout and close operations. Keep the API key secret on your server; customers do not need a PayAI account or this key to pay your service.
+
+Follow the [authentication guide](/x402/facilitators/authentication). A missing, invalid, expired, or revoked batch credential returns **401 Unauthorized**, a `WWW-Authenticate: Bearer` header, and an SDK-compatible error body linking to onboarding. An authenticated request refused by policy may return **403**. These are separate from the **402 Payment Required** challenge your service sends to its customer.
+
+`GET /supported` is public. Read it without authentication:
+
+```bash
+curl https://facilitator.payai.network/supported
+```
+
+Find the entry with `x402Version: 2`, `scheme: "batch-settlement"`, and your Solana network. Its `extra` contains the dedicated `feePayer`, `apiKeyRequired: true`, and `batchPolicy`. Preserve this fee payer for the channel's lifetime. During an admission pause, the batch entry is removed from discovery while existing channels can still be paid out and closed using their saved terms.
+
+## 2. Prepare your USDC receiving account
+
+The wallet in `payTo` must have its **USDC associated token account (ATA) on the selected network before customers open channels**. Creating it requires a one-time SOL rent deposit. The facilitator sponsors channel setup and transaction fees; it does not create the merchant's receiving ATA during settlement.
+
+You can create the ATA yourself and fund its rent, or use the [merchant portal](https://merchant.payai.network). Link the wallet you will use as `payTo` and follow the token-account setup flow. The portal may sponsor the first linked Solana wallet's USDC ATA when eligible and within its daily allowance; manual creation currently defaults to **200 credits**. Check the portal's displayed price and eligibility. A separate voucher-signing operator does not replace the receiving wallet's ATA.
+
+The free settlement allowance is not a signup grant of portal credits. Check your credit balance in the portal.
+
+## 3. Install the compatible preview SDK
+
+Use both packages from the [pinned PayAI preview release](https://github.com/notorious-d-e-v/x402/releases/tag/payai-batch-preview-20260912):
+
+```bash
+npm install \
+  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260912/x402-core-2.24.0-af8e7235.tgz \
+  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260912/x402-svm-2.24.0-32595192-prod8.tgz \
+  @solana/kit@^5.5.1
+```
+
+Keep the resulting lockfile and verify the release's `SHA256SUMS`. These retain the package names `@x402/core` and `@x402/svm`; they are PayAI preview artifacts, not a stable upstream release. Mixing them with an older core package can remove the metered settlement hooks.
+
+Use `BatchSvmScheme` from `@x402/svm/batch-settlement/server` for the merchant, and the same-named class from `@x402/svm/batch-settlement/client` for the customer. For merchant-signed vouchers, configure the server's `operator` signer. The terms identify `voucherSigner: "server"` and the operator's public key.
+
+## 4. Set channel terms and durable storage
+
+The initial public limits are below. Read `batchPolicy` from `/supported` for the active values; limits may change as capacity grows.
+
+| Limit | Public preview |
+| --- | --- |
+| Asset | USDC on Solana mainnet; devnet USDC for testing |
+| New channel deposit | 0.01–100 USDC, expressed as `10000`–`100000000` atomic units |
+| Open or closing channels per merchant account | 2, shared across all of that account's API keys |
+| New deposit attempts | 2 per minute per merchant account and network |
+| Withdrawal grace period | 900–3,600 seconds |
+| Facilitator idle cleanup window | 24 hours since the last facilitator touch |
+| Service-wide sponsored channel capacity | 10, including in-flight reservations and closing channels |
+
+The initial deposit limit applies when opening a new channel. Existing-channel top-ups do not consume another channel slot. Ordinary metered requests use the merchant's off-chain channel state, so the deposit rate limit is not an inference/request throughput limit.
+
+Set the client SDK's `depositAmount` explicitly within these limits; its default may be only one request's price. `PaymentRequirements.amount` is the **maximum authorized charge for one request**, not the channel's deposit. Reserve that ceiling before work, then settle with the measured `amount` in the range zero through the ceiling. Requests can complete concurrently against one merchant-signed channel when their reserved ceilings fit the remaining deposit.
+
+Use the exported `RedisChannelStore` for both the server's `store` and `operationStore`, with `requireDurableStore: true`, or implement the equivalent atomic storage contracts. Keep Redis durable, backed up, shared between replicas, and protected from eviction. Keep client channel and pending-request records durable too.
+
+Your application must retain the result associated with each stable request key. Supply `getReplayResponse` so a repeated paid request can return that same result without executing the work again. Commit application effects and the replayable result atomically where possible, or make the underlying work idempotent. Payment storage alone cannot provide exactly-once application effects.
+
+The customer's reusable authorization is a bearer credential for the channel's lifetime. Protect it like a secret. The operator can sign cumulative charges up to the channel's funded balance; a signed itemized receipt provides evidence of a charge, but does not make the on-chain program enforce your application's pricing. Use an operator key with appropriate custody and rotation procedures, and retain it until its channels are drained.
+
+## 5. Claim, distribute, and verify payout
+
+Run the exported `BatchChannelManager` against the same durable store and authenticated facilitator client. It claims saved vouchers, then distributes settled funds to the receiving ATA. Use a cadence comfortably inside the withdrawal grace period, such as 10–60 seconds, and alert on failed or delayed redemption. Preserve each channel's original network, asset, receiver, operator, and fee-payer terms.
+
+A successful **claim is not merchant payment**. The subsequent **distribution** must succeed, and the merchant ATA's USDC balance must increase by the expected amount. Compare signed receipts, cumulative channel state, distribution transaction identities, and actual USDC receipts. Replayed operations must not be counted as new volume.
+
+The public preview supports at most four channels per claim transaction. Configure `maxChannelsPerBatch` accordingly. For shutdown, flush claim and distribution work, initiate close, wait through the grace period, and verify the remaining customer balance is refunded and channel rent is reclaimed. Continue recovery workers while new admission is paused.
+
+## Recovery and limit errors
+
+| Response | Action |
+| --- | --- |
+| 401, missing or invalid API-key reason | Create a key or refresh/fix the signed JWT; follow the onboarding links in the response. |
+| 400, `batch_initial_deposit_out_of_range` or `batch_withdraw_delay_out_of_range` | Adjust new-channel terms to the published policy and obtain a new customer signature. |
+| 400, `batch_deposit_asset_not_supported` | Use the network's advertised USDC mint. |
+| 429, `batch_account_channel_capacity_exhausted` | Reuse a funded channel or finish closing an existing one. |
+| 429, `batch_channel_capacity_exhausted` or `batch_deposit_rate_limited` | Respect `Retry-After` and retry with backoff. |
+| 403, `batch_account_admission_paused` | Contact PayAI; keep existing-channel recovery and payout running. |
+| 503, `batch_new_channels_disabled` | New admission is paused. Continue recovery, claims, payouts, and close operations. |
+| `settlement_pending`, `duplicate_settlement`, or a lost HTTP response | Retain the exact request and any transaction signature; reconcile by retrying the same operation. |
+
+Do not allocate another charge or build a replacement transaction merely because a response was lost. The preview SDK preserves pending transaction identity and reconciles outcomes after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly: the facilitator's current pending/completed recovery window is 24 hours, not permanent receipt storage.
+
+## Test before accepting customer traffic
+
+Use `https://dev-facilitator.payai.network` and devnet USDC first. Exercise partial charges, concurrent requests, receipt verification, lost responses, process restart, payout to the actual receiving ATA, customer refund, and closure. Then repeat with a small mainnet channel and production credentials. Confirm your ATA, wallet balances, durable stores, payout worker, and alerting before opening it.
