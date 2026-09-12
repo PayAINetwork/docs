@@ -7,6 +7,10 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 The PayAI facilitator applies per-client rate limits at its edge, and bounds how long a `/settle` request will wait for an on-chain outcome before answering. This page documents both behaviors so you can build clients that handle them correctly.
 
+## Batch channel admission
+
+[Solana batch settlement](/x402/servers/batch-settlement) has additional account-wide limits on sponsored channels and deposit attempts. The public `/supported` response publishes them in `batchPolicy`. A full account or service-wide channel quota returns 429 with `Retry-After`; reuse an existing funded channel or complete its cleanup. API-key rotation does not reset an account's quota. Claims, distribution, recovery, and closure remain available during an admission pause.
+
 ## Per-IP rate limits
 
 The facilitator's edge (nginx ingress) enforces limits **per client IP address**, with a separate budget for each endpoint group so that cheap read-only calls never compete with settlement for the same allowance:
@@ -78,7 +82,7 @@ Replaying the identical payload is always safe: settlement is idempotent, and a 
 
 The `transaction` field of a `settlement_pending` response differs by chain family:
 
-- **Solana** — `transaction` is **always empty**. Send and confirmation happen inside a single settlement job, so no signature is available to the API before the outcome is known. **Re-submitting the payload is the only reconciliation path on Solana** — there is no hash to look up on-chain.
+- **Solana** — `transaction` can be empty when the API wait budget expires before the worker returns a signature. Batch recovery responses may include the recorded signature when available. Keep it if present and re-submit the identical payload to reconcile the specific operation.
 - **EVM** (Base, Polygon, Arbitrum, Avalanche, Sei) — if the transaction was already broadcast when the budget expired, `transaction` carries the broadcast hash. You can watch that hash on-chain directly, in addition to (or instead of) polling `/settle`.
 
 <Note>
