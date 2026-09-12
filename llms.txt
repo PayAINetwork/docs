@@ -37,3 +37,5 @@
 
 - [Github](https://github.com/PayAINetwork)
 - [Support](https://discord.gg/eWJRwMpebQ)
+
+- [Solana batch settlement](https://docs.payai.network/x402/servers/batch-settlement): public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.

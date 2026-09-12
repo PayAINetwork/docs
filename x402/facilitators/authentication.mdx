@@ -10,7 +10,7 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 The [PayAI facilitator](https://facilitator.payai.network) authenticates merchants using short-lived **JWTs signed with Ed25519** (the EdDSA algorithm). If you use the `@payai/facilitator` TypeScript package, this is handled automatically. This guide explains the underlying protocol so you can implement authentication in **any language** without depending on PayAI packages.
 
 <Note>
-  Authentication is only required beyond the [free tier](/x402/facilitators/pricing) (1,000 free settlements). Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys.
+  Authentication is required for every `batch-settlement` verification and settlement request, including the first one. Other schemes can use the [free tier](/x402/facilitators/pricing) without an API key. Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys.
 </Note>
 
 <Tip>
@@ -85,7 +85,7 @@ Include the JWT as a Bearer token on all facilitator requests:
 Authorization: Bearer <jwt>
 ```
 
-Send this header on `POST /verify` and `POST /settle`. `GET /supported` is currently readable without a token — it returns the same catalogue either way — so authenticating it is harmless but not required.
+Send this header on `POST /verify` and `POST /settle`. `GET /supported` is currently readable without a token — it includes batch with `apiKeyRequired: true`; authentication can select a different fee payer for account-specific settlement lanes — so authenticating it is harmless but not required.
 
 ---
 
