@@ -56,7 +56,9 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
 
-This works immediately on the **free tier** — no API keys required.
+For ordinary exact payments, this works on the **free tier** without an API key.
+[Solana batch settlement](/x402/servers/batch-settlement) requires a merchant API
+key from the first verification or settlement request.
 
 <Card
   title="Try the PayAI Facilitator"
@@ -68,7 +70,7 @@ This works immediately on the **free tier** — no API keys required.
 
 ## API key authentication
 
-When you're ready to scale beyond the free tier (1,000 free settlements), create a merchant account at [merchant.payai.network](https://merchant.payai.network) to top up credits and get API keys. See [Pricing](/x402/facilitators/pricing) for details.
+To use batch settlement or scale beyond the ordinary exact free tier (up to 1,000 lifetime settlements per receiving wallet, subject to shared-host/IP pools), create a merchant account at [merchant.payai.network](https://merchant.payai.network) for API keys and credits. See [Pricing](/x402/facilitators/pricing) for details.
 
 Set these environment variables and `@payai/facilitator` will automatically authenticate your requests:
 

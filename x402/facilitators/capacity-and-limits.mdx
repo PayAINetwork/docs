@@ -13,45 +13,66 @@ The PayAI facilitator applies per-client rate limits at its edge, and bounds how
 
 ## Per-IP rate limits
 
-The facilitator's edge (nginx ingress) enforces limits **per client IP address**, with a separate budget for each endpoint group so that cheap read-only calls never compete with settlement for the same allowance:
+The facilitator's edge (nginx ingress) uses separate rate-limit buckets for each
+endpoint group. The production configuration reviewed on September 13, 2026 sets
+the following **per-client-IP, per-ingress-replica** limits. These are configured
+admission limits, not a measured settlement-throughput guarantee:
 
 | Endpoint group | Requests per second | Concurrent connections |
 |----------------|--------------------:|-----------------------:|
-| `POST /settle` | **50 r/s** | 100 |
+| `POST /settle` | **100 r/s** | 250 |
 | `POST /verify`, `GET /supported` | **200 r/s** | 100 |
 | `GET /discovery/*` and everything else | **25 r/s** | 50 |
 
-Each rate has a burst allowance of 5× (short spikes above the sustained rate are absorbed; the edge rejects with **HTTP 429** only once the burst allowance is exhausted). Limits may be tuned over time as capacity grows; any reduction will be announced in advance.
+The controller's default burst multiplier is 5; do not rely on bursts as sustained
+capacity. Effective allowance depends on replica routing, and requests can also
+hit connection or application limits. The controller can return 429 or 503 for
+edge limiting depending on configuration; a status alone does not identify the
+source. See the [ingress rate-limit semantics](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#rate-limiting).
 
-Because verify and settle draw from **separate buckets**, the common verify-then-settle pattern costs one request from each — a merchant settling 40 payments per second from a single IP stays inside both budgets. These are per-source-IP limits, not account-wide: if your infrastructure sends from multiple IPs, each IP gets its own set of buckets.
+The common verify-then-settle pattern consumes one request from each bucket.
+Separate buckets do not isolate shared compute or database capacity. These edge
+limits also do not replace the account-wide batch limits above. Contact PayAI
+before planning sustained volume near a limit; do not rotate IPs to evade limits.
 
 <Note>
-  If you expect sustained single-IP volume near the `/settle` budget, get in touch — the settlement lanes behind the edge have significantly more capacity than a single IP's allowance, and we can set up a dedicated allowance for your address range.
+  If you expect sustained single-IP volume near the `/settle` budget, get in touch
+  to review workload, connection use and available capacity before rollout.
 </Note>
 
 <Tip>
   Reuse connections. Keep-alive and HTTP/2 are both supported at the edge; a client that opens a fresh TLS connection per request pays an extra round trip on every call and consumes its concurrent-connection budget far faster than a pooled client.
 </Tip>
 
-### Telling responses apart: 402 vs 429 vs 5xx
+### Read the status and response body together
 
-The status code alone tells you how to react:
+HTTP status alone does not establish whether a payment was submitted or settled.
+Keep the response body, original payment payload and any transaction identifier.
 
 | Status | Meaning | What to do |
 |--------|---------|------------|
-| **402** with a JSON x402 body | The facilitator judged the payment invalid | Terminal — do not retry the same payment |
-| **429** | Rate limited at the edge; the facilitator never saw the request | Back off and retry — always safe |
-| **5xx** | Something transient (edge or facilitator) | Retry with backoff — also safe |
+| **402** from your resource server | Payment is required to access the resource | Inspect the advertised requirements; this is not by itself a facilitator settlement verdict. |
+| **400 / 401 / 403** from the facilitator | Invalid input, missing/invalid credentials, or a policy refusal | Inspect the machine-readable reason and correct the cause; do not blindly repeat the same invalid request. |
+| **429** | Edge rate limiting or application-level admission capacity | Respect `Retry-After` when present and back off. A JSON batch/upto capacity reason means the application handled the request. |
+| **5xx**, transport timeout, or lost response | The outcome may be unknown | Preserve the operation identity and reconcile the same operation; do not create a fresh payment authorization just because the response was lost. |
+| **200** with `success: false` | Inspect `errorReason`: it may be pending or a recorded failure | Follow the reason-specific recovery path; HTTP 200 is not proof of successful payment. |
+| **409** with `duplicate_settlement` | The same operation is already in flight or has a replay marker | Reconcile with backoff using the original operation; retain any known transaction evidence. |
 
-Retrying is safe in both non-402 cases even for `/settle`: verification is read-only, and settlement is idempotent — re-submitting an identical payload returns the recorded outcome of the original attempt and can never cause a second on-chain payment.
-
-Unsuccessful settlements that the facilitator *did* process return HTTP 200 with `success: false` and a machine-readable `errorReason` (for example `transaction_failed`, `duplicate_settlement`, or `settlement_pending`) — a JSON x402 body always means the facilitator handled the request.
+PayAI's settlement recovery uses the original operation identity. Keep its
+payload, requirements, signed receipts and transaction identifiers in durable
+storage. Recovery records have bounded, scheme-dependent retention; the
+facilitator is not permanent receipt storage. For channel operations, use the
+[batch recovery procedure](/x402/servers/batch-settlement#recovery-and-limit-errors).
 
 ## The `settlement_pending` response
 
 `POST /settle` waits for the on-chain outcome, but only up to a bounded response budget (currently 100 seconds). If the settlement is still in flight when the budget expires — for example during network congestion — the facilitator answers instead of letting the connection time out.
 
-**This applies to every supported network** — Solana and all EVM chains alike. The response shape and the reconciliation procedure are identical everywhere; the only per-chain difference is whether the `transaction` field can be populated, covered [below](#solana-vs-evm-whether-transaction-is-populated).
+The response wait budget applies across Solana and EVM settlement paths. Keep
+the original operation identity when reconciling, but follow the selected
+scheme's recovery rules: ordinary exact payments and batch channel operations
+do not have identical state or retention. Whether `transaction` can be populated
+is covered [below](#solana-vs-evm-whether-transaction-is-populated).
 
 ```json
 {
@@ -59,24 +80,27 @@ Unsuccessful settlements that the facilitator *did* process return HTTP 200 with
   "errorReason": "settlement_pending",
   "errorMessage": "Settlement did not complete within 100000ms and is still in flight; ...",
   "transaction": "",
-  "network": "solana",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
   "payer": "..."
 }
 ```
 
 Key properties of this response:
 
-- It arrives with **HTTP 200**, like every other unsuccessful settlement, so standard x402 clients surface it in the normal `!success` path rather than as a thrown transport error.
+- It arrives with **HTTP 200**, so standard x402 clients surface it in the normal `!success` path. Other policy or validation failures can use non-2xx responses.
 - It is **not a verdict**. The settlement job keeps running after the response is sent — the payment may still land on-chain. Do not treat `settlement_pending` as a failure, and do not treat it as a success.
 
 ### How to reconcile: re-submit the identical payload
 
 To learn the real outcome, **re-POST the exact same payload** (the same payment payload and payment requirements) to `/settle`:
 
-1. While the original attempt is still in flight, you receive **`409 duplicate_settlement`** — keep polling with backoff.
+1. While the original attempt is still in flight, you normally receive **`409 duplicate_settlement`**. A reconciliation request can also wait and return another `settlement_pending` response; continue with backoff.
 2. Once the attempt resolves, the facilitator serves the **recorded outcome**: the cached success response (including the transaction hash) if the payment landed, or the recorded failure if it did not.
 
-Replaying the identical payload is always safe: settlement is idempotent, and a replay can never cause a second on-chain payment.
+Reconcile promptly without changing the payment authorization or channel
+operation. If the recovery record is no longer available, use your retained
+transaction/receipt evidence and chain state before deciding whether a new
+payment is appropriate. Do not interpret an expired record as proof of failure.
 
 ### Solana vs EVM: whether `transaction` is populated
 
@@ -91,7 +115,11 @@ The `transaction` field of a `settlement_pending` response differs by chain fami
 
 ## Client-side timeouts
 
-Some x402 client libraries default to shorter timeouts than the facilitator's response budget (for example, 30 seconds in `@x402/core`'s `HTTPFacilitatorClient`). A client-side timeout behaves like an edge timeout: you get no response body, but the settlement is still in flight. The reconciliation procedure is the same — re-submit the identical payload to retrieve the recorded outcome.
+Some x402 client libraries default to shorter timeouts than the facilitator's
+response budget; check your pinned SDK version and client configuration. A
+client-side timeout gives you no settlement verdict: the request may not have
+arrived, or settlement may still be in flight. Preserve the original operation
+and follow its recovery procedure instead of assuming payment failed.
 
 ## Need help?
 

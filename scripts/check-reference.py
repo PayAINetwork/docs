@@ -44,3 +44,15 @@ for index, block in enumerate(blocks, 1):
     except (ValueError, AssertionError, KeyError) as error:
         raise SystemExit(f"{REFERENCE.relative_to(ROOT)} JSON block {index}: {error}") from error
 print(f"Validated {len(blocks)} v2 reference JSON examples (syntax and message consistency).")
+
+# Authentication examples include JWT claims and an explicitly incomplete
+# request outline. Require valid JSON, without pretending the outline is payable.
+auth = ROOT / "x402/facilitators/authentication.mdx"
+auth_blocks = re.findall(r"```json\n(.*?)\n```", auth.read_text(), re.S)
+assert len(auth_blocks) >= 3, "authentication JSON coverage unexpectedly disappeared"
+for index, block in enumerate(auth_blocks, 1):
+    try:
+        json.loads(block)
+    except ValueError as error:
+        raise SystemExit(f"{auth.relative_to(ROOT)} JSON block {index}: {error}") from error
+print(f"Validated {len(auth_blocks)} authentication JSON examples (syntax only).")
