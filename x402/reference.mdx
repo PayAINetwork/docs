@@ -7,13 +7,13 @@ import SupportedNetworksTable from "/snippets/supported-networks-table.mdx";
 import FacilitatorsTable from "/snippets/facilitators-table.mdx";
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-<Note>Once merged, you will be able to read the x402 protocol specification in the [x402 repository](https://github.com/x402-foundation/x402/specs/x402-specification.md).</Note>
+<Note>This page describes x402 v2 over HTTP. For the normative message definitions and newer scheme extensions, see the [upstream v2 specification](https://github.com/x402-foundation/x402/blob/main/specs/x402-specification-v2.md). Protocol support varies by facilitator; check its `/supported` response before choosing a network or scheme.</Note>
 
 ## 1. Overview
 
 x402 is an open payment standard that enables clients to pay for HTTP resources using blockchain technology. The protocol leverages the existing HTTP 402 "Payment Required" status code to indicate when payment is required for resource access, providing a standardized mechanism for micropayments on the web. 
 
-This specification is based on the x402 protocol implementation and documentation available in the [x402 repository](https://github.com/x402-foundation/x402). It aims to provide a comprehensive and implementation-agnostic specification for the x402 HTTP-native micropayment protocol.
+This reference covers common HTTP integration messages. It is not an exhaustive specification of every transport, payment scheme, or facilitator implementation.
 
 ## 2. Core Payment Flow
 
@@ -77,7 +77,7 @@ When a resource server requires payment, it responds with an HTTP 402 status cod
       "scheme": "exact",
       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
       "amount": "1000000",
-      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
       "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
       "maxTimeoutSeconds": 60,
       "extra": {
@@ -93,21 +93,20 @@ When a resource server requires payment, it responds with an HTTP 402 status cod
 
 The Payment Requirements Response contains the following fields:
 
-**All fields are required.**
-| Field Name | Type | Description |
-| ---------- | ---- | ----------- |
-| `x402Version` | `number` | Protocol version identifier (must be 2) |
-| `error` | `string` | Human-readable error message explaining why payment is required |
-| `resource` | `object` | Resource object containing URL, description, and MIME type |
-| `accepts` | `array` | Array of payment requirement objects defining acceptable payment methods |
-| `extensions` | `object` | Extensions object for future protocol enhancements |
+| Field Name | Type | Required | Description |
+| ---------- | ---- | -------- | ----------- |
+| `x402Version` | `number` | Required | Set to `2` for this version |
+| `error` | `string` | Optional | Explanation for the payment challenge |
+| `resource` | `object` | Required | Describes the protected resource |
+| `accepts` | `array` | Required | Payment options the server accepts |
+| `extensions` | `object` | Optional | Additional protocol features |
 
 The `resource` object contains:
 
 | Field Name | Type | Required | Description |
 | ---------- | ---- | -------- | ----------- |
 | `url` | `string` | Required | URL of the protected resource |
-| `description` | `string` | Required | Human-readable description of the resource |
+| `description` | `string` | Optional | Human-readable description of the resource |
 | `mimeType` | `string` | Optional | MIME type of the expected response |
 
 Each payment requirement object in the `accepts` array contains:
@@ -131,8 +130,6 @@ The client includes payment authorization in the `PAYMENT-SIGNATURE` header as b
 ```json
 {
   "x402Version": 2,
-  "scheme": "exact",
-  "network": "eip155:84532",
   "accepted": {
     "scheme": "exact",
     "network": "eip155:84532",
@@ -160,13 +157,11 @@ And on Solana:
 ```json
 {
   "x402Version": 2,
-  "scheme": "exact",
-  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
   "accepted": {
     "scheme": "exact",
     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     "amount": "1000000",
-    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
     "maxTimeoutSeconds": 60
   },
@@ -181,16 +176,15 @@ And on Solana:
 
 The Payment Payload contains the following fields:
 
-**All fields are required.**
+| Field Name | Type | Required | Description |
+| ---------- | ---- | -------- | ----------- |
+| `x402Version` | `number` | Required | Set to `2` |
+| `resource` | `object` | Optional | Resource context echoed by the client |
+| `accepted` | `object` | Required | The selected payment option, including `scheme` and `network` |
+| `payload` | `object` | Required | Proof or authorization for that scheme |
+| `extensions` | `object` | Optional | Extension data returned by the client |
 
-| Field Name | Type | Description |
-| ---------- | ---- | ----------- |
-| `x402Version` | `number` | Protocol version identifier (must be 2) |
-| `scheme` | `string` | Payment scheme identifier (e.g., "exact") |
-| `network` | `string` | Blockchain network identifier in CAIP-2 format (e.g., "eip155:84532", "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1") |
-| `accepted` | `object` | The payment requirement that was accepted by the client |
-| `payload` | `object` | Payment data object |
-| `extensions` | `object` | Extensions object for future protocol enhancements |
+In v2, `scheme` and `network` belong inside `accepted`, not at the top level of the Payment Payload.
 
 The `payload` field contains scheme-specific data on EVM:
 
@@ -245,9 +239,9 @@ The Settlement Response contains the following fields:
 | ---------- | ---- | -------- | ----------- |
 | `success` | `boolean` | Required | Indicates whether the payment settlement was successful |
 | `errorReason` | `string` | Optional | Error reason if settlement failed (omitted if successful) |
-| `transaction` | `string` | Required | Blockchain transaction hash (empty string if settlement failed) |
+| `transaction` | `string` | Required | Transaction identifier; a failed or pending result may still include a broadcast transaction |
 | `network` | `string` | Required | Blockchain network identifier in CAIP-2 format |
-| `payer` | `string` | Required | Address of the payer's wallet |
+| `payer` | `string` | Optional | Address of the payer's wallet |
 
 ## 6. Payment Schemes
 
@@ -255,7 +249,7 @@ This section describes the payment schemes supported by the x402 protocol. Each 
 
 ### 6.1 Exact Scheme
 
-The "exact" scheme uses EIP-3009 (Transfer with Authorization) to enable secure, gasless transfers of specific amounts of ERC-20 tokens.
+The EVM `exact` example below uses EIP-3009 authorization for compatible tokens. This is one scheme/network implementation, not a requirement for all x402 payments. Solana uses a different payload, described in the next section.
 
 #### 6.1.1 EIP-3009 Authorization
 
@@ -303,18 +297,11 @@ Instructions must appear in this order:
 4. *Optional:* **Lighthouse** — may be added by the wallet
 5. *Optional:* **Lighthouse** — may be added by the wallet
 
-The optional Lighthouse instructions are automatically added by wallets (e.g. Phantom, Solflare). Merchants do not need to add them manually; they only need to include the first three instructions.
+Some SDK versions also include a Memo instruction for uniqueness. Additional instruction support is version-specific; use compatible SDK and facilitator versions rather than manually assuming a fixed instruction count.
 
 #### 6.2.2 Limits
 
-Facilitators enforce the following limits on the Solana transaction:
-
-| Instruction             | Limit        | Description                                                |
-| ----------------------- | ------------ | ---------------------------------------------------------- |
-| **SetComputeUnitLimit**  | **40,000**   | Maximum compute units allowed for the transaction          |
-| **SetComputeUnitPrice**  | **5**        | Maximum microlamports per compute unit (priority fee)     |
-
-Transactions that exceed these limits may be rejected by the facilitator.
+Compute-unit and priority-fee limits are facilitator policy, not universal protocol constants. Use the supported SDK to construct the transaction and check the facilitator's current policy when troubleshooting a rejection. Limits can change between deployments.
 
 ## 7. Facilitator Interface
 
@@ -329,9 +316,16 @@ Verifies a payment authorization without executing the transaction on the blockc
 ```json
 {
   "paymentPayload": {
-    "x402Version": 1,
-    "scheme": "exact",
-    "network": "base-sepolia",
+    "x402Version": 2,
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "maxTimeoutSeconds": 60,
+      "extra": { "name": "USDC", "version": "2" }
+    },
     "payload": {
       "signature": "0x...",
       "authorization": {
@@ -346,11 +340,8 @@ Verifies a payment authorization without executing the transaction on the blockc
   },
   "paymentRequirements": {
     "scheme": "exact",
-    "network": "base-sepolia",
-    "maxAmountRequired": "10000",
-    "resource": "https://api.example.com/premium-data",
-    "description": "Access to premium market data",
-    "mimeType": "application/json",
+    "network": "eip155:84532",
+    "amount": "10000",
     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
     "maxTimeoutSeconds": 60,
     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -367,25 +358,31 @@ Verifies a payment authorization without executing the transaction on the blockc
 ```json
 {
   "paymentPayload": {
-    "x402Version": 1,
-    "scheme": "exact",
-    "network": "solana-devnet",
+    "x402Version": 2,
+    "accepted": {
+      "scheme": "exact",
+      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "amount": "1000000",
+      "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
+      "maxTimeoutSeconds": 60,
+      "extra": { "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" }
+    },
     "payload": {
-      "transaction": "base64-encoded partially-signed transaction",
+      "transaction": "base64-encoded partially-signed transaction"
     }
   },
   "paymentRequirements": {
     "scheme": "exact",
-    "network": "solana-devnet",
-    "maxAmountRequired": "1000000",
-    "resource": "https://api.example.com/premium-data",
-    "description": "Access to premium market data",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000000",
     "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
     "maxTimeoutSeconds": 60,
-    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     "extra": {
       "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
+  }
 }
 ```
 
@@ -418,15 +415,14 @@ Settles a payment by broadcasting the transaction to the blockchain.
 {
   "paymentPayload": {
     "x402Version": 2,
-    "scheme": "exact",
-    "network": "eip155:84532",
     "accepted": {
       "scheme": "exact",
       "network": "eip155:84532",
       "amount": "10000",
       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-      "maxTimeoutSeconds": 60
+      "maxTimeoutSeconds": 60,
+      "extra": { "name": "USDC", "version": "2" }
     },
     "payload": {
       "signature": "0x...",
@@ -462,15 +458,14 @@ Settles a payment by broadcasting the transaction to the blockchain.
 {
   "paymentPayload": {
     "x402Version": 2,
-    "scheme": "exact",
-    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     "accepted": {
       "scheme": "exact",
       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
       "amount": "1000000",
-      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
       "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
-      "maxTimeoutSeconds": 60
+      "maxTimeoutSeconds": 60,
+      "extra": { "feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" }
     },
     "payload": {
       "transaction": "base64-encoded partially-signed transaction"
@@ -481,7 +476,7 @@ Settles a payment by broadcasting the transaction to the blockchain.
     "scheme": "exact",
     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     "amount": "1000000",
-    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
     "payTo": "6oD1Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k8Qw1k",
     "maxTimeoutSeconds": 60,
     "extra": {
@@ -498,7 +493,7 @@ Settles a payment by broadcasting the transaction to the blockchain.
   "success": true,
   "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66",
   "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-  "network": "base-sepolia"
+  "network": "eip155:84532"
 }
 ```
 
@@ -510,7 +505,7 @@ Settles a payment by broadcasting the transaction to the blockchain.
   "errorReason": "insufficient_funds",
   "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66",
   "transaction": "",
-  "network": "base-sepolia"
+  "network": "eip155:84532"
 }
 ```
 
@@ -536,12 +531,12 @@ Returns the list of payment schemes and networks supported by the facilitator.
     {
       "x402Version": 2,
       "scheme": "exact",
-      "network": "avalanche-fuji"
+      "network": "eip155:43113"
     },
     {
       "x402Version": 2,
       "scheme": "exact",
-      "network": "avalanche"
+      "network": "eip155:43114"
     },
     {
       "x402Version": 2,
@@ -559,7 +554,9 @@ Returns the list of payment schemes and networks supported by the facilitator.
         "feePayer": "address of facilitator"
       }
     }
-  ]
+  ],
+  "extensions": [],
+  "signers": {}
 }
 ```
 
@@ -604,7 +601,7 @@ List discoverable x402 resources from the Bazaar.
           }
         }
       ],
-      "lastUpdated": 1703123456,
+      "lastUpdated": "2023-12-21T02:17:36.000Z",
       "metadata": {
         "category": "finance",
         "provider": "Example Corp"
@@ -645,8 +642,8 @@ The Bazaar is a marketplace ecosystem where x402-enabled resources can be discov
 # Discover financial data APIs
 GET /discovery/resources?type=http&limit=10
 
-# Search for a specific provider
-GET /discovery/resources?metadata[provider]=Coinbase
+# Fetch the next page
+GET /discovery/resources?type=http&limit=10&offset=10
 ```
 
 ## 9. Error Handling
@@ -659,7 +656,7 @@ The x402 protocol defines standard error codes that may be returned by facilitat
 - **`invalid_exact_evm_payload_authorization_value`**: Payment amount is insufficient for the required payment
 - **`invalid_exact_evm_payload_signature`**: Payment authorization signature is invalid or improperly signed
 - **`invalid_exact_evm_payload_recipient_mismatch`**: Recipient address does not match payment requirements
-- **`invalid_exact_svm_payload_transaction_instructions_length`**: Solana transaction must contain the three required instructions in order—`SetComputeUnitLimit`, `SetComputeUnitPrice`, and `TransferChecked`—and may include up to two optional Lighthouse instructions (see [§6.2 Exact scheme on Solana](/x402/reference))
+- **`invalid_exact_svm_payload_transaction_instructions_length`**: The Solana transaction's instruction layout does not meet the selected facilitator's policy. Required compute-budget and transfer instructions, plus supported optional wallet or memo instructions, depend on the SDK and facilitator version (see [§6.2 Exact scheme on Solana](/x402/reference)). Do not assume a universal instruction-count limit.
 - **`invalid_network`**: Specified blockchain network is not supported
 - **`invalid_payload`**: Payment payload is malformed or contains invalid data
 - **`invalid_payment_requirements`**: Payment requirements object is invalid or malformed
@@ -689,24 +686,24 @@ The protocol supports integration with authentication systems (e.g., Sign-In wit
 
 ### 11.1 Supported Networks
 
-The following blockchain networks are currently supported by the reference implementation (using CAIP-2 format):
+Examples of CAIP-2 network identifiers are listed below. This is not a live support guarantee; use `/supported` for the selected facilitator.
 
 - **`eip155:84532`**: Base Sepolia testnet (Chain ID: 84532)
 - **`eip155:8453`**: Base mainnet (Chain ID: 8453)
-- **`avalanche-fuji`**: Avalanche Fuji testnet (Chain ID: 43113)
-- **`avalanche`**: Avalanche mainnet (Chain ID: 43114)
+- **`eip155:43113`**: Avalanche Fuji testnet (Chain ID: 43113)
+- **`eip155:43114`**: Avalanche mainnet (Chain ID: 43114)
 - **`solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1`**: Solana devnet
 - **`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`**: Solana mainnet
 
 ### 11.2 Supported Assets
 
-The protocol currently supports the following token types:
+For EVM implementations using EIP-3009, token compatibility includes:
 
 - **`USDC`**: USD Coin (EIP-3009 compliant ERC-20 token)
 - **Additional ERC-20 tokens**: May be supported if they implement EIP-3009 (Transfer with Authorization)
 
-Token support depends on:
-- EIP-3009 compliance for the "exact" scheme
+Solana `exact` payments use SPL-token transfers rather than EIP-3009. Asset support depends on:
+- Compatibility with the selected scheme and network
 - Facilitator service capabilities
 - Network-specific token availability
 
@@ -736,7 +733,7 @@ Traditional web applications can implement x402 for:
 
 x402 integrates with popular web frameworks:
 
-- **Express.js**: `require_payment()` middleware
+- **Express.js**: [Server middleware guide](/x402/servers/typescript/express)
 - **FastAPI/Flask**: Framework-specific middleware
 - **Hono**: Edge runtime support
 - **Next.js**: Full-stack integration
