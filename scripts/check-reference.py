@@ -56,3 +56,11 @@ for index, block in enumerate(auth_blocks, 1):
     except ValueError as error:
         raise SystemExit(f"{auth.relative_to(ROOT)} JSON block {index}: {error}") from error
 print(f"Validated {len(auth_blocks)} authentication JSON examples (syntax only).")
+
+# Mintlify treats pairs of bare dollar signs as inline math, including token
+# tickers spanning prose. Keep token notation literal in the pricing explanation.
+pricing = (ROOT / "x402/facilitators/pricing.mdx").read_text()
+outside_code = re.sub(r"`[^`]*`", "", pricing)
+assert not re.search(r"(?<!\\)\$PAYAI", outside_code), "Quote or escape $PAYAI to prevent inline-math rendering"
+assert pricing.count("`$PAYAI`") == 2, "Pricing discount/customer-token explanation unexpectedly changed"
+print("Validated literal PAYAI token notation in pricing prose.")
