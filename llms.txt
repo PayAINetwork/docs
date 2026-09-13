@@ -17,6 +17,9 @@
 - [Fetch client quickstart (TypeScript)](https://docs.payai.network/x402/clients/typescript/fetch.md): Make x402 payments with Fetch.
 - [Facilitator Introduction](https://docs.payai.network/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
 - [Facilitator Pricing](https://docs.payai.network/x402/facilitators/pricing.md): PayAI Facilitator pricing — free tier, per-transaction pricing, and credits
+- [Facilitator Authentication](https://docs.payai.network/x402/facilitators/authentication.md): Merchant JWT authentication, API-key requirements, and examples for multiple languages.
+- [Capacity and Settlement Recovery](https://docs.payai.network/x402/facilitators/capacity-and-limits.md): Rate limits, pending settlement responses, and recovery using the original operation.
+- [Solana Batch Settlement](https://docs.payai.network/x402/servers/batch-settlement.md): Public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.
 - [x402 Introduction](https://docs.payai.network/x402/introduction.md): Learn about the x402 protocol
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
 - [x402 Reference](https://docs.payai.network/x402/reference.md): Reference documentation for the x402 protocol
@@ -37,5 +40,3 @@
 
 - [Github](https://github.com/PayAINetwork)
 - [Support](https://discord.gg/eWJRwMpebQ)
-
-- [Solana batch settlement](https://docs.payai.network/x402/servers/batch-settlement): public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.

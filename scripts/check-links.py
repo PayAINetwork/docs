@@ -4,10 +4,11 @@
 Resolves every internal link found in .mdx sources against:
   - actual page files (.mdx -> route path)
   - actual asset files (images, svg, etc.)
-  - docs.json navigation entries
-Reports links that resolve to nothing.
+  - local docs.json redirects (including their destinations)
+Also checks that navigation entries name real pages.
 """
 import json, re, sys, pathlib, collections
+from urllib.parse import urljoin, urlsplit, unquote
 
 ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parent.parent)
 
@@ -47,22 +48,52 @@ docsjson = json.loads((ROOT/"docs.json").read_text())
 walk_nav(docsjson.get("navigation", {}))
 redirects = {r["source"]: r["destination"] for r in docsjson.get("redirects", [])}
 
-valid = pages | assets | nav_pages | set(redirects)
+valid = pages | assets | set(redirects)
 
 # ---- extract links ---------------------------------------------------------
-MD  = re.compile(r'\]\((/[^)\s]*)\)')
-JSX = re.compile(r'href="(/[^"]*)"')
+MD  = re.compile(r'\]\(([^)\s]+)\)')
+JSX = re.compile(r"""href=["']([^"']+)["']""")
 
 broken = collections.defaultdict(list)
 total = 0
+for target in sorted(nav_pages - pages):
+    broken["docs.json navigation"].append(target)
+def internal_target(raw, rel):
+    if raw.startswith("#"):
+        return None  # Fragment existence requires rendered-heading verification.
+    base = "https://docs.payai.network/" + str(pathlib.PurePosixPath(rel).with_suffix(""))
+    parsed = urlsplit(urljoin(base, raw))
+    if parsed.scheme not in ("http", "https") or parsed.netloc != "docs.payai.network":
+        return None
+    return unquote(parsed.path).rstrip("/")
+
+def exists(target):
+    if not target:
+        return True  # Site root, not an independently rendered-page check.
+    return (target in pages or target in assets or target + "/index" in pages
+            or (target.endswith(".md") and target[:-3] in pages))
+
+for source in redirects:
+    target, seen = source, set()
+    while target in redirects and target not in seen:
+        seen.add(target)
+        target = internal_target(redirects[target], target.lstrip("/"))
+        if target is None:  # External redirect; not network-verified here.
+            break
+    if target is not None and (target in seen or not exists(target)):
+        broken["docs.json redirects"].append(source + " -> " + str(target))
+
 for p in sorted(ROOT.rglob("*.mdx")):
     if "node_modules" in p.parts: continue
-    text = p.read_text()
+    # Code examples are not rendered links.
+    text = re.sub(r"\x60\x60\x60.*?\x60\x60\x60", "", p.read_text(), flags=re.S)
     rel = str(p.relative_to(ROOT))
     for m in list(MD.finditer(text)) + list(JSX.finditer(text)):
         raw = m.group(1)
+        target = internal_target(raw, rel)
+        if target is None:
+            continue
         total += 1
-        target = raw.split("#")[0].split("?")[0].rstrip("/")
         if not target:      # pure anchor like (#section)
             continue
         if target in valid or target + "/index" in valid:
@@ -87,6 +118,7 @@ if llms.exists():
 
 print(f"scanned {total} internal links across {len(list(ROOT.rglob('*.mdx')))} mdx files + llms.txt")
 print(f"valid routes known: {len(pages)} pages, {len(assets)} assets, {len(redirects)} redirects\n")
+print("Scope: local path/nav/redirect existence; rendered fragments and external URLs are not verified.\n")
 
 if not broken:
     print("✓ no broken internal links")
