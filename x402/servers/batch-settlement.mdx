@@ -6,7 +6,7 @@ description: "Metered payments with merchant-signed vouchers, public discovery, 
 Batch settlement lets a customer fund a reusable Solana channel and pay for multiple requests before the merchant claims and distributes the accumulated charges. It supports metered APIs, inference, and other services where the final charge is known after the work finishes.
 
 <Note>
-  This is a public preview with bounded channel capacity. Anyone with a valid PayAI merchant API key can use it; no Block Run-specific enrollment is required. The SDK is pinned to a preview build while the upstream changes are under review.
+  This is a public preview with bounded channel capacity. Anyone with a valid PayAI merchant API key can use it; no Block Run-specific enrollment is required. The SDK is pinned to the tested PayAI integration build; it is not a stable upstream release.
 </Note>
 
 ## 1. Create your merchant API key
@@ -21,7 +21,9 @@ Follow the [authentication guide](/x402/facilitators/authentication). A missing,
 curl https://facilitator.payai.network/supported
 ```
 
-Find the entry with `x402Version: 2`, `scheme: "batch-settlement"`, and your Solana network. Its `extra` contains the dedicated `feePayer`, `apiKeyRequired: true`, and `batchPolicy`. Preserve this fee payer for the channel's lifetime. During an admission pause, the batch entry is removed from discovery while existing channels can still be paid out and closed using their saved terms.
+Find the entry with `x402Version: 2`, `scheme: "batch-settlement"`, and your Solana network. Its `extra` contains the shared-lane `feePayer`, `apiKeyRequired: true`, and `batchPolicy`. Preserve this fee payer for the channel's lifetime. During an admission pause, the batch entry is removed from discovery while existing channels can still be paid out and closed using their saved terms.
+
+Enterprise accounts should also send their merchant API JWT when calling `/supported` to discover their assigned lane. PayAI uses signer 0 for enterprise accounts and signer 1 for shared traffic; applications should use the returned address rather than hardcode those indices. Discovery is a routing hint; `/verify` and `/settle` enforce the authenticated account's lane. Batch and exact payments share each lane's fee-payer and queue capacity. A third batch-specific facilitator signer is not required.
 
 ## 2. Prepare your USDC receiving account
 
@@ -33,12 +35,12 @@ The free settlement allowance is not a signup grant of portal credits. Check you
 
 ## 3. Install the compatible preview SDK
 
-Use both packages from the [pinned PayAI preview release](https://github.com/notorious-d-e-v/x402/releases/tag/payai-batch-preview-20260912):
+Use both packages from the [pinned PayAI preview release](https://github.com/notorious-d-e-v/x402/releases/tag/payai-batch-preview-20260913):
 
 ```bash
 npm install \
-  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260912/x402-core-2.24.0-af8e7235.tgz \
-  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260912/x402-svm-2.24.0-32595192-prod8.tgz \
+  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260913/x402-core-2.24.0-af8e7235.tgz \
+  https://github.com/notorious-d-e-v/x402/releases/download/payai-batch-preview-20260913/x402-svm-2.24.0-e8ef0552-recovery.tgz \
   @solana/kit@^5.5.1
 ```
 
@@ -72,9 +74,11 @@ The customer's reusable authorization is a bearer credential for the channel's l
 
 ## 5. Claim, distribute, and verify payout
 
-Run the exported `BatchChannelManager` against the same durable store and authenticated facilitator client. It claims saved vouchers, then distributes settled funds to the receiving ATA. Use a cadence comfortably inside the withdrawal grace period, such as 10–60 seconds, and alert on failed or delayed redemption. Preserve each channel's original network, asset, receiver, operator, and fee-payer terms.
+Run the exported `BatchChannelManager` against the same durable store and authenticated facilitator client. Configure its `rpcUrl` or `readPayoutWatermark` callback so it can reconcile the confirmed paid state before updating merchant bookkeeping. It claims saved vouchers, then distributes settled funds to the receiving ATA. Use a cadence comfortably inside the withdrawal grace period, such as 10–60 seconds, and alert on failed or delayed redemption. Preserve each channel's original network, asset, receiver, operator, and fee-payer terms.
 
 A successful **claim is not merchant payment**. The subsequent **distribution** must succeed, and the merchant ATA's USDC balance must increase by the expected amount. Compare signed receipts, cumulative channel state, distribution transaction identities, and actual USDC receipts. Replayed operations must not be counted as new volume.
+
+A distribution request sweeps what is currently owed. An identical later request can therefore pay a newer claim; it is not an immutable payout ID. The request format does not require a payout idempotency key or payout watermarks. A recovered response returns the original transaction's actual `amount`, not zero. Deduplicate accounting by network, transaction, asset and recipient instead of summing successful HTTP responses. A response for an older payout must not mark a newer claim paid.
 
 The public preview supports at most four channels per claim transaction. Configure `maxChannelsPerBatch` accordingly. For shutdown, flush claim and distribution work, initiate close, wait through the grace period, and verify the remaining customer balance is refunded and channel rent is reclaimed. Continue recovery workers while new admission is paused.
 
@@ -91,7 +95,9 @@ The public preview supports at most four channels per claim transaction. Configu
 | 503, `batch_new_channels_disabled` | New admission is paused. Continue recovery, claims, payouts, and close operations. |
 | `settlement_pending`, `duplicate_settlement`, or a lost HTTP response | Retain the exact request and any transaction signature; reconcile by retrying the same operation. |
 
-Do not allocate another charge or build a replacement transaction merely because a response was lost. The preview SDK preserves pending transaction identity and reconciles outcomes after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly: the facilitator's current pending/completed recovery window is 24 hours, not permanent receipt storage.
+Do not allocate another charge or build a replacement transaction merely because a response was lost. The preview SDK preserves pending transaction identity and reconciles outcomes after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly. PayAI retains unresolved signatures and signed bytes without automatic expiry; completed results retain a 24-hour recovery window. Keep permanent receipts in your own storage. An expired blockhash plus missing transaction history does not authorize a replacement payment. Restore history or contact PayAI if the outcome remains unknown.
+
+Automatic cleanup can pay already-claimed funds during channel closure; it cannot claim vouchers held only by an offline merchant. Keep your redemption worker running inside the withdrawal grace period. PayAI records background payouts in the same transaction-deduplicated ledger. If a receiving ATA also receives the customer refund or treasury sweep, aggregate credits cannot reliably separate those transfers; that case requires reconciliation rather than being reported as a zero payout.
 
 ## Test before accepting customer traffic
 
