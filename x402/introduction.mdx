@@ -13,7 +13,10 @@ x402 is an open payment protocol that brings stablecoin payments to plain HTTP.
 
 It revives the `HTTP 402 Payment Required` status so that servers can charge for APIs and digital content seamlessly.  
 
-Clients (human users or AI agents) can pay programmatically to access resources without accounts, API keys, or complex authentication.
+Clients (human users or AI agents) can pay programmatically to access resources
+without creating a separate account with every service. Merchant facilitator
+credentials are a different layer: PayAI requires them for
+[batch settlement](/x402/servers/batch-settlement) and paid facilitator usage.
 
 <Note>Learn more about the x402 project at [x402.org](https://x402.org).</Note>
 
@@ -31,7 +34,8 @@ x402 embeds payment into the web’s native request–response flow, enabling in
 - Pay-per-request and other usage-based pricing
 - Micropayments with stablecoins (e.g., USDC on Solana)
 - Agent-native: AI agents can discover and pay automatically
-- Zero friction: no accounts, API keys, or session management
+- Payment-based access without a separate customer subscription; applications
+  may still require identity or other access controls
 
 ## How it works (high level)
 

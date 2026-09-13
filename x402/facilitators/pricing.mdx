@@ -7,12 +7,12 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 ## Free Tier
 
-The free tier remains free — no strings attached.
+Ordinary exact payments can start within the free allowance below.
 
 <Card title="Free" icon="gift">
   **$0/month**
 
-  - Up to **1,000 free settlements**
+  - Up to **1,000 free settlements per receiving wallet (lifetime)**
   - No API key required for ordinary exact payments
 </Card>
 
@@ -20,7 +20,9 @@ The free tier remains free — no strings attached.
   Free settlements are counted per receiving wallet. Requests from shared hosts or
   IP addresses (e.g. shared cloud platforms) also draw from a shared pool, so those
   deployments may reach the limit sooner — create a merchant account and top up
-  credits for uninterrupted service.
+  credits before reaching the applicable limit. Some older receiving wallets
+  retain a legacy allowance; the 1,000-settlement figure is the current default
+  for new wallets, not a monthly reset.
 </Note>
 
 Get started immediately with zero setup. Jump to the [quickstart](/x402/quickstart) to start building.
@@ -38,14 +40,19 @@ Beyond the free tier, pricing is simple and predictable:
 </Card>
 
 <Note>
-  **Minimum transaction amount**: Transactions must be at least $0.001. This requirement will be removed after the credit system is turned on for merchants.
+  The facilitator fee is separate from the price your API charges its customer.
+  Payment amounts must satisfy the advertised payment requirements and the
+  selected scheme's rules. Batch channel deposits have their own
+  [limits](/x402/servers/batch-settlement); they are not the price of each API request.
 </Note>
 
 This fee is designed to cover gas and RPC costs while enabling the network to scale reliably.
 
 ### Builder friendly
 
-At this pricing, the facilitator remains extremely builder friendly. It costs the same — even slightly less — than what merchants would otherwise pay in raw network fees and RPC costs, while preserving all the benefits of x402 for their users.
+The per-settlement fee makes facilitator costs predictable. Compare it with your
+own gas, RPC and operational costs for the networks and traffic you plan to use;
+self-hosting costs vary.
 
 ### Pricing examples
 
@@ -62,6 +69,11 @@ To maintain access beyond the free tier, merchants log into a dashboard and top 
 - **1 credit = 1 settled transaction**
 - **Credits never expire**
 
+The merchant portal currently applies a **10% discount when buying credits with
+$PAYAI on Solana**. Review the displayed quote before paying. This credit-purchase
+discount is separate from the token and price your service accepts from its
+customers; customers do not need $PAYAI to use an API priced in USDC.
+
 <Card
   title="Top Up Credits"
   icon="credit-card"
@@ -74,16 +86,16 @@ To maintain access beyond the free tier, merchants log into a dashboard and top 
 
 | | Free | Beyond Free |
 |---|---|---|
-| **Monthly cost** | $0 | $0.001 per transaction |
+| **Facilitator fee** | $0 within the allowance | $0.001 per settlement |
 | **Settlements included** | Up to 1,000 (lifetime) | Unlimited (credit-based) |
-| **API key required** | No | Yes |
+| **API key required** | No for ordinary exact payments; yes for batch | Yes |
 | **Credits** | Not required | 1 credit = 1 settlement |
 | **Credit expiry** | — | Never |
 | **Dashboard access** | Not required | [merchant.payai.network](https://merchant.payai.network) |
 
 ## How to get started
 
-1. Follow the [quickstart](/x402/quickstart) to start building — the free tier requires no API key
+1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments without an API key, or the [batch guide](/x402/servers/batch-settlement) for authenticated metered payments
 2. When you're ready to scale beyond the free tier, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
 3. Top up credits from the dashboard
 4. Get your API key ID and secret
@@ -111,5 +123,3 @@ const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ## Need help?
 
 <DiscordHelpCard />
-
-

@@ -15,5 +15,7 @@ jobs:
           python-version: "3.12"
       - name: Check internal links
         run: python3 scripts/check-links.py
+      - name: Test link checker boundaries
+        run: python3 scripts/test_check_links.py
       - name: Check v2 reference examples
         run: python3 scripts/check-reference.py
