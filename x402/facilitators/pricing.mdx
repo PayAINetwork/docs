@@ -1,43 +1,81 @@
 ---
 title: "Facilitator Pricing"
-description: "PayAI Facilitator pricing — free tier, per-transaction pricing, and credits"
+description: "PayAI Facilitator pricing — free credits, cost-plus per-settlement rates by network, and credits"
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-## Free Tier
+<Warning>
+  **New pricing takes effect on 21 September 2026 at 12:00 UTC.** From that moment each
+  settlement is priced at the network's on-chain gas cost plus 30%, refreshed daily, and
+  testnet settlements are free. Credits stay at **$0.001 each**. Until then every settlement
+  costs 1 credit, as it does today. The live rate table — including any announced change —
+  is always at
+  [facilitator.payai.network/pricing](https://facilitator.payai.network/pricing).
+</Warning>
+
+## Free Credits
 
 Ordinary exact payments can start within the free allowance below.
 
 <Card title="Free" icon="gift">
   **$0/month**
 
-  - Up to **1,000 free settlements per receiving wallet (lifetime)**
+  - **1,000 free credits per receiving wallet (lifetime)** — roughly 750 Solana or 470 Base
+    settlements at the rates below
   - No API key required for ordinary exact payments
+  - Testnet settlements are free and do not consume the allowance
 </Card>
 
 <Note>
-  Free settlements are counted per receiving wallet. Requests from shared hosts or
-  IP addresses (e.g. shared cloud platforms) also draw from a shared pool, so those
+  Free credits are counted per receiving wallet. Requests from shared hosts or IP
+  addresses (e.g. shared cloud platforms) also draw from a shared pool, so those
   deployments may reach the limit sooner — create a merchant account and top up
-  credits before reaching the applicable limit. Some older receiving wallets
-  retain a legacy allowance; the 1,000-settlement figure is the current default
-  for new wallets, not a monthly reset.
+  credits before reaching the applicable limit. Some older receiving wallets retain
+  a legacy allowance of 10,000 credits; the 1,000-credit figure is the current
+  default for new wallets, not a monthly reset. Settlements made before 21 September
+  2026 count as 1 credit each toward the allowance.
 </Note>
 
 Get started immediately with zero setup. Jump to the [quickstart](/x402/quickstart) to start building.
 
 <Note>
-  [Solana batch settlement](/x402/servers/batch-settlement) requires a merchant API key from the first facilitator call. The free settlement allowance is separate from portal credits and ATA setup costs.
+  [Solana batch settlement](/x402/servers/batch-settlement) requires a merchant API key from the first facilitator call. The free allowance is separate from portal credits and ATA setup costs.
 </Note>
 
-## Beyond the Free Tier
+## Beyond the Free Credits
 
-Beyond the free tier, pricing is simple and predictable:
+Beyond the free allowance, each settlement costs the facilitator's **on-chain gas for that
+network plus 30%**, paid in credits:
 
-<Card title="Per Transaction" icon="coins">
-  **$0.001 per transaction**
+<Card title="Cost-plus, per settlement" icon="coins">
+  **price = network gas cost × 1.30**, converted to credits at $0.001 per credit and rounded
+  up to the nearest 0.01 credit
 </Card>
+
+The facilitator measures what it actually pays in gas on each network and recomputes the
+rates daily from the current gas and native-token prices. A rate is republished only when it
+moves by more than 5%. Testnets are always 0.
+
+### Rates effective 21 September 2026, 12:00 UTC
+
+| Network | Scheme | Credits per settlement | USD |
+|---|---|---:|---:|
+| Solana mainnet | exact | 1.33 | $0.00133 |
+| Solana mainnet | upto — open and claim, each | 1.33 | $0.00133 |
+| Solana mainnet | batch settlement — deposit, claim, refund, each | 1.33 | $0.00133 |
+| Solana mainnet | batch settlement — settle | 0.67 | $0.00067 |
+| Base | exact (EIP-3009) | 2.12 | $0.00212 |
+| Base | exact (Permit2) | 2.00 | $0.00200 |
+| Polygon | exact | 3.98 | $0.00398 |
+| Arbitrum | exact | 6.08 | $0.00608 |
+| Avalanche | exact | 0.09 | $0.00009 |
+| Sei | exact | 0.43 | $0.00043 |
+| Base Sepolia, Solana devnet, Polygon Amoy, Avalanche Fuji, Sei testnet, Arbitrum Sepolia, X Layer testnet, SKALE testnet | any | 0 | free |
+
+These figures use the gas and token prices of 14 September 2026 (SOL $101.79, ETH $2,516).
+The daily refresh moves them with the chain. Batch settlement and `upto` are priced per
+on-chain transaction, so a channel's lifecycle is the sum of its legs.
 
 <Note>
   The facilitator fee is separate from the price your API charges its customer.
@@ -46,27 +84,38 @@ Beyond the free tier, pricing is simple and predictable:
   [limits](/x402/servers/batch-settlement); they are not the price of each API request.
 </Note>
 
-This fee is designed to cover gas and RPC costs while enabling the network to scale reliably.
+### Reading the live table
 
-### Builder friendly
+`GET https://facilitator.payai.network/pricing` returns the current rates and any
+upcoming change with its effective time. `GET /supported` carries the same object under
+`pricing`, so a server can read the price for the network it is about to use.
 
-The per-settlement fee makes facilitator costs predictable. Compare it with your
-own gas, RPC and operational costs for the networks and traffic you plan to use;
-self-hosting costs vary.
+```json
+{
+  "creditUsd": "0.001",
+  "marginBps": 3000,
+  "rates": [
+    { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "scheme": "exact",
+      "transferMethod": "svm_transfer", "credits": "1.33", "usd": "0.00133",
+      "effectiveAt": "2026-09-21T12:00:00.000Z" }
+  ],
+  "upcoming": []
+}
+```
 
 ### Pricing examples
 
-| Transactions | Cost |
-|-------------|------|
-| 1 | $0.001 |
-| 1,000 | $1 |
-| 100,000 | $100 |
+| Settlements | Solana exact | Base exact |
+|---|---|---|
+| 1 | 1.33 credits ($0.00133) | 2.12 credits ($0.00212) |
+| 1,000 | $1.33 | $2.12 |
+| 100,000 | $133 | $212 |
 
 ## Credit System
 
-To maintain access beyond the free tier, merchants log into a dashboard and top up credits.
+To maintain access beyond the free allowance, merchants log into a dashboard and top up credits.
 
-- **1 credit = 1 settled transaction**
+- **1 credit = $0.001**; a settlement debits its network's rate in credits (fractional credits are normal)
 - **Credits never expire**
 
 The merchant portal currently applies a **10% discount** when buying credits with
@@ -82,21 +131,24 @@ customers; customers do not need `$PAYAI` to use an API priced in USDC.
   Log in to the merchant dashboard to manage your credits.
 </Card>
 
+Enterprise (invoiced) accounts are billed at the same rate card unless their agreement
+sets a different margin.
+
 ## Comparison
 
 | | Free | Beyond Free |
 |---|---|---|
-| **Facilitator fee** | $0 within the allowance | $0.001 per settlement |
-| **Settlements included** | Up to 1,000 (lifetime) | Unlimited (credit-based) |
+| **Facilitator fee** | $0 within the allowance | Network gas + 30%, in credits |
+| **Included** | 1,000 credits per receiving wallet (lifetime) | Unlimited (credit-based) |
 | **API key required** | No for ordinary exact payments; yes for batch | Yes |
-| **Credits** | Not required | 1 credit = 1 settlement |
+| **Credits** | Not required | 1 credit = $0.001 |
 | **Credit expiry** | — | Never |
 | **Dashboard access** | Not required | [merchant.payai.network](https://merchant.payai.network) |
 
 ## How to get started
 
 1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments without an API key, or the [batch guide](/x402/servers/batch-settlement) for authenticated metered payments
-2. When you're ready to scale beyond the free tier, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
+2. When you're ready to scale beyond the free allowance, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
 3. Top up credits from the dashboard
 4. Get your API key ID and secret
 5. Set the environment variables in your server:
@@ -117,7 +169,10 @@ const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
 
 <Note>
-  Pricing is subject to change as PayAI continues to grow and adoption increases. For now, the focus is on sustainability at scale and building long-term value. Visit [facilitator.payai.network](https://facilitator.payai.network) for the latest pricing information.
+  Rates track the chains' gas and token prices and are refreshed daily; material changes
+  are announced ahead of their effective time on the live table. Visit
+  [facilitator.payai.network/pricing](https://facilitator.payai.network/pricing) for the
+  latest figures.
 </Note>
 
 ## Need help?
