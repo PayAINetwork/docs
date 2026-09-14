@@ -16,6 +16,21 @@ class GuideHubsTest(unittest.TestCase):
     def test_current_guides(self):
         self.assertEqual(CHECKER.validate(ROOT), [])
 
+    def test_alias_clearance_guard(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / "introduction.mdx").write_text((ROOT / "introduction.mdx").read_text())
+            for family in ("clients", "servers"):
+                directory = root / "x402" / family
+                directory.mkdir(parents=True)
+                source = (ROOT / "x402" / family / "introduction.mdx").read_text()
+                if family == "clients":
+                    source = source.replace(' style={{ scrollMarginTop: "10rem" }}', '', 1)
+                (directory / "introduction.mdx").write_text(source)
+            self.assertEqual(CHECKER.validate(root), [
+                "clients hub: legacy anchor lacks sticky-header clearance"
+            ])
+
     def test_new_guides_require_links_outside_tabs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
