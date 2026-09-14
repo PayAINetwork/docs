@@ -11,6 +11,13 @@ This page shows how to respond with **402 Payment Required** and build the **PAY
 
 For production you’ll usually use the [Flask](/x402/servers/python/flask) or [FastAPI](/x402/servers/python/fastapi) quickstarts; this tutorial is for agents or environments that need a minimal implementation or want to understand the protocol from the server’s perspective.
 
+<Warning>
+This is a **402 response-construction example**, not a payment-processing server.
+It never delivers a paid resource. Requests carrying a payment header receive
+501 until a real verification, settlement and recovery implementation replaces
+the demonstration handler. Header presence is not proof of payment.
+</Warning>
+
 ---
 
 ## 1. When to return 402
@@ -32,24 +39,36 @@ The **PAYMENT-REQUIRED** header must contain **base64-encoded JSON**. The JSON o
 | `error` | `string` | Human-readable message (e.g. why payment is required) |
 | `resource` | `object` | `url`, `description`, and optional `mimeType` for the protected resource |
 | `accepts` | `array` | List of payment options (scheme, network, amount, asset, payTo, maxTimeoutSeconds, optional extra) |
-| `extensions` | `object` | Reserved; use `{}` |
+| `extensions` | `object` | Optional extension data; this example advertises none (`{}`). |
 
-Each item in **accepts** describes one way the client can pay (e.g. USDC on Base Sepolia, or USDC on Solana). The client will choose one and send it back in PAYMENT-SIGNATURE.
+Each item in **accepts** describes one payment option. This example uses **Base Sepolia and Solana devnet**, not mainnet. The client echoes its chosen requirement in `accepted` within PAYMENT-SIGNATURE.
 
 ---
 
 ## 3. Example: building the payload in Python
 
-Define the payload dict, then encode it as base64 and set the header. Use your own recipient addresses (`payTo`), asset addresses, and amounts.
+Define the payload dict, then encode it as base64 and set the header. Set your own
+testnet recipient addresses in `EVM_ADDRESS` and `SVM_ADDRESS`. Set `SVM_FEE_PAYER`
+from the selected facilitator's current devnet configuration; check
+[supported networks](/x402/supported-networks). Missing configuration stops the
+example; it never substitutes somebody else's recipient. Address syntax checks
+do not prove ownership or network compatibility.
 
 ```python
 import base64
 import json
 import os
+import re
 
-# Your wallet addresses (from env or config)
-EVM_PAY_TO = os.environ.get("EVM_ADDRESS", "0x209693Bc6afc0C5328bA36FaF03C514EF312287C")
-SVM_PAY_TO = os.environ.get("SVM_ADDRESS", "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2")
+def required_address(name: str, pattern: str) -> str:
+    value = os.environ.get(name)
+    if not value or not re.fullmatch(pattern, value):
+        raise ValueError(f"Configure {name}")
+    return value
+
+EVM_PAY_TO = required_address("EVM_ADDRESS", r"0x[0-9a-fA-F]{40}")
+SVM_PAY_TO = required_address("SVM_ADDRESS", r"[1-9A-HJ-NP-Za-km-z]{32,44}")
+SVM_FEE_PAYER = required_address("SVM_FEE_PAYER", r"[1-9A-HJ-NP-Za-km-z]{32,44}")
 
 # Example: protected resource URL and metadata
 resource_url = "https://api.example.com/weather"
@@ -76,12 +95,12 @@ payment_required = {
         },
         {
             "scheme": "exact",
-            "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+            "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
             "amount": "1000000",
-            "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
             "payTo": SVM_PAY_TO,
             "maxTimeoutSeconds": 60,
-            "extra": {"feePayer": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"},
+            "extra": {"feePayer": SVM_FEE_PAYER},
         },
     ],
     "extensions": {},
@@ -97,17 +116,23 @@ payment_required_b64 = base64.b64encode(json.dumps(payment_required).encode()).d
 Set the **PAYMENT-REQUIRED** header to the base64 string and return status **402**.
 
 ```python
-def send_402(start_response, payment_required_b64: str) -> None:
+def send_402(start_response, payment_required_b64: str) -> list[bytes]:
     status = "402 Payment Required"
     headers = [
         ("Content-Type", "application/json"),
         ("PAYMENT-REQUIRED", payment_required_b64),
     ]
     start_response(status, headers)
-    # WSGI: return body as iterable; Flask/FastAPI use their own response API
+    return [b'{"error":"Payment required"}']
 ```
 
-Example with Flask:
+The following demonstration handlers return 501 when a payment header is supplied.
+Do not expose them as payable services. A real server must validate against its
+own requirements and follow the selected scheme's verification/settlement
+sequence before delivering a resource. Preserve uncertain-payment state and
+follow [recovery guidance](/x402/facilitators/capacity-and-limits).
+
+Example with Flask (requires Flask):
 
 ```python
 from flask import Flask, request, jsonify
@@ -116,17 +141,16 @@ app = Flask(__name__)
 
 @app.route("/weather")
 def weather():
-    if not request.headers.get("PAYMENT-SIGNATURE"):
+    if request.headers.get("PAYMENT-SIGNATURE") is None:
         return (
             jsonify({"error": "Payment required"}),
             402,
             {"PAYMENT-REQUIRED": payment_required_b64},
         )
-    # Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
-    return jsonify({"weather": "sunny", "temperature": 70})
+    return jsonify({"error": "Payment processing is not implemented in this example"}), 501
 ```
 
-Example with FastAPI:
+Example with FastAPI (requires FastAPI):
 
 ```python
 from fastapi import FastAPI, Request, Response
@@ -135,15 +159,18 @@ app = FastAPI()
 
 @app.get("/weather")
 def weather(request: Request):
-    if not request.headers.get("payment-signature"):
+    if request.headers.get("payment-signature") is None:
         return Response(
             content='{"error":"Payment required"}',
             status_code=402,
             media_type="application/json",
             headers={"PAYMENT-REQUIRED": payment_required_b64},
         )
-    # Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
-    return {"weather": "sunny", "temperature": 70}
+    return Response(
+        content='{"error":"Payment processing is not implemented in this example"}',
+        status_code=501,
+        media_type="application/json",
+    )
 ```
 
 ---
