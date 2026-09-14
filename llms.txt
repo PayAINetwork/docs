@@ -16,7 +16,7 @@
 - [Axios client quickstart (TypeScript)](https://docs.payai.network/x402/clients/typescript/axios.md): Make x402 payments with Axios.
 - [Fetch client quickstart (TypeScript)](https://docs.payai.network/x402/clients/typescript/fetch.md): Make x402 payments with Fetch.
 - [Facilitator Introduction](https://docs.payai.network/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
-- [Facilitator Pricing](https://docs.payai.network/x402/facilitators/pricing.md): PayAI Facilitator pricing — free tier, per-transaction pricing, and credits
+- [Facilitator Pricing](https://docs.payai.network/x402/facilitators/pricing.md): PayAI Facilitator pricing — free credits, cost-plus per-settlement rates by network (gas + 30%, daily), and credits
 - [Facilitator Authentication](https://docs.payai.network/x402/facilitators/authentication.md): Merchant JWT authentication, API-key requirements, and examples for multiple languages.
 - [Capacity and Settlement Recovery](https://docs.payai.network/x402/facilitators/capacity-and-limits.md): Rate limits, pending settlement responses, and recovery using the original operation.
 - [Solana Batch Settlement](https://docs.payai.network/x402/servers/batch-settlement.md): Public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.
