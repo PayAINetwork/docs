@@ -1,13 +1,16 @@
 ---
 title: "TypeScript Client Manual Flow"
-description: "Step-by-step guide to implementing the x402 payment protocol manually in TypeScript without SDK wrappers."
+description: "Understand the x402 v2 client handshake in TypeScript, including requirement validation, signing responsibilities and settlement responses."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 ## Manual x402 client flow (TypeScript)
 
-This page shows how to perform the **entire x402 flow by hand** in TypeScript: no starter kit, no `@x402/fetch` or `@x402/axios` wrappers. You send raw HTTP requests, decode the 402 response, build the payment payload, and resend with the payment signature.
+This page walks through the **x402 v2 client handshake** in TypeScript without
+`@x402/fetch` or `@x402/axios` wrappers. It is an advanced protocol reference,
+not a complete copy-and-run client: signing, policy validation and recovery must
+be implemented separately. The signing snippets deliberately contain placeholders.
 
 For production you'll usually use the [Fetch](/x402/clients/typescript/fetch) or [Axios](/x402/clients/typescript/axios) quickstarts; this tutorial is for agents or environments that need a minimal, dependency-light implementation or want to understand the protocol step by step.
 
@@ -19,7 +22,11 @@ Send a normal GET (or other method) to the protected URL. No special headers yet
 
 ```ts
 const url = "http://localhost:4021/weather";
-const response = await fetch(url, { method: "GET" });
+const response = await fetch(url, {
+  method: "GET",
+  redirect: "error",
+  signal: AbortSignal.timeout(10_000),
+});
 ```
 
 ---
@@ -28,10 +35,13 @@ const response = await fetch(url, { method: "GET" });
 
 If the server requires payment, it returns **402 Payment Required** and puts the payment options in the **PAYMENT-REQUIRED** header (base64-encoded JSON).
 
+This walkthrough stops for any other status. In an application, handle that
+original response without continuing to payment creation. Decoding JSON or
+casting a TypeScript type does not validate untrusted payment requirements.
+
 ```ts
 if (response.status !== 402) {
-  // 200: already paid or free; 4xx/5xx: handle as needed
-  console.log(await response.json());
+  throw new Error(`Not a payment challenge (${response.status}); stop this walkthrough`);
 }
 
 const paymentRequiredB64 = response.headers.get("PAYMENT-REQUIRED");
@@ -40,8 +50,8 @@ if (!paymentRequiredB64) throw new Error("402 without PAYMENT-REQUIRED header");
 const paymentRequiredJson = Buffer.from(paymentRequiredB64, "base64").toString("utf-8");
 const paymentRequired = JSON.parse(paymentRequiredJson) as {
   x402Version: number;
-  error: string;
-  resource: { url: string; description: string; mimeType?: string };
+  error?: string;
+  resource: { url: string; description?: string; mimeType?: string };
   accepts: Array<{
     scheme: string;
     network: string;
@@ -61,40 +71,44 @@ Exact field names and shapes are in the [x402 Reference](/x402/reference). You m
 
 ## 3. Choose an accepted option
 
-Pick one entry from `paymentRequired.accepts` by network or scheme. For **EVM** (steps below), take an option whose `network` starts with `eip155:`. For **Solana**, take one whose `network` starts with `solana:` (see [Solana (exact scheme)](#solana-exact-scheme) in step 4).
+Before selecting, validate the message at runtime: version 2, expected resource
+and recipient, supported exact scheme/network/asset, positive atomic-unit amount
+within your spending cap, supported transfer method/payment flow and a bounded
+timeout. Network-prefix matching alone is not spending authorization. The example
+below assumes that validation and policy decision have already produced
+`approvedNetwork`, `approvedAsset`, `approvedRecipient` and `maxAmountAtomic`.
+Keep caps in integer atomic units, never floating-point token amounts.
 
 ```ts
 // EVM path:
-const accepted = paymentRequired.accepts.find((a) => a.network.startsWith("eip155:"));
-if (!accepted) throw new Error("No EVM accept option");
+const accepted = paymentRequired.accepts.find((a) =>
+  a.scheme === "exact" && a.network === approvedNetwork &&
+  a.asset === approvedAsset && a.payTo === approvedRecipient &&
+  /^[1-9][0-9]*$/.test(a.amount) && BigInt(a.amount) <= maxAmountAtomic
+);
+if (!accepted) throw new Error("No payment option approved by local policy");
 ```
 
 ---
 
 ## 4. Build the payment payload
 
-For the **exact** scheme on **EVM**, the client must produce an EIP-3009-style authorization and sign it with EIP-712 (see [x402 Reference](/x402/reference)). The payload is sent in the **PAYMENT-SIGNATURE** header as base64-encoded JSON.
+For the EIP-3009 variant of **exact EVM**, produce the authorization and sign its
+correct EIP-712 domain/types. Do not use this shape for other transfer methods.
+The outer v2 envelope has `accepted`, with scheme/network nested inside it;
+it does not use the old top-level scheme/network layout. Preserve the chosen
+requirement, resource and advertised extensions. See [x402 Reference](/x402/reference).
 
 Example shape (simplified; real code must use correct domain, types, and signing):
 
 ```ts
-import { privateKeyToAccount } from "viem/accounts";
-import { signTypedData } from "viem/accounts";
+import { randomBytes } from "node:crypto";
 
 // You need: payer private key, accepted requirement, token contract (asset), validAfter/validBefore, nonce
 const payload = {
   x402Version: 2,
-  scheme: "exact",
-  network: accepted.network,
-  accepted: {
-    scheme: accepted.scheme,
-    network: accepted.network,
-    amount: accepted.amount,
-    asset: accepted.asset,
-    payTo: accepted.payTo,
-    maxTimeoutSeconds: accepted.maxTimeoutSeconds,
-    ...(accepted.extra && { extra: accepted.extra }),
-  },
+  resource: paymentRequired.resource,
+  accepted,
   payload: {
     signature: "0x...", // EIP-712 signature from signTypedData
     authorization: {
@@ -102,37 +116,34 @@ const payload = {
       to: accepted.payTo,
       value: accepted.amount,
       validAfter: "0",
-      validBefore: String(Math.floor(Date.now() / 1000) + 300),
-      nonce: "0x..." + Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex"),
+      validBefore: String(Math.floor(Date.now() / 1000) + Math.min(60, accepted.maxTimeoutSeconds)),
+      nonce: "0x" + randomBytes(32).toString("hex"),
     },
   },
-  extensions: {},
+  extensions: paymentRequired.extensions ?? {},
 };
 const paymentSignatureB64 = Buffer.from(JSON.stringify(payload)).toString("base64");
 ```
 
 #### Solana (exact scheme)
 
-On **Solana**, you choose a Solana accept option (e.g. `network` starting with `solana:`), then build a **partially-signed transaction** and send it in the payload as base64. The transaction must contain these instructions **in this order**:
-
-1. **SetComputeUnitLimit** — max **40,000** compute units
-2. **SetComputeUnitPrice** — max **5** microlamports per compute unit
-3. **TransferChecked** — token transfer (amount, mint, decimals, source, destination)
-4. *Optional:* Lighthouse (wallets like Phantom/Solflare may add up to two; merchants do not add these)
+For an approved **Solana exact** option, construct a partially signed transaction
+with a compatible SDK. Compute-budget limits and optional instruction support
+depend on the SDK and facilitator policy; they are not universal constants.
+Validate network, mint, amount, recipient, fee payer and the complete instruction
+set before signing. Do not add or change transaction instructions after signing.
 
 You need a Solana SDK (e.g. `@solana/web3.js` or `@solana/spl-token`) to build and sign the transaction. Source and destination are **token accounts** (e.g. associated token accounts for the mint); `accepted.payTo` is the recipient **wallet**. Decimals may be in `accepted.extra`. The payment payload is JSON with the transaction in `payload.transaction` as base64:
 
 ```ts
-// 3. Choose Solana option instead of EVM
-const accepted = paymentRequired.accepts.find((a) => a.network.startsWith("solana:"));
-if (!accepted) throw new Error("No Solana accept option");
+// Alternative to the EVM block: use an exact Solana requirement approved
+// by the same explicit resource/network/asset/recipient/budget policy.
 
 // 4. Build Solana transaction (pseudocode — use @solana/web3.js / @solana/spl-token in practice)
-// - Add setComputeUnitLimit(40_000)
-// - Add setComputeUnitPrice(5)   // microlamports
+// - Configure compute-budget instructions within the facilitator's current policy
 // - Add createTransferCheckedInstruction: amount=accepted.amount, mint=accepted.asset,
 //   decimals from token metadata or accepted.extra, source=payerTokenAccount, destination=payeeTokenAccount
-// - Sign with payer keypair (partial sign; facilitator may add Lighthouse instructions)
+// - Finalize all instructions, then partially sign with the payer keypair
 // - Serialize transaction to buffer, then base64
 
 // const transactionBuffer = serializedSignedTx;  // from your Solana library
@@ -140,21 +151,12 @@ const transactionB64 = Buffer.from(transactionBuffer).toString("base64");
 
 const payload = {
   x402Version: 2,
-  scheme: "exact",
-  network: accepted.network,
-  accepted: {
-    scheme: accepted.scheme,
-    network: accepted.network,
-    amount: accepted.amount,
-    asset: accepted.asset,
-    payTo: accepted.payTo,
-    maxTimeoutSeconds: accepted.maxTimeoutSeconds,
-    ...(accepted.extra && { extra: accepted.extra }),
-  },
+  resource: paymentRequired.resource,
+  accepted,
   payload: {
     transaction: transactionB64,
   },
-  extensions: {},
+  extensions: paymentRequired.extensions ?? {},
 };
 const paymentSignatureB64 = Buffer.from(JSON.stringify(payload)).toString("base64");
 ```
@@ -167,9 +169,15 @@ Exact instruction formats, token-account derivation, and limits are in the [x402
 
 Send the **same** request again (same URL and method), this time adding the **PAYMENT-SIGNATURE** header.
 
+Do this only after producing a real signature under your spending policy; the
+placeholders above are not payable. Preserve any original request body and
+required application headers. Do not forward payment authorization to redirects.
+
 ```ts
 const retryResponse = await fetch(url, {
   method: "GET",
+  redirect: "error",
+  signal: AbortSignal.timeout(10_000),
   headers: {
     "PAYMENT-SIGNATURE": paymentSignatureB64,
   },
@@ -180,32 +188,35 @@ const retryResponse = await fetch(url, {
 
 ## 6. Parse the response and PAYMENT-RESPONSE
 
-On success the server returns **200** and may include **PAYMENT-RESPONSE** (base64-encoded settlement details). Decode the header and parse the JSON to get settlement info.
+Inspect the HTTP status and any **PAYMENT-RESPONSE** settlement details separately.
+An HTTP success alone is not proof of settlement. Decode an available settlement
+header even on an error response, and validate its fields before using it.
 
 ```ts
-if (!retryResponse.ok) {
-  throw new Error(`Request failed: ${retryResponse.status}`);
-}
-
-const body = await retryResponse.json();
 const paymentResponseB64 = retryResponse.headers.get("PAYMENT-RESPONSE");
 if (paymentResponseB64) {
   const paymentResponse = JSON.parse(
     Buffer.from(paymentResponseB64, "base64").toString("utf-8")
-  ) as { success: boolean; transaction?: string; network?: string; payer?: string };
-  console.log("Settlement:", paymentResponse);
+  ) as { success: boolean; transaction: string; network: string; payer?: string; errorReason?: string };
+  console.log("Reported settlement (validate before use):", paymentResponse);
+  if (paymentResponse.success !== true) {
+    throw new Error("Settlement not confirmed; retain the response and reconcile before paying again");
+  }
+} else {
+  console.log("Settlement details unavailable; do not infer settlement from HTTP status");
 }
-console.log(body);
+if (!retryResponse.ok) throw new Error(`Request failed: ${retryResponse.status}; reconcile before paying again`);
+console.log(await retryResponse.json());
 ```
 
 **Decoded PAYMENT-RESPONSE examples**
 
-On success (EVM):
+Illustrative success (EVM); transaction identifiers below are not observed receipts:
 
 ```json
 {
   "success": true,
-  "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
   "network": "eip155:84532",
   "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
 }
@@ -222,15 +233,22 @@ On success (Solana / SVM):
 }
 ```
 
-On failure (e.g. insufficient funds), the server may return a non-2xx status and/or a PAYMENT-RESPONSE header with an error. Example decoded payload:
+Illustrative decoded **PAYMENT-RESPONSE** for a known settlement failure, with no
+transaction broadcast (not a PAYMENT-REQUIRED challenge):
 
 ```json
 {
-  "x402Version": 2,
-  "error": "Payment failed: insufficient funds",
-  "accepts": [...]
+  "success": false,
+  "errorReason": "insufficient_funds",
+  "transaction": "",
+  "network": "eip155:84532"
 }
 ```
+
+A timeout, missing header or `settlement_pending` is not a confirmed failure.
+Retain the original request/payment identifiers and follow
+[capacity and recovery guidance](/x402/facilitators/capacity-and-limits).
+Do not automatically create a fresh payment or infer finality from decoded JSON.
 
 ---
 

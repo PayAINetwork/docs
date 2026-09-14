@@ -13,6 +13,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - name: Check internal links
         run: python3 scripts/check-links.py
       - name: Test link checker boundaries
@@ -23,3 +26,7 @@ jobs:
         run: python3 scripts/check-guide-hubs.py
       - name: Test guide index regression guard
         run: python3 scripts/test_check_guide_hubs.py
+      - name: Test isolated manual examples (no network or payments)
+        run: |
+          node --test scripts/test-manual-typescript.mjs
+          python3 scripts/test_manual_python.py

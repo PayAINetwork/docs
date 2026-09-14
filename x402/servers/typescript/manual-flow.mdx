@@ -11,6 +11,13 @@ This page shows how to respond with **402 Payment Required** and build the **PAY
 
 For production you’ll usually use the [Express](/x402/servers/typescript/express), [Hono](/x402/servers/typescript/hono), or [Next.js](/x402/servers/typescript/nextjs) quickstarts; this tutorial is for agents or environments that need a minimal implementation or want to understand the protocol from the server’s perspective.
 
+<Warning>
+This is a **402 response-construction example**, not a payment-processing server.
+It never delivers a paid resource. Requests carrying a payment header receive
+501 until a real verification, settlement and recovery implementation replaces
+the demonstration handler. Header presence is not proof of payment.
+</Warning>
+
 ---
 
 ## 1. When to return 402
@@ -32,15 +39,20 @@ The **PAYMENT-REQUIRED** header must contain **base64-encoded JSON**. The JSON o
 | `error` | `string` | Human-readable message (e.g. why payment is required) |
 | `resource` | `object` | `url`, `description`, and optional `mimeType` for the protected resource |
 | `accepts` | `array` | List of payment options (scheme, network, amount, asset, payTo, maxTimeoutSeconds, optional extra) |
-| `extensions` | `object` | Reserved; use `{}` |
+| `extensions` | `object` | Optional extension data; this example advertises none (`{}`). |
 
-Each item in **accepts** describes one way the client can pay (e.g. USDC on Base Sepolia, or USDC on Solana). The client will choose one and send it back in PAYMENT-SIGNATURE.
+Each item in **accepts** describes one payment option. This example uses **Base Sepolia and Solana devnet**, not mainnet. The client echoes its chosen requirement in `accepted` within PAYMENT-SIGNATURE.
 
 ---
 
 ## 3. Example: building the payload in TypeScript
 
-Define the payload object, then encode it as base64 and set the header. Use your own recipient addresses (`payTo`), asset addresses, and amounts.
+Define the payload object, then encode it as base64 and set the header. Set your
+own testnet recipient addresses in `EVM_ADDRESS` and `SVM_ADDRESS`. Set
+`SVM_FEE_PAYER` from the selected facilitator's current devnet configuration;
+check [supported networks](/x402/supported-networks). Missing configuration stops
+the example; it never substitutes somebody else's recipient. Address syntax
+checks below do not prove ownership or network compatibility.
 
 ```ts
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -49,9 +61,15 @@ function b64Encode(s: string): string {
   return Buffer.from(s, "utf-8").toString("base64");
 }
 
-// Your wallet addresses (from env or config)
-const EVM_PAY_TO = process.env.EVM_ADDRESS ?? "0x209693Bc6afc0C5328bA36FaF03C514EF312287C";
-const SVM_PAY_TO = process.env.SVM_ADDRESS ?? "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2";
+function requiredAddress(name: string, pattern: RegExp): string {
+  const value = process.env[name];
+  if (!value || !pattern.test(value)) throw new Error(`Configure ${name}`);
+  return value;
+}
+
+const EVM_PAY_TO = requiredAddress("EVM_ADDRESS", /^0x[0-9a-fA-F]{40}$/);
+const SVM_PAY_TO = requiredAddress("SVM_ADDRESS", /^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+const SVM_FEE_PAYER = requiredAddress("SVM_FEE_PAYER", /^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
 
 // Example: protected resource URL and metadata
 const resourceUrl = "https://api.example.com/weather";
@@ -78,12 +96,12 @@ const paymentRequired = {
     },
     {
       scheme: "exact",
-      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+      network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
       amount: "1000000",
-      asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
       payTo: SVM_PAY_TO,
       maxTimeoutSeconds: 60,
-      extra: { feePayer: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4" },
+      extra: { feePayer: SVM_FEE_PAYER },
     },
   ],
   extensions: {},
@@ -108,18 +126,21 @@ function send402(res: ServerResponse, paymentRequiredB64: string): void {
 }
 ```
 
-Example in a minimal request handler:
+Demonstration handler: missing headers get the 402 response; supplied headers
+stop at 501. This is not a deployed payment error policy. Do not expose it as a
+payable service. A real server must validate against its own requirements and
+follow the selected scheme's verification/settlement sequence before delivering
+the resource. Preserve uncertain-payment state and follow
+[recovery guidance](/x402/facilitators/capacity-and-limits).
 
 ```ts
 function handleGetWeather(req: IncomingMessage, res: ServerResponse): void {
-  const hasPayment = req.headers["payment-signature"];
-  if (!hasPayment) {
+  if (req.headers["payment-signature"] === undefined) {
     send402(res, paymentRequiredB64);
     return;
   }
-  // Otherwise: verify/settle payment (e.g. via facilitator), then return 200 + resource
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ weather: "sunny", temperature: 70 }));
+  res.writeHead(501, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "Payment processing is not implemented in this example" }));
 }
 ```
 
