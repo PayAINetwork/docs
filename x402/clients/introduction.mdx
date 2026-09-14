@@ -1,90 +1,54 @@
 ---
 title: "Client Introduction"
-description: "Learn how to support x402 in your client"
+description: "Choose an x402 client for TypeScript, Python or Go, configure payment authority, and handle paid HTTP responses."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-## Why use x402 with your client
+<span id="why-use-x402-with-your-client" />
 
-x402 standardizes how clients discover payment requirements, construct payment payloads, and complete on-chain payments for HTTP resources. Benefits include:
+## Pay for an HTTP resource
 
-✅ Customers don't pay network fees.  
-✅ Payment settles in < 1 second.  
-✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
+An x402 client handles a resource server's payment challenge and submits a payment authorization with its retry. It needs a supported signer, sufficient funds and permission to spend; an ordinary HTTP client does not make payments automatically.
 
-## Architecture at a glance
+If you want to charge for a resource instead, start with the [merchant guide](/x402/servers/introduction). For a first end-to-end example, use the [quickstart](/x402/quickstart).
+
+<span id="its-that-easy" />
+<span id="getting-started" />
+
+## Choose your client
+
+Follow one complete guide for its installation, signer setup and supported payment schemes. Do not combine snippets from different SDK generations.
+
+| Your application uses | Start here |
+| --- | --- |
+| TypeScript with Fetch | [Fetch client](/x402/clients/typescript/fetch) |
+| TypeScript with Axios | [Axios client](/x402/clients/typescript/axios) |
+| Python with httpx | [httpx client](/x402/clients/python/httpx) |
+| Python with requests | [requests client](/x402/clients/python/requests) |
+| Go with net/http | [Go HTTP client](/x402/clients/go/http) |
+| A custom TypeScript payment flow | [TypeScript manual flow](/x402/clients/typescript/manual-flow) |
+| A custom Python payment flow | [Python manual flow](/x402/clients/python/manual-flow) |
+
+<span id="architecture-at-a-glance" />
+<span id="x402-reference" />
+
+## Understand the payment flow
 
 ![x402 sequence diagram](/images/x402-sequence-diagram.svg)
 
-- **Client (buyer)**: Calls protected resources and constructs payment payloads.
-- **Server**: Advertises payment requirements, verifies/settles payments, fulfills requests.
-- **Facilitator**: Verifies and/or settles payments for the resource server.
-- **Blockchains**: Execute and confirm payments.
+For an ordinary exact-payment flow, the server returns a 402 challenge, the client selects acceptable payment terms and retries with a payment authorization, and the server coordinates verification, settlement and resource delivery. See the [x402 reference](/x402/reference) for the v2 headers and message shapes.
 
-## It's that easy
+Check that the client and server support the same network, token and payment scheme. Network-fee sponsorship and any account setup costs depend on that combination; they are not a guarantee that every payment flow is free of network costs. See [supported networks](/x402/supported-networks).
 
-Make x402 payments with just a few lines:
+End-to-end response time also includes application work, network transport and the integration's settlement behavior. The HTTP status code does not promise sub-second settlement.
 
-<Tabs>
-  <Tab title="Fetch">
-```typescript
-import { wrapFetchWithPayment } from "x402-fetch";
+## Before using real funds
 
-const fetchWithPayment = wrapFetchWithPayment(fetch, account);
-
-const response = await fetchWithPayment("https://api.example.com/premium");
-```
-  </Tab>
-  <Tab title="Axios">
-```typescript
-import { withPaymentInterceptor } from "x402-axios";
-
-const api = withPaymentInterceptor(axios.create({ baseURL }), account);
-
-const response = await api.get("/premium");
-```
-  </Tab>
-  <Tab title="Python">
-```python
-from x402.clients.httpx import x402HttpxClient
-
-async with x402HttpxClient(account=account, base_url=base_url) as client:
-    response = await client.get("/premium")
-```
-  </Tab>
-</Tabs>
-
-## Getting started
-
-Select one of the quickstart examples, or read the [reference](/x402/reference) for more details.
-
-<Tabs>
-  <Tab title="TypeScript">
-    <CardGroup>
-        <Card title="Axios" href="/x402/clients/typescript/axios" icon="code">
-            Quickstart for building an x402 client with Axios.
-        </Card>
-        <Card title="Fetch" href="/x402/clients/typescript/fetch" icon="code">
-            Quickstart for building an x402 client with Fetch.
-        </Card>
-    </CardGroup>
-  </Tab>
-  <Tab title="Python">
-    <CardGroup>
-        <Card title="httpx" href="/x402/clients/python/httpx" icon="code">
-            Quickstart for building an x402 client with httpx.
-        </Card>
-        <Card title="requests" href="/x402/clients/python/requests" icon="code">
-            Quickstart for building an x402 client with requests.
-        </Card>
-    </CardGroup>
-  </Tab>
-</Tabs>
-
-## x402 reference
-
-For a deeper dive into message shapes, headers, verification and settlement responses, see the <a href="/x402/reference">x402 Reference</a>.
+- Protect signing keys: do not put private keys in public frontend code or commit them to source control.
+- Set spending limits appropriate to the resource and check the advertised amount, network and recipient before authorizing payment.
+- Check both payment and resource-delivery outcomes. A failed HTTP response does not prove that a payment did not settle; use the [capacity and recovery guidance](/x402/facilitators/capacity-and-limits) before retrying an uncertain payment.
+- Treat [Solana batch settlement](/x402/servers/batch-settlement) as a separate public-preview integration with pinned SDK versions, funded channels and its own recovery procedure, not a drop-in replacement for an exact-payment client.
 
 ## Need help?
 

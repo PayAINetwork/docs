@@ -1,148 +1,59 @@
 ---
 title: "Merchant Introduction"
-description: "Learn how to sell services with x402."
+description: "Choose an x402 server integration, configure PayAI facilitation, and prepare payment, discovery and recovery behavior."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-## Monetize your API with x402
+<span id="monetize-your-api-with-x402" />
 
-x402 lets you monetize HTTP APIs and content with on-chain payments, while keeping your existing server stack. 
+## Charge for an HTTP resource
 
-Benefits:
+An x402 resource server advertises payment requirements and uses a facilitator to verify and settle supported payments. Your application still owns resource delivery, pricing, access control and recovery.
 
-✅ Customers don't pay network fees.  
-✅ Payment settles in < 1 second.  
-✅ Universal compatibility -- if it speaks HTTP, it speaks x402.
+If you want to pay for a resource instead, start with the [client guide](/x402/clients/introduction). For a first end-to-end example, use the [quickstart](/x402/quickstart).
 
-## Architecture at a glance
+<span id="its-that-easy" />
+<span id="getting-started" />
+
+## Choose your server
+
+Use a complete framework guide for installation, environment variables and a runnable example. Use a manual flow when you need to control the payment lifecycle directly.
+
+| Your application uses | Start here |
+| --- | --- |
+| TypeScript with Express | [Express server](/x402/servers/typescript/express) |
+| TypeScript with Hono | [Hono server](/x402/servers/typescript/hono) |
+| TypeScript with Next.js | [Next.js server](/x402/servers/typescript/nextjs) |
+| Python with FastAPI | [FastAPI server](/x402/servers/python/fastapi) |
+| Python with Flask | [Flask server](/x402/servers/python/flask) |
+| Go with Gin | [Gin server](/x402/servers/go/gin) |
+| A custom TypeScript payment flow | [TypeScript manual flow](/x402/servers/typescript/manual-flow) |
+| A custom Python payment flow | [Python manual flow](/x402/servers/python/manual-flow) |
+| Metered Solana payments with channels and vouchers | [Batch settlement public preview](/x402/servers/batch-settlement) |
+
+Batch settlement has separate SDK, funding, authentication and channel-recovery requirements. Do not apply an exact-payment example to it unchanged.
+
+<span id="architecture-at-a-glance" />
+<span id="x402-reference" />
+
+## Understand the payment flow
 
 ![x402 sequence diagram](/images/x402-sequence-diagram.svg)
 
-- **Client**: Calls your protected resource and submits payments.
-- **Server (merchant)**: Advertises payment requirements, verifies payments, fulfills requests, and settles payments.
-- **Facilitator**: Verifies and/or settles payments on your behalf via standard endpoints.
-- **Blockchain**: Where payments are executed and confirmed.
+The server challenges an unpaid request, accepts a retry carrying a payment authorization, and verifies the selected terms. Settlement and resource delivery must follow the lifecycle required by your integration. See the [x402 reference](/x402/reference) for wire formats and the [facilitator introduction](/x402/facilitators/introduction) for PayAI's role.
 
-## It's that easy
+HTTP compatibility alone is not payment compatibility: both ends must support the selected network, token and scheme. Check [supported networks](/x402/supported-networks). Fee sponsorship depends on the payment flow, and end-to-end latency depends on application work, transport and settlement; neither zero network costs nor sub-second settlement is universal.
 
-Add x402 payments to your server with just a few lines:
+<span id="facilitator-setup" />
 
-<Tabs>
-  <Tab title="Express">
-```typescript
-import { paymentMiddleware, x402ResourceServer } from "@x402/express";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { facilitator } from "@payai/facilitator";
+## Configure PayAI and prepare production
 
-const facilitatorClient = new HTTPFacilitatorClient(facilitator);
-
-app.use(
-  paymentMiddleware(
-    {
-      "GET /weather": {
-        accepts: [
-          {
-            scheme: "exact",
-            price: "$0.001",
-            network: "eip155:84532",
-            payTo: evmAddress,
-          },
-        ],
-        description: "Weather data",
-        mimeType: "application/json",
-      },
-    },
-    new x402ResourceServer(facilitatorClient)
-      .register("eip155:84532", new ExactEvmScheme()),
-  ),
-);
-```
-  </Tab>
-  <Tab title="Hono">
-```typescript
-import { paymentMiddleware, x402ResourceServer } from "@x402/hono";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { facilitator } from "@payai/facilitator";
-
-const facilitatorClient = new HTTPFacilitatorClient(facilitator);
-
-app.use(
-  paymentMiddleware(
-    {
-      "GET /weather": {
-        accepts: [
-          {
-            scheme: "exact",
-            price: "$0.001",
-            network: "eip155:84532",
-            payTo: evmAddress,
-          },
-        ],
-        description: "Weather data",
-        mimeType: "application/json",
-      },
-    },
-    new x402ResourceServer(facilitatorClient)
-      .register("eip155:84532", new ExactEvmScheme()),
-  ),
-);
-```
-  </Tab>
-</Tabs>
-
-## Getting started
-
-Select one of the quickstart examples, or read the [reference](/x402/reference) for more details.
-
-<Tabs>
-  <Tab title="TypeScript">
-    <CardGroup>
-        <Card title="Express" href="/x402/servers/typescript/express" icon="server">
-            Quickstart for building an x402-enabled server with Express.
-        </Card>
-        <Card title="Hono" href="/x402/servers/typescript/hono" icon="server">
-            Quickstart for building an x402-enabled server with Hono.
-        </Card>
-        <Card title="Next.js" href="/x402/servers/typescript/nextjs" icon="server">
-            Quickstart for building an x402-enabled server with Next.js.
-        </Card>
-    </CardGroup>
-  </Tab>
-  <Tab title="Python">
-    <CardGroup>
-        <Card title="FastAPI" href="/x402/servers/python/fastapi" icon="server">
-            Quickstart for building an x402-enabled server with FastAPI.
-        </Card>
-        <Card title="Flask" href="/x402/servers/python/flask" icon="server">
-            Quickstart for building an x402-enabled server with Flask.
-        </Card>
-    </CardGroup>
-  </Tab>
-</Tabs>
-
-## Facilitator setup
-
-The `@payai/facilitator` package provides a pre-configured facilitator that connects to the PayAI facilitator at `https://facilitator.payai.network`:
-
-```bash
-npm install @payai/facilitator
-```
-
-```typescript
-import { facilitator } from "@payai/facilitator";
-import { HTTPFacilitatorClient } from "@x402/core/server";
-
-const facilitatorClient = new HTTPFacilitatorClient(facilitator);
-```
-
-This works immediately on the free tier. For production, set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` environment variables — see [Going to Production](/x402/facilitators/pricing). For details on how authentication works or to implement it without PayAI packages, see [Facilitator Authentication](/x402/facilitators/authentication).
-
-## x402 reference
-
-For a deeper dive into message shapes, headers, verification and settlement responses, see the [x402 Reference](/x402/reference).
+1. Follow your framework guide's PayAI facilitator configuration. Review the [free allowance and production pricing](/x402/facilitators/pricing); batch verification and settlement require authentication from the first request. Public discovery remains available without a key.
+2. Keep facilitator credentials on the server. See [facilitator authentication](/x402/facilitators/authentication) for package-based and direct HTTP setup.
+3. Configure [Bazaar discovery](/x402/facilitators/bazaar) if you want to expose supported discovery metadata. Serving an HTTP endpoint alone does not list it automatically.
+4. For variable charges, follow the [dynamic pricing guide](/guides/dynamic-pricing-x402) and validate that the payment authorization covers the accepted terms.
+5. Plan for capacity limits, timeouts and uncertain outcomes using the [capacity and recovery guidance](/x402/facilitators/capacity-and-limits). A request timeout does not establish that settlement failed.
 
 ## Need help?
 

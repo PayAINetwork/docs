@@ -19,3 +19,7 @@ jobs:
         run: python3 scripts/test_check_links.py
       - name: Check v2 reference examples
         run: python3 scripts/check-reference.py
+      - name: Check plain guide indexes
+        run: python3 scripts/check-guide-hubs.py
+      - name: Test guide index regression guard
+        run: python3 scripts/test_check_guide_hubs.py
