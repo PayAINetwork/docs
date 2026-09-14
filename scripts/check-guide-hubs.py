@@ -20,6 +20,10 @@ def validate(root):
         directory = root / "x402" / family
         hub = directory / "introduction.mdx"
         source = hub.read_text()
+        aliases = re.findall(r'<span id="[^"]+"[^>]*>', source)
+        for alias in aliases:
+            if 'scrollMarginTop: "10rem"' not in alias:
+                errors.append(f"{family} hub: legacy anchor lacks sticky-header clearance")
         expected = {
             "/" + page.relative_to(root).with_suffix("").as_posix()
             for page in directory.rglob("*.mdx") if page != hub
