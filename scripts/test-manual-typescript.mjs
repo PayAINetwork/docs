@@ -96,6 +96,7 @@ test('both illustrative payment envelopes preserve v2 requirements, resource and
 test('all settlement JSON is parseable and distinguishes receipts from requirements', () => {
   const examples = [...clientText.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => JSON.parse(m[1]));
   assert.equal(examples.length, 3);
+  assert.equal(examples[1].network, 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1');
   for (const x of examples) {
     assert.equal(typeof x.success, 'boolean');
     assert.equal(typeof x.transaction, 'string');
