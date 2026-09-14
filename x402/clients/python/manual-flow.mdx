@@ -1,13 +1,16 @@
 ---
 title: "Python Client Manual Flow"
-description: "Step-by-step guide to implementing the x402 payment protocol manually in Python without SDK wrappers."
+description: "Understand the x402 v2 client handshake in Python, including requirement validation, signing responsibilities and settlement responses."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 ## Manual x402 client flow (Python)
 
-This page shows how to perform the **entire x402 flow by hand** in Python: no starter kit, no `x402.http.clients` wrappers. You send raw HTTP requests, decode the 402 response, build the payment payload, and resend with the payment signature.
+This page walks through the **x402 v2 client handshake** in Python without
+`x402.http.clients` wrappers. It is an advanced protocol reference, not a complete
+copy-and-run client: signing, policy validation and recovery must be implemented
+separately. The signing snippets deliberately contain placeholders.
 
 For production you'll usually use the [httpx](/x402/clients/python/httpx) or [requests](/x402/clients/python/requests) quickstarts; this tutorial is for agents or environments that need a minimal, dependency-light implementation or want to understand the protocol step by step.
 
@@ -21,7 +24,7 @@ Send a normal GET (or other method) to the protected URL. No special headers yet
 import requests
 
 url = "http://localhost:4021/weather"
-response = requests.get(url)
+response = requests.get(url, timeout=10, allow_redirects=False)
 ```
 
 ---
@@ -30,20 +33,23 @@ response = requests.get(url)
 
 If the server requires payment, it returns **402 Payment Required** and puts the payment options in the **PAYMENT-REQUIRED** header (base64-encoded JSON).
 
+This walkthrough stops for any other status. In an application, handle that
+original response without continuing to payment creation. Decoding JSON alone
+does not validate untrusted payment requirements.
+
 ```python
 import base64
 import json
 
 if response.status_code != 402:
-    # 200: already paid or free; 4xx/5xx: handle as needed
-    print(response.json())
+    raise RuntimeError(f"Not a payment challenge ({response.status_code}); stop this walkthrough")
 
 payment_required_b64 = response.headers.get("PAYMENT-REQUIRED")
 if not payment_required_b64:
     raise ValueError("402 without PAYMENT-REQUIRED header")
 
 payment_required = json.loads(
-    base64.b64decode(payment_required_b64).decode("utf-8")
+    base64.b64decode(payment_required_b64, validate=True).decode("utf-8")
 )
 # payment_required has: x402Version, error, resource, accepts, extensions
 # accepts is a list of payment options (scheme, network, amount, asset, payTo, etc.)
@@ -55,21 +61,37 @@ Exact field names and shapes are in the [x402 Reference](/x402/reference). You m
 
 ## 3. Choose an accepted option
 
-Pick one entry from `payment_required["accepts"]` by network or scheme. For **EVM** (steps below), take an option whose `network` starts with `eip155:`. For **Solana**, take one whose `network` starts with `solana:` (see [Solana (exact scheme)](#solana-exact-scheme) in step 4).
+Before selecting, validate the message at runtime: version 2, expected resource
+and recipient, supported exact scheme/network/asset, positive atomic-unit amount
+within your spending cap, supported transfer method/payment flow and a bounded
+timeout. Network-prefix matching alone is not spending authorization. The example
+below assumes that validation and policy decision have already produced
+`approved_network`, `approved_asset`, `approved_recipient` and `max_amount_atomic`.
+Keep caps in integer atomic units, never floating-point token amounts.
 
 ```python
+import re
+
 accepts = payment_required["accepts"]
 # EVM path:
-accepted = next((a for a in accepts if a["network"].startswith("eip155:")), None)
+accepted = next((a for a in accepts
+    if a["scheme"] == "exact" and a["network"] == approved_network
+    and a["asset"] == approved_asset and a["payTo"] == approved_recipient
+    and re.fullmatch(r"[1-9][0-9]*", a["amount"])
+    and int(a["amount"]) <= max_amount_atomic), None)
 if not accepted:
-    raise ValueError("No EVM accept option")
+    raise ValueError("No payment option approved by local policy")
 ```
 
 ---
 
 ## 4. Build the payment payload
 
-For the **exact** scheme on **EVM**, the client must produce an EIP-3009-style authorization and sign it with EIP-712 (see [x402 Reference](/x402/reference)). The payload is sent in the **PAYMENT-SIGNATURE** header as base64-encoded JSON.
+For the EIP-3009 variant of **exact EVM**, produce the authorization and sign its
+correct EIP-712 domain/types. Do not use this shape for other transfer methods.
+The outer v2 envelope has `accepted`, with scheme/network nested inside it;
+it does not use the old top-level scheme/network layout. Preserve the chosen
+requirement, resource and advertised extensions. See [x402 Reference](/x402/reference).
 
 You need a signer (e.g. `eth_account` or `web3`) to produce the signature and authorization fields. Example shape (simplified; real code must use correct domain, types, and signing):
 
@@ -81,17 +103,8 @@ import time
 # valid_after, valid_before, nonce, and EIP-712 signing.
 payload = {
     "x402Version": 2,
-    "scheme": "exact",
-    "network": accepted["network"],
-    "accepted": {
-        "scheme": accepted["scheme"],
-        "network": accepted["network"],
-        "amount": accepted["amount"],
-        "asset": accepted["asset"],
-        "payTo": accepted["payTo"],
-        "maxTimeoutSeconds": accepted["maxTimeoutSeconds"],
-        **({"extra": accepted["extra"]} if accepted.get("extra") else {}),
-    },
+    "resource": payment_required["resource"],
+    "accepted": accepted,
     "payload": {
         "signature": "0x...",  # EIP-712 signature
         "authorization": {
@@ -99,38 +112,34 @@ payload = {
             "to": accepted["payTo"],
             "value": accepted["amount"],
             "validAfter": "0",
-            "validBefore": str(int(time.time()) + 300),
+            "validBefore": str(int(time.time()) + min(60, accepted["maxTimeoutSeconds"])),
             "nonce": "0x" + os.urandom(32).hex(),
         },
     },
-    "extensions": {},
+    "extensions": payment_required.get("extensions", {}),
 }
 payment_signature_b64 = base64.b64encode(json.dumps(payload).encode()).decode()
 ```
 
 #### Solana (exact scheme)
 
-On **Solana**, you choose a Solana accept option (e.g. `network` starting with `solana:`), then build a **partially-signed transaction** and send it in the payload as base64. The transaction must contain these instructions **in this order**:
-
-1. **SetComputeUnitLimit** — max **40,000** compute units
-2. **SetComputeUnitPrice** — max **5** microlamports per compute unit
-3. **TransferChecked** — token transfer (amount, mint, decimals, source, destination)
-4. *Optional:* Lighthouse (wallets like Phantom/Solflare may add up to two; merchants do not add these)
+For an approved **Solana exact** option, construct a partially signed transaction
+with a compatible SDK. Compute-budget limits and optional instruction support
+depend on the SDK and facilitator policy; they are not universal constants.
+Validate network, mint, amount, recipient, fee payer and the complete instruction
+set before signing. Do not add or change transaction instructions after signing.
 
 You need a Solana SDK (e.g. `solders` or `solana-py`) to build and sign the transaction. The payment payload is JSON with the transaction in `payload.transaction` as base64:
 
 ```python
-# 3. Choose Solana option instead of EVM
-accepted = next((a for a in accepts if a["network"].startswith("solana:")), None)
-if not accepted:
-    raise ValueError("No Solana accept option")
+# Alternative to the EVM block: use an exact Solana requirement approved
+# by the same explicit resource/network/asset/recipient/budget policy.
 
 # 4. Build Solana transaction (pseudocode — use solders/solana-py in practice)
-# - Add SetComputeUnitLimit(40_000)
-# - Add SetComputeUnitPrice(5)   # microlamports
+# - Configure compute-budget instructions within the facilitator's current policy
 # - Add TransferChecked: amount=accepted["amount"], mint=accepted["asset"],
 #   decimals from token metadata, source=payer_token_account, destination=payee_token_account
-# - Sign with payer keypair (partial sign; facilitator may add Lighthouse instructions)
+# - Finalize all instructions, then partially sign with the payer keypair
 # - Serialize transaction to bytes, then base64
 
 # transaction_bytes = serialized_signed_tx  # from your Solana library
@@ -138,21 +147,12 @@ transaction_b64 = base64.b64encode(transaction_bytes).decode()
 
 payload = {
     "x402Version": 2,
-    "scheme": "exact",
-    "network": accepted["network"],
-    "accepted": {
-        "scheme": accepted["scheme"],
-        "network": accepted["network"],
-        "amount": accepted["amount"],
-        "asset": accepted["asset"],
-        "payTo": accepted["payTo"],
-        "maxTimeoutSeconds": accepted["maxTimeoutSeconds"],
-        **({"extra": accepted["extra"]} if accepted.get("extra") else {}),
-    },
+    "resource": payment_required["resource"],
+    "accepted": accepted,
     "payload": {
         "transaction": transaction_b64,
     },
-    "extensions": {},
+    "extensions": payment_required.get("extensions", {}),
 }
 payment_signature_b64 = base64.b64encode(json.dumps(payload).encode()).decode()
 ```
@@ -165,10 +165,16 @@ Exact instruction formats, token-account derivation, and limits are in the [x402
 
 Send the **same** request again (same URL and method), this time adding the **PAYMENT-SIGNATURE** header.
 
+Do this only after producing a real signature under your spending policy; the
+placeholders above are not payable. Preserve any original request body and
+required application headers. Do not forward payment authorization to redirects.
+
 ```python
 retry_response = requests.get(
     url,
     headers={"PAYMENT-SIGNATURE": payment_signature_b64},
+    timeout=10,
+    allow_redirects=False,
 )
 ```
 
@@ -176,56 +182,67 @@ retry_response = requests.get(
 
 ## 6. Parse the response and PAYMENT-RESPONSE
 
-On success the server returns **200** and may include **PAYMENT-RESPONSE** (base64-encoded settlement details). Decode the header and parse the JSON to get settlement info.
+Inspect the HTTP status and any **PAYMENT-RESPONSE** settlement details separately.
+An HTTP success alone is not proof of settlement. Decode an available settlement
+header even on an error response, and validate its fields before using it.
 
 ```python
-retry_response.raise_for_status()
-body = retry_response.json()
-
 payment_response_b64 = retry_response.headers.get("PAYMENT-RESPONSE")
 if payment_response_b64:
     payment_response = json.loads(
-        base64.b64decode(payment_response_b64).decode("utf-8")
+        base64.b64decode(payment_response_b64, validate=True).decode("utf-8")
     )
-    # success, transaction, network, payer
-    print("Settlement:", payment_response)
+    print("Reported settlement (validate before use):", payment_response)
+    if payment_response.get("success") is not True:
+        raise RuntimeError("Settlement not confirmed; retain the response and reconcile before paying again")
+else:
+    print("Settlement details unavailable; do not infer settlement from HTTP status")
 
-print(body)
+if not 200 <= retry_response.status_code < 300:
+    raise RuntimeError(f"Request failed: {retry_response.status_code}; reconcile before paying again")
+print(retry_response.json())
 ```
 
 **Decoded PAYMENT-RESPONSE examples**
 
-On success (EVM):
+Illustrative success (EVM); transaction identifiers below are not observed receipts:
 
 ```json
 {
   "success": true,
-  "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
   "network": "eip155:84532",
   "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
 }
 ```
 
-On success (Solana / SVM):
+Illustrative success (Solana devnet / SVM):
 
 ```json
 {
   "success": true,
   "transaction": "AXGcLa7sqSjt7pXV4mpVRP5a77tVjokZbgx8gkQ16X8Wgg3vDkWKMh9BrPTr1f2KrDuf9nSX7FrZEAQTkJ3y5UN",
-  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
   "payer": "6KPYDyuRnpuKcm1TerUmwLd2BcaihvhF4Ccrr8beruu2"
 }
 ```
 
-On failure (e.g. insufficient funds), the server may return a non-2xx status and/or a PAYMENT-RESPONSE header with an error. Example decoded payload:
+Illustrative decoded **PAYMENT-RESPONSE** for a known settlement failure, with no
+transaction broadcast (not a PAYMENT-REQUIRED challenge):
 
 ```json
 {
-  "x402Version": 2,
-  "error": "Payment failed: insufficient funds",
-  "accepts": [...]
+  "success": false,
+  "errorReason": "insufficient_funds",
+  "transaction": "",
+  "network": "eip155:84532"
 }
 ```
+
+A timeout, missing header or `settlement_pending` is not a confirmed failure.
+Retain the original request/payment identifiers and follow
+[capacity and recovery guidance](/x402/facilitators/capacity-and-limits).
+Do not automatically create a fresh payment or infer finality from decoded JSON.
 
 ---
 
