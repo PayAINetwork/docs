@@ -141,6 +141,7 @@ class ManualExamplesTest(unittest.TestCase):
     def test_settlement_json(self):
         examples = [json.loads(b) for b in re.findall(r"```json\n(.*?)\n```", CLIENT_TEXT, re.S)]
         self.assertEqual(len(examples), 3)
+        self.assertEqual(examples[1]["network"], "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
         for example in examples:
             self.assertIsInstance(example["success"], bool)
             self.assertIsInstance(example["transaction"], str)
