@@ -69,10 +69,19 @@ EXTENSION-RESPONSES: eyJiYXphYXIiOnsic3RhdHVzIjoicHJvY2Vzc2luZyJ9fQ==
 | What you get | Meaning |
 | --- | --- |
 | `{"bazaar":{"status":"processing"}}` | Declaration accepted and queued for cataloging. Your entry appears or refreshes within seconds. |
-| `{"bazaar":{"status":"rejected","rejectedReason":"..."}}` | Declaration received but failed validation. The reason says why (truncated to 256 characters). Payment is unaffected. |
+| `{"bazaar":{"status":"rejected","rejectedReason":"..."}}` | Declaration received but not catalogued. The reason says why (truncated to 256 characters) — see [rejection reasons](#rejection-reasons). Payment is unaffected. |
 | No header at all | The payment payload carried no bazaar extension — the buyer's client dropped your declaration. |
 
 A rejected or missing declaration never affects the payment itself: verification and settlement succeed or fail on their own terms.
+
+### Rejection reasons
+
+| `rejectedReason` | What it means | What to do |
+| --- | --- | --- |
+| `Bazaar extension validation failed: …` / `info failed schema validation` | Your `info` does not satisfy the `schema` you shipped next to it, or the declaration breaks a structural rule of the protocol. The validator's own error paths are included in the reason text. | Validate locally with `validateDiscoveryExtension` from `@x402/extensions` and fix the declaration on your server. |
+| `resource url missing or not absolute (payload.resource.url)` | The buyer's client echoed your extension but dropped or rewrote the `resource` object, so the payload carries no absolute URL to catalog under. Your 402 is fine. | Pay once through a client that echoes `resource` verbatim (any `@x402/*` 2.x, `x402-solana` ≥ 2.0.5). If you wrote the client, echo the 402's `resource` object unchanged. |
+| `declaration could not be extracted` | The declaration validated but the extractor failed on it. This should not happen for a spec-valid declaration. | Open an issue with your 402 body. |
+| `failed to enqueue discovery cataloging` | A transient facilitator-side queue error. Nothing is wrong with your declaration. | Retry later. The payment itself was processed normally. |
 
 ## What gets catalogued
 
@@ -87,12 +96,13 @@ Each entry in `/discovery/resources` carries:
 | `accepts` | Payment requirements from the indexing payment |
 | `description`, `mimeType`, `serviceName`, `tags`, `iconUrl` | Service metadata from your declaration (`null` when not declared) |
 | `method` | HTTP method (`null` for MCP) |
-| `inputSchema`, `outputSchema` | Input/output shapes from your declaration |
+| `extensions` | Your declaration verbatim (`extensions.bazaar.info` / `.schema`) — the field the upstream `@x402/extensions` discovery client reads to build a request. `null` on entries last written before this field was persisted; refills on the next extension-carrying payment |
+| `inputSchema`, `outputSchema` | PayAI's flattened view of the same declaration, kept for compatibility |
 | `lastUpdated` | ISO timestamp of the last refresh |
 
 ## Refresh semantics
 
-- Entries are **upserted on every payment that carries the extension** — `accepts`, schemas, metadata, and `lastUpdated` all refresh.
+- Entries are **upserted from every payment that carries the extension** — `accepts`, schemas, metadata, and `lastUpdated` all refresh. Identical repeats of an unchanged listing are collapsed so a busy endpoint does not rewrite its row on every payment; a payment whose declaration, `accepts`, or service metadata changed is written straight away.
 - Refresh is **forward-only**. Correcting your declaration does not rewrite the catalog until the next extension-carrying payment arrives.
 - There is **no TTL and no eviction**: an entry persists at its last-written state indefinitely.
 - There is **no re-index endpoint**. To force a refresh, make one verify-shaped payment against your own endpoint through a client that echoes extensions — `/verify` catalogs and moves no funds. Confirm with the `processing` header status.
@@ -103,10 +113,17 @@ Each entry in `/discovery/resources` carries:
 
 | Parameter | Type | Required | Description | Default |
 | --- | --- | --- | --- | --- |
+| `type` | `string` | Optional | Resource type: `http` or `mcp` | — |
+| `payTo` | `string` | Optional | Payment recipient address, matched inside `accepts` | — |
+| `scheme` | `string` | Optional | Payment scheme, e.g. `exact`, matched inside `accepts` | — |
+| `network` | `string` | Optional | Network as declared by the resource, e.g. `eip155:8453` or `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (v1 entries use plain names such as `base`) | — |
+| `extensions` | `string` | Optional | Only entries carrying this extension key, e.g. `bazaar` | — |
 | `limit` | `number` | Optional | Results per page (1–1000) | 100 |
 | `offset` | `number` | Optional | Results to skip | 0 |
 
-Returns `{ items, pagination: { limit, offset, total }, x402Version }`, newest first. Responses are cached for about a minute. The legacy `/list` path redirects here permanently.
+These are the filters the x402 Bazaar specification defines for `ListDiscoveryResourcesParams`, so `bazaar.listResources({ type: "mcp" })` from `@x402/extensions` works unchanged. The `payTo`, `scheme`, and `network` filters must all be satisfied by a **single** `accepts` entry: a resource that takes `exact` on Base and `upto` on Solana is not returned for `scheme=exact&network=solana:…`, because it does not accept that pair.
+
+Returns `{ items, pagination: { limit, offset, total }, x402Version }`, newest first. The unfiltered listing is cached for about a minute; filtered requests are served from indexes and not cached. The legacy `/list` path redirects here permanently.
 
 ### GET /discovery/stats
 
@@ -135,8 +152,9 @@ An MCP server with N tools contributes N `catalogEntries` but one `resource` and
 | --- | --- | --- |
 | Payments settle but the resource never appears | Buyer's client is not echoing `extensions` into the payment payload | Check a payment response: no `EXTENSION-RESPONSES` header confirms it. Pay once through an echoing client (any `@x402/*` 2.x, `x402-solana` ≥ 2.0.5) |
 | Entry exists but is stale after you changed your declaration | No extension-carrying payment since the change | Trigger a refresh via `/verify` with an echoing client; look for `processing` |
-| Header says `rejected` | Declaration failed schema validation | Fix the declaration per `rejectedReason`; validate locally with `@x402/extensions` |
-| Entry shows `metadata: {}` and `null` service fields | Entry predates metadata persistence (2026-08-01) or declaration omits the fields | Any extension-carrying payment after declaring `serviceName`/`tags`/`iconUrl` populates them |
+| Header says `rejected` | See [rejection reasons](#rejection-reasons) — only the validation reasons point at your declaration | Fix the declaration per `rejectedReason`; validate locally with `@x402/extensions` |
+| Header says `rejected` with `resource url missing or not absolute` | Buyer's client dropped or rewrote the `resource` object while echoing your extension | Pay once through a client that echoes `resource` verbatim; your 402 needs no change |
+| Entry shows `null` for `serviceName`, `tags`, `iconUrl`, or `extensions` | Entry was last refreshed before those fields were persisted, or the declaration omits them | Any extension-carrying payment after declaring them populates the fields; identical repeats do not rewrite the row, so change something or wait for the next real payment |
 
 ## Need help?
 
