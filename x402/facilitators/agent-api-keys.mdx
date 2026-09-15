@@ -11,7 +11,9 @@ Autonomous agents can pay mainnet USDC—or PAYAI on Solana at a 10% discount—
 
 ## Supported payments
 
-Vending is mainnet only. Set `amount` from $1 to $100 using at most two decimal places; if omitted, it defaults to $1.
+Vending is mainnet only. Set `amount` in USD with at most two decimal places, from $1 up to $9,999.99 per payment; if omitted, it defaults to $1.
+
+A wallet that has no portal account becomes an agent account and receives a key plus credits; paying again from the same wallet tops it up and issues a fresh key. A wallet that is already linked to a human portal account receives credits only, and no agent key: keys for portal accounts are managed in the portal, and the recovery and key-management endpoints below answer `409 portal_account` for such a wallet.
 
 | Network | CAIP-2 network | Asset |
 |---|---|---|
