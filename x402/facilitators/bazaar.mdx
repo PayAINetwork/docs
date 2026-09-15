@@ -16,6 +16,7 @@ Three parties cooperate to get a resource listed:
 1. **Your server declares.** Your 402 response includes a bazaar discovery declaration describing the endpoint (method, input/output shape, service metadata).
 2. **The buyer's client echoes.** The client copies your declaration from the 402 response into the payment payload it sends to the facilitator. This is required client behavior in x402 v2 — the client must include at least the extension info it received.
 3. **The facilitator catalogs.** On `/verify` and `/settle`, the facilitator extracts the declaration from the payment payload and upserts your catalog entry asynchronously.
+4. **The catalog worker admits the resource.** Before a resource is listed for the first time, the worker checks the URL against the host policy below and sends one read-only probe (`HEAD`, then `GET` on `404`/`405`; the probe never sends `POST`, `PUT`, `PATCH` or `DELETE`). A resource is listed when either proof holds: **the indexing payment was a settlement** (a buyer only pays after receiving your `402`), or the read-only probe itself answers **`402 Payment Required`**. A verify-only first listing of a `POST`/`PUT`/`PATCH`/`DELETE` or MCP resource (or one with no declared method) is deferred with `resource_needs_settlement` until its first settled payment; a `GET` resource answering something other than `402` unpaid is refused as `resource_not_x402`. Unreachable hosts, `GET` paths answering `404`/`405`/`410`, and hosts resolving to private address space are refused regardless. Existing entries are refreshed without a probe.
 
 <Note>
 Step 2 is where most "my resource never appears" reports come from. If the buyer's client drops the `extensions` object when building its payment payload, the facilitator never sees your declaration — no matter how many payments settle successfully. Use the [`EXTENSION-RESPONSES` header](#reading-extension-responses) to tell the cases apart.
@@ -56,6 +57,22 @@ The optional `serviceName`, `tags`, and `iconUrl` fields on the `resource` objec
 **x402 v1** servers declare through `outputSchema.input` on the payment requirements themselves (with `type` and `method` required). Because v1 discovery info rides inside the payment requirements — which your server controls end to end — v1 listing does not depend on the buyer's client echoing anything.
 
 **MCP servers** declare per tool. The catalog key is `(resource, toolName)`, so a server exposing several tools at one URL gets one entry per tool.
+
+## Host policy
+
+The resource URL must be an absolute `http` or `https` URL on a public host. Declarations that fail these rules are rejected on the payment response itself (see [rejection reasons](#rejection-reasons)) and never enter the catalog:
+
+| `rejectedReason` | Rule |
+| --- | --- |
+| `resource_url_invalid` | Not a parseable absolute URL |
+| `resource_scheme_not_allowed` | Any scheme other than `http` or `https` (for example `monopoly://`, `solana-transfer://`) |
+| `resource_host_loopback`, `resource_host_private` | `localhost`, `*.localhost`, loopback, RFC 1918, carrier-grade NAT, link-local, reserved and documentation ranges, or a hostname that resolves to any of them |
+| `resource_host_ip_literal` | IP-literal hosts (v4 or v6) — list a hostname instead |
+| `resource_host_dotless` | Bare service names such as `http://backend:8080/` |
+| `resource_host_ephemeral` | Tunnel and preview hosts (`trycloudflare.com`, `ngrok`, `serveo`, `loca.lt`, `replit.dev` previews, and similar) |
+| `resource_userinfo`, `resource_control_chars` | Credentials or control characters in the URL |
+
+Reachability is checked asynchronously by the catalog worker, never on the payment path. Its verdict is visible through [`/discovery/listing-status`](#get-/discovery/listing-status): `resource_unreachable` (DNS failure, connection error, timeout, or a `5xx`), `resource_not_found` (`404`/`405`/`410` on a `GET`/`HEAD` resource), `resource_not_x402` (a `GET`/`HEAD` resource answered unpaid without a `402`), and `resource_needs_settlement` (a `POST`/`PUT`/`PATCH`/`DELETE`, MCP, or method-less resource seen only through `/verify`; it lists on its first settlement). All probes are read-only, so a listing can never cause a request to reach your application handler.
 
 ## Reading EXTENSION-RESPONSES
 
@@ -104,7 +121,7 @@ Each entry in `/discovery/resources` carries:
 
 - Entries are **upserted from every payment that carries the extension** — `accepts`, schemas, metadata, and `lastUpdated` all refresh. Identical repeats of an unchanged listing are collapsed so a busy endpoint does not rewrite its row on every payment; a payment whose declaration, `accepts`, or service metadata changed is written straight away.
 - Refresh is **forward-only**. Correcting your declaration does not rewrite the catalog until the next extension-carrying payment arrives.
-- There is **no TTL and no eviction**: an entry persists at its last-written state indefinitely.
+- Listed resources are **probed on an ongoing basis** with read-only `HEAD`/`GET` requests (every listed row at least once a day; recently settling resources more often). A resource that fails three consecutive probes spanning at least 48 hours — connection failures, timeouts, `5xx`, or `404`/`405`/`410` on a `GET`/`HEAD` resource — is **hidden** from `/discovery/resources` and `/discovery/search`; the first healthy probe, or a successful settlement through the facilitator (identical settlements are coalesced, so allow up to five minutes), relists it automatically. A `404`/`405` from a `POST`/`PUT`/`PATCH`/`DELETE`, MCP, or method-less resource is inconclusive and changes nothing. A hostname that starts resolving to private address space is hidden immediately and is relisted only by a healthy probe. Hidden rows keep their data and are visible through `/discovery/listing-status`.
 - There is **no re-index endpoint**. To force a refresh, make one verify-shaped payment against your own endpoint through a client that echoes extensions — `/verify` catalogs and moves no funds. Confirm with the `processing` header status.
 
 ## Endpoints
@@ -125,6 +142,30 @@ These are the filters the x402 Bazaar specification defines for `ListDiscoveryRe
 
 Returns `{ items, pagination: { limit, offset, total }, x402Version }`, newest first. The unfiltered listing is cached for about a minute; filtered requests are served from indexes and not cached. The legacy `/list` path redirects here permanently.
 
+### GET /discovery/search
+
+Natural-language search over the visible catalog, as defined by the Bazaar specification (`bazaar.search()` in `@x402/extensions` targets it).
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | `string` | Yes | 1–256 characters; matched against service name, description, tags, MCP tool names and input descriptions, and the resource URL |
+| `type`, `payTo`, `scheme`, `network`, `extensions` | `string` | Optional | Same semantics as `/discovery/resources` |
+| `limit` | `number` | Optional | Advisory; default 20, at most 50 |
+| `cursor` | `string` | Optional | Accepted and ignored |
+
+Returns `{ resources, partialResults, pagination: null, x402Version }`. `resources` uses the same item shape as the list endpoint, ranked by relevance then recency. `partialResults` is `true` when more matches exist than were returned. If no whole-word match exists, a prefix match is tried before returning an empty list. Responses are never cached.
+
+### GET /discovery/listing-status
+
+Answers "is my resource listed, and if not, why" without a support thread.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `resource` | `string` | Yes | The exact resource URL as catalogued |
+| `toolName` | `string` | Optional | MCP tool name; omit for HTTP resources |
+
+Returns `{ resource, toolName, listed, hidden, hiddenReason, lastUpdated, lastProbe: { at, status, httpStatus } | null, lastWrite: { status, reason, detail, at, source } | null, policy }`. `lastWrite` is the catalog worker's most recent outcome for this resource (kept for 30 days): `listed`, `updated`, or `rejected` with the reason. `policy` is the static host-policy verdict for the URL you passed. Responds `404` (RFC 9457 problem) when the resource has neither a catalog row nor a recent write outcome.
+
 ### GET /discovery/stats
 
 Aggregate catalog and settlement statistics. Note the three catalog counts:
@@ -144,7 +185,8 @@ An MCP server with N tools contributes N `catalogEntries` but one `resource` and
 
 - **v1**: declare `discoverable: false` inside `outputSchema.input` and the facilitator will not index the resource.
 - **v2**: simplest is to omit the `bazaar` extension from your 402 — with nothing to echo, nothing is indexed.
-- **Delisting an existing entry is a known gap.** Removing or omitting your declaration stops refreshes but does not evict what is already catalogued, and the x402 specification currently defines no delisting semantics at all. Until that is standardized upstream, removal is a manual request — reach out on Discord or open an issue with proof of resource ownership.
+- **Dead resources leave on their own.** Take the endpoint down (connection refused, DNS gone, or `404`/`410` on a `GET` resource) and the probes above hide it within about two days; it comes back automatically if it reappears. Entries on hosts that can never be reached from the public internet were removed in September 2026 and are refused at write time.
+- **Immediate removal of a live entry** (for example a path you have retired but still serve) is still a manual request — reach out on Discord or open an issue with proof of resource ownership. The x402 specification defines no delisting semantics yet.
 
 ## Troubleshooting
 
@@ -154,6 +196,9 @@ An MCP server with N tools contributes N `catalogEntries` but one `resource` and
 | Entry exists but is stale after you changed your declaration | No extension-carrying payment since the change | Trigger a refresh via `/verify` with an echoing client; look for `processing` |
 | Header says `rejected` | See [rejection reasons](#rejection-reasons) — only the validation reasons point at your declaration | Fix the declaration per `rejectedReason`; validate locally with `@x402/extensions` |
 | Header says `rejected` with `resource url missing or not absolute` | Buyer's client dropped or rewrote the `resource` object while echoing your extension | Pay once through a client that echoes `resource` verbatim; your 402 needs no change |
+| Header says `rejected` with a `resource_host_*` or `resource_scheme_*` reason | Your resource URL fails the [host policy](#host-policy) | List a public hostname over `http(s)`; tunnels and preview hosts are not catalogued |
+| Header said `processing` but the entry never appeared | The catalog worker could not reach the resource on first listing | Query `/discovery/listing-status?resource=…` — `lastWrite.reason` says `resource_unreachable` or `resource_not_found` with detail; fix and pay once more |
+| Entry disappeared from the listing | Probes failed for two days, or the host now resolves to private space | `/discovery/listing-status` shows `hidden: true` with `hiddenReason` and `lastProbe`; the first healthy probe relists it |
 | Entry shows `null` for `serviceName`, `tags`, `iconUrl`, or `extensions` | Entry was last refreshed before those fields were persisted, or the declaration omits them | Any extension-carrying payment after declaring them populates the fields; identical repeats do not rewrite the row, so change something or wait for the next real payment |
 
 ## Need help?
