@@ -16,7 +16,7 @@ Three parties cooperate to get a resource listed:
 1. **Your server declares.** Your 402 response includes a bazaar discovery declaration describing the endpoint (method, input/output shape, service metadata).
 2. **The buyer's client echoes.** The client copies your declaration from the 402 response into the payment payload it sends to the facilitator. This is required client behavior in x402 v2 — the client must include at least the extension info it received.
 3. **The facilitator catalogs.** On `/verify` and `/settle`, the facilitator extracts the declaration from the payment payload and upserts your catalog entry asynchronously.
-4. **The catalog worker admits the resource.** Before a resource is listed for the first time, the worker checks the URL against the host policy below and probes it once (an unpaid request with your declared method, expecting any HTTP response). Unreachable hosts, `404`/`410` paths, and hosts resolving to private address space are not inserted. Existing entries are refreshed without a probe.
+4. **The catalog worker admits the resource.** Before a resource is listed for the first time, the worker checks the URL against the host policy below and sends one unpaid request with your declared method (`DELETE` declarations are probed with `HEAD`/`GET`). The resource is listed only if that request answers **`402 Payment Required`** — the x402 handshake itself. Any other response (`200`, `401`, `403`, …) is refused as `resource_not_x402`; unreachable hosts, `404`/`410` paths, and hosts resolving to private address space are refused too. Existing entries are refreshed without a probe.
 
 <Note>
 Step 2 is where most "my resource never appears" reports come from. If the buyer's client drops the `extensions` object when building its payment payload, the facilitator never sees your declaration — no matter how many payments settle successfully. Use the [`EXTENSION-RESPONSES` header](#reading-extension-responses) to tell the cases apart.
@@ -72,7 +72,7 @@ The resource URL must be an absolute `http` or `https` URL on a public host. Dec
 | `resource_host_ephemeral` | Tunnel and preview hosts (`trycloudflare.com`, `ngrok`, `serveo`, `loca.lt`, `replit.dev` previews, and similar) |
 | `resource_userinfo`, `resource_control_chars` | Credentials or control characters in the URL |
 
-Reachability is checked asynchronously by the catalog worker, never on the payment path. Its verdict is visible through [`/discovery/listing-status`](#get-/discovery/listing-status): `resource_unreachable` (DNS failure, connection error, timeout, or a `5xx`) and `resource_not_found` (`404`/`410`).
+Reachability is checked asynchronously by the catalog worker, never on the payment path. Its verdict is visible through [`/discovery/listing-status`](#get-/discovery/listing-status): `resource_unreachable` (DNS failure, connection error, timeout, or a `5xx`), `resource_not_found` (`404`/`410`), and `resource_not_x402` (the declared method answered without a `402`). Because only endpoints that answer `402` unpaid are admitted, the probes never reach an application handler; entries listed before this rule are probed with `HEAD`/`GET` only until they answer `402`.
 
 ## Reading EXTENSION-RESPONSES
 
