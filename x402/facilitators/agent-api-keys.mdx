@@ -1,0 +1,331 @@
+---
+title: "Get an API key without an account"
+description: "Buy a PayAI facilitator API key and credits programmatically over x402, then recover keys and manage the wallet-owned account."
+---
+
+Autonomous agents can pay mainnet USDC—or PAYAI on Solana at a 10% discount—over x402 and receive a facilitator API key plus credits in the same exchange. Each $1 of credit value buys 1,000 credits. The paying wallet becomes the account identity; paying again from the same wallet tops up that account and issues a fresh key.
+
+<Warning>
+  The API key secret is returned **once**. It is never emailed and cannot be retrieved later, so store it securely before continuing. Purchased credits are non-refundable.
+</Warning>
+
+## Supported payments
+
+Vending is mainnet only. Set `amount` from $1 to $100 using at most two decimal places; if omitted, it defaults to $1.
+
+| Network | CAIP-2 network | Asset |
+|---|---|---|
+| Solana | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | USDC, PAYAI (10% off) |
+| Base | `eip155:8453` | USDC |
+| Polygon | `eip155:137` | USDC |
+| Avalanche | `eip155:43114` | USDC |
+| Arbitrum One | `eip155:42161` | USDC |
+| X Layer | `eip155:196` | USDC |
+
+## Discover the offer
+
+```http
+GET https://merchant.payai.network/api/v1/keys/vend
+```
+
+The response is cached for five minutes and contains:
+
+| Field | Description |
+|---|---|
+| `resource` | Absolute vending endpoint URL |
+| `method` | `POST` |
+| `protocol` | `x402` |
+| `mainnetOnly` | Always `true` |
+| `amount` | Currency, minimum, maximum, default, query parameter name, and decimal precision |
+| `creditsPerUsd` | Credits granted per USD of credit value |
+| `accepts` | Payment choices. Every entry has `scheme`, `network`, `asset`, `symbol`, and `payTo`; PAYAI also has `discountPercent` |
+| `body` | Descriptions in `recoveryEmail` and `keyName` for the two optional body fields |
+| `flow` | Machine-readable summary of the vending flow |
+| `recovery.wallet` | `url`, required `header`, and wallet-signature `flow` |
+| `recovery.email` | Code-request URL in `request`, confirmation URL in `confirm`, and the email `flow` |
+| `recovery.payAgain` | Always `true` |
+| `account` | Account API URL |
+| `docs` | Authentication and pricing documentation URLs |
+
+## Vend a key
+
+Send `POST /api/v1/keys/vend?amount=5`. The optional JSON body accepts only these documented fields:
+
+```json
+{
+  "recoveryEmail": "ops@example.com",
+  "keyName": "Production agent"
+}
+```
+
+`recoveryEmail` is normalized and may be at most 254 characters. `keyName` must be non-empty and may be at most 64 characters.
+
+The first request returns `402 Payment Required` with its choices in the `PAYMENT-REQUIRED` header. Select one choice, create its exact x402 payment payload, and repeat the same request with the resulting `PAYMENT-SIGNATURE` header.
+
+After successful payment and settlement, the response is `201 Created` with `Cache-Control: no-store`:
+
+```json
+{
+  "apiKey": {
+    "id": "20b73dd6-4f29-47cf-89c4-5a65ae1f26d4",
+    "secret": "payai_sk_…",
+    "name": "Production agent"
+  },
+  "credits": {
+    "purchased": 5000,
+    "valueUsd": "5",
+    "paid": {
+      "token": "USDC",
+      "amountAtomic": "5000000",
+      "usd": "5"
+    },
+    "creditsPerUsd": 1000
+  },
+  "account": {
+    "wallet": "0x1234…abcd",
+    "addressType": "evm",
+    "network": "eip155:8453",
+    "accountCreated": true,
+    "recoveryEmail": "o***@example.com",
+    "recoveryEmailVerified": false
+  },
+  "next": {
+    "authentication": "https://docs.payai.network/x402/facilitators/authentication",
+    "account": "https://merchant.payai.network/api/v1/account",
+    "recover": {
+      "wallet": "https://merchant.payai.network/api/v1/keys/recover",
+      "email": "https://merchant.payai.network/api/v1/keys/recover/email",
+      "payAgain": "POST this endpoint again from the same wallet"
+    }
+  }
+}
+```
+
+For a PAYAI payment, `credits.paid.token` is `PAYAI`, `amountAtomic` is the quoted token amount in its smallest unit, and `usd` is 90% of the purchased credit value. `accountCreated` is a best-effort pre-settlement value.
+
+### Runnable examples
+
+Install the packages used by the example for your chain:
+
+```bash
+npm install @x402/core @x402/evm viem
+# or
+npm install @x402/core @x402/svm @solana/kit
+```
+
+<Tabs>
+  <Tab title="TypeScript — EVM">
+    Set `EVM_PRIVATE_KEY`, then run this file with a TypeScript runner such as `tsx`. This example deliberately selects Base USDC.
+
+    ```typescript
+    import { x402Client, x402HTTPClient } from "@x402/core/client";
+    import { registerExactEvmScheme } from "@x402/evm/exact/client";
+    import { privateKeyToAccount } from "viem/accounts";
+
+    const url = "https://merchant.payai.network/api/v1/keys/vend?amount=5";
+    const network = "eip155:8453";
+    const asset = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913";
+    const signer = privateKeyToAccount(process.env.EVM_PRIVATE_KEY as `0x${string}`);
+
+    // The selector belongs on the client; the per-scheme option is not applied in 2.22.
+    // Without one the first offered option for a registered chain is used (Base for EVM).
+    const client = new x402Client((_version, accepts) => {
+      const selected = accepts.find(
+        option => option.network === network && option.asset.toLowerCase() === asset,
+      );
+      if (!selected) throw new Error("Base USDC is not offered");
+      return selected;
+    });
+    registerExactEvmScheme(client, { signer });
+    const http = new x402HTTPClient(client);
+
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keyName: "Production agent" }),
+    };
+    const challenge = await fetch(url, init);
+    if (challenge.status !== 402) throw new Error(await challenge.text());
+
+    const challengeBody = await challenge.json();
+    const required = http.getPaymentRequiredResponse(
+      name => challenge.headers.get(name),
+      challengeBody,
+    );
+    const payload = await http.createPaymentPayload(required);
+    const paymentHeaders = http.encodePaymentSignatureHeader(payload);
+    const response = await fetch(url, {
+      ...init,
+      headers: { ...init.headers, ...paymentHeaders },
+    });
+    if (response.status !== 201) throw new Error(await response.text());
+
+    const result = await response.json();
+    console.log(result.apiKey.id, result.apiKey.secret); // Store the secret now.
+    ```
+  </Tab>
+  <Tab title="TypeScript — Solana">
+    Set `SVM_PRIVATE_KEY` to a base58-encoded Solana private key. This example deliberately selects PAYAI on Solana; replace `asset` with the Solana USDC mint to pay USDC instead.
+
+    ```typescript
+    import { x402Client, x402HTTPClient } from "@x402/core/client";
+    import { registerExactSvmScheme } from "@x402/svm/exact/client";
+    import { createKeyPairSignerFromBytes, getBase58Codec } from "@solana/kit";
+
+    const url = "https://merchant.payai.network/api/v1/keys/vend?amount=5";
+    const network = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+    const asset = "PAYmo6moDF3Ro3X6bU2jwe2UdBnBhv8YjLgL1j4DxGu";
+    const bytes = getBase58Codec().encode(process.env.SVM_PRIVATE_KEY!);
+    const signer = await createKeyPairSignerFromBytes(bytes.length === 64 ? bytes : bytes.slice(0, 64));
+
+    // The selector belongs on the client; the per-scheme option is not applied in 2.22.
+    // Without one the first offered Solana option (USDC) is used.
+    const client = new x402Client((_version, accepts) => {
+      const selected = accepts.find(
+        option => option.network === network && option.asset === asset,
+      );
+      if (!selected) throw new Error("Solana PAYAI is not offered");
+      return selected;
+    });
+    registerExactSvmScheme(client, {
+      signer,
+      rpcUrl: process.env.SVM_MAINNET_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+    });
+    const http = new x402HTTPClient(client);
+
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recoveryEmail: "ops@example.com",
+        keyName: "Production agent",
+      }),
+    };
+    const challenge = await fetch(url, init);
+    if (challenge.status !== 402) throw new Error(await challenge.text());
+
+    const required = http.getPaymentRequiredResponse(
+      name => challenge.headers.get(name),
+      await challenge.json(),
+    );
+    const payload = await http.createPaymentPayload(required);
+    const paymentHeaders = http.encodePaymentSignatureHeader(payload);
+    const response = await fetch(url, {
+      ...init,
+      headers: { ...init.headers, ...paymentHeaders },
+    });
+    if (response.status !== 201) throw new Error(await response.text());
+
+    const result = await response.json();
+    console.log(result.apiKey.id, result.apiKey.secret); // Store the secret now.
+    ```
+  </Tab>
+  <Tab title="curl — inspect 402">
+    This does not pay. It prints the `402` response and the `PAYMENT-REQUIRED` challenge header.
+
+    ```bash
+    curl --include \
+      --request POST \
+      --header 'content-type: application/json' \
+      --data '{"recoveryEmail":"ops@example.com","keyName":"Production agent"}' \
+      'https://merchant.payai.network/api/v1/keys/vend?amount=5'
+    ```
+  </Tab>
+</Tabs>
+
+### Vending errors
+
+| Status | Error | Meaning |
+|---:|---|---|
+| 400 | `invalid_amount` | `amount` is malformed, outside the returned `min`/`max`, or has more than two decimals |
+| 400 | `invalid_body` | The JSON body or named `field` is invalid |
+| 400 | `payment_mismatch` | The paid network, asset, or atomic amount does not match the selected requirement |
+| 409 | `quote_expired` | The PAYAI quote is no longer available; request a new 402 challenge and pay that quote |
+| 503 | `payer_unavailable` | The verified payment did not identify a payer, so settlement was cancelled |
+| 409 | `enterprise_postpaid_account` | The paying wallet belongs to an enterprise postpaid account |
+| 429 | `rate_limited` | The unpaid request limit was reached; the body includes `retryAfterSeconds` and the response includes `Retry-After` |
+
+## Recovering a lost key
+
+Recovery always issues a fresh key; it cannot reveal an old secret. You have three options.
+
+### Pay again
+
+Repeat the vending flow from the same wallet. The payment adds credits to its existing account and returns a new key.
+
+### Sign with the paying wallet
+
+1. `POST https://merchant.payai.network/api/v1/keys/recover` without an authentication header.
+2. Read the CAIP-122 challenge from the `PAYMENT-REQUIRED` header. Its `extensions["sign-in-with-x"]` value contains `info` and `supportedChains`; `accepts` is empty because this is authentication, not a payment.
+3. Choose the supported chain for the wallet, call `createSIWxPayload({ ...info, chainId, type }, signer)` from `@x402/extensions/sign-in-with-x`, encode it with `encodeSIWxHeader`, and repeat the `POST` with `SIGN-IN-WITH-X: <encoded payload>`.
+4. A valid, unused challenge returns `201` with `{ apiKey, account }`.
+
+Alternatively, call `client.registerExtension(createSIWxClientExtension({ signers: [signer] }))` on an `x402Client` and use its HTTP transport handling.
+
+<Note>
+  In `@x402/extensions` 2.22, `wrapFetchWithSIWx` chooses a chain from `accepts[0].network`. It therefore does not handle this auth-only challenge, whose `accepts` array is empty. Use `createSIWxClientExtension` on an `x402Client` or sign the challenge directly as described above.
+</Note>
+
+Each challenge expires after five minutes and its nonce can be used only once. If no account belongs to the signer, the endpoint returns `404` with `error: "no_account_for_wallet"` and a `vend` URL.
+
+### Use a recovery email
+
+This works only if the email was previously attached to the account. Request a six-digit code:
+
+```http
+POST https://merchant.payai.network/api/v1/keys/recover/email
+Content-Type: application/json
+
+{
+  "email": "ops@example.com",
+  "wallet": "0x1234567890abcdef1234567890abcdef12345678",
+  "addressType": "evm"
+}
+```
+
+The request always returns `202 { "ok": true }` when its input is valid, whether or not the account and email match. This prevents account enumeration. For Solana, use `"addressType": "svm"` and a base58 wallet address.
+
+Confirm the code within its validity window:
+
+```http
+POST https://merchant.payai.network/api/v1/keys/recover/email/confirm
+Content-Type: application/json
+
+{
+  "email": "ops@example.com",
+  "wallet": "0x1234567890abcdef1234567890abcdef12345678",
+  "addressType": "evm",
+  "code": "123456"
+}
+```
+
+A valid code returns `201` with `{ apiKey, account }`. An invalid code returns `400 { "error": "invalid_code" }`.
+
+## Managing the account with your key
+
+The account API uses the same short-lived Ed25519 JWT described in [Facilitator Authentication](/x402/facilitators/authentication). Send it as `Authorization: Bearer <jwt>`. All responses use `Cache-Control: no-store`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/account` | Return account identity, credit balance, active keys, and recovery-email status |
+| `POST /api/v1/account/keys` | Create a key from `{ "name": "…" }`; the `201` response shows its secret once |
+| `DELETE /api/v1/account/keys/{id}` | Revoke another key; the calling key cannot revoke itself |
+| `PUT /api/v1/account/recovery-email` | Store `{ "email": "…" }`, send a confirmation code, and return `202` |
+| `POST /api/v1/account/recovery-email/confirm` | Confirm with `{ "code": "123456" }` |
+| `GET /api/v1/account/usage?days=30` | Return settlements, successes, and per-network totals for 1–90 days |
+| `GET /api/v1/account/transactions?limit=50` | Return 1–100 credit transactions plus `total` and `hasMore` |
+
+For example, generate a JWT from the vended key ID and secret, then inspect the account:
+
+```typescript
+const jwt = await generatePayAIJwt(apiKey.id, apiKey.secret);
+
+const response = await fetch("https://merchant.payai.network/api/v1/account", {
+  headers: { Authorization: `Bearer ${jwt}` },
+});
+if (!response.ok) throw new Error(await response.text());
+
+console.log(await response.json());
+```
+
+`generatePayAIJwt` is the function from the [TypeScript authentication example](/x402/facilitators/authentication#code-examples). Missing, invalid, or revoked credentials return `401 { "error": "unauthorized" }`.
