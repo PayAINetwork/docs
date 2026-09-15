@@ -18,6 +18,7 @@
 - [Facilitator Introduction](https://docs.payai.network/x402/facilitators/introduction.md): Learn about the role of an x402 facilitator
 - [Facilitator Pricing](https://docs.payai.network/x402/facilitators/pricing.md): PayAI Facilitator pricing — free credits, cost-plus per-settlement rates by network (gas + 30%, daily), and credits
 - [Facilitator Authentication](https://docs.payai.network/x402/facilitators/authentication.md): Merchant JWT authentication, API-key requirements, and examples for multiple languages.
+- [Agent API Keys](https://docs.payai.network/x402/facilitators/agent-api-keys.md): Buy a facilitator API key and credits over x402 without creating an account.
 - [Capacity and Settlement Recovery](https://docs.payai.network/x402/facilitators/capacity-and-limits.md): Rate limits, pending settlement responses, and recovery using the original operation.
 - [Solana Batch Settlement](https://docs.payai.network/x402/servers/batch-settlement.md): Public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.
 - [x402 Introduction](https://docs.payai.network/x402/introduction.md): Learn about the x402 protocol

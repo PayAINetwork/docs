@@ -91,6 +91,7 @@
               "x402/facilitators/introduction",
               "x402/facilitators/bazaar",
               "x402/facilitators/authentication",
+              "x402/facilitators/agent-api-keys",
               "x402/supported-networks",
               "x402/facilitators/pricing",
               "x402/facilitators/capacity-and-limits"

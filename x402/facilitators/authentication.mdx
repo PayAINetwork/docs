@@ -10,7 +10,7 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 The [PayAI facilitator](https://facilitator.payai.network) authenticates merchants using short-lived **JWTs signed with Ed25519** (the EdDSA algorithm). If you use the `@payai/facilitator` TypeScript package, this is handled automatically. This guide explains the underlying protocol so you can implement authentication in **any language** without depending on PayAI packages.
 
 <Note>
-  Authentication is required for every `batch-settlement` verification and settlement request, including the first one. Ordinary exact payments can use the [free tier](/x402/facilitators/pricing) without an API key. Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys.
+  Authentication is required for every `batch-settlement` verification and settlement request, including the first one. Ordinary exact payments can use the [free tier](/x402/facilitators/pricing) without an API key. Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your API keys. Autonomous agents can also [buy a key over x402 without creating an account](/x402/facilitators/agent-api-keys).
 </Note>
 
 <Tip>
