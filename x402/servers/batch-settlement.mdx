@@ -50,19 +50,21 @@ Use `BatchSvmScheme` from `@x402/svm/batch-settlement/server` for the merchant, 
 
 ## 4. Set channel terms and durable storage
 
-The initial public limits are below. Read `batchPolicy` from `/supported` for the active values; limits may change as capacity grows.
+The public preview limits are below. Read `batchPolicy` from `/supported` for the active values; admission can pause when capacity or sponsorship funds are unavailable.
 
 | Limit | Public preview |
 | --- | --- |
 | Asset | USDC on Solana mainnet; devnet USDC for testing |
 | New channel deposit | 0.01–100 USDC, expressed as `10000`–`100000000` atomic units |
-| Open or closing channels per merchant account | 2, shared across all of that account's API keys |
-| New deposit attempts | 2 per minute per merchant account and network |
-| Withdrawal grace period | 900–3,600 seconds |
+| Open or closing channels per merchant account | 10, shared across all of that account's API keys; in-flight reservations also count |
+| Deposit attempts, including new top-ups | 5 per minute per merchant account and network |
+| Withdrawal grace period | 900–86,400 seconds (15 minutes–24 hours) |
 | Facilitator idle cleanup window | 24 hours since the last facilitator touch |
-| Service-wide sponsored channel capacity | 10, including in-flight reservations and closing channels |
+| Service-wide sponsored channel capacity | 1,000, including open channels, closing channels and in-flight reservations |
 
-The initial deposit limit applies when opening a new channel. Existing-channel top-ups do not consume another channel slot. Ordinary metered requests use the merchant's off-chain channel state, so the deposit rate limit is not an inference/request throughput limit.
+The initial deposit limit applies when opening a new channel; it is not a lifetime channel-balance ceiling. A new top-up counts as a deposit attempt but does not consume another channel slot. Recovering an existing operation must not allocate another charge or channel. Ordinary metered requests use the merchant's off-chain channel state, so the deposit rate limit is not an inference/request throughput limit.
+
+The 24-hour idle timer measures time since the last facilitator touch and is independent of the withdrawal grace period. A longer grace period increases how long the customer may wait for withdrawal after close begins. Keep merchant redemption frequent: choosing a 24-hour grace does not mean waiting 24 hours to pay the merchant.
 
 Set the client SDK's `depositAmount` explicitly within these limits; its default may be only one request's price. `PaymentRequirements.amount` is the **maximum authorized charge for one request**, not the channel's deposit. Reserve that ceiling before work, then settle with the measured `amount` in the range zero through the ceiling. Requests can complete concurrently against one merchant-signed channel when their reserved ceilings fit the remaining deposit.
 
@@ -93,6 +95,7 @@ The public preview supports at most four channels per claim transaction. Configu
 | 429, `batch_channel_capacity_exhausted` or `batch_deposit_rate_limited` | Respect `Retry-After` and retry with backoff. |
 | 403, `batch_account_admission_paused` | Contact PayAI; keep existing-channel recovery and payout running. |
 | 503, `batch_new_channels_disabled` | New admission is paused. Continue recovery, claims, payouts, and close operations. |
+| 503, `batch_signer_funding_headroom_exhausted` | Sponsorship is temporarily unavailable. Respect `Retry-After`; keep existing-channel payout, recovery and cleanup running. |
 | `settlement_pending`, `duplicate_settlement`, or a lost HTTP response | Retain the exact request and any transaction signature; reconcile by retrying the same operation. |
 
 Do not allocate another charge or build a replacement transaction merely because a response was lost. The preview SDK preserves pending transaction identity and reconciles outcomes after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly. PayAI retains unresolved signatures and signed bytes without automatic expiry; completed results retain a 24-hour recovery window. Keep permanent receipts in your own storage. An expired blockhash plus missing transaction history does not authorize a replacement payment. Restore history or contact PayAI if the outcome remains unknown.
