@@ -19,7 +19,7 @@ Ordinary exact payments can start within the free allowance below.
 <Card title="Free" icon="gift">
   **$0/month**
 
-  - **1,000 free credits per receiving wallet (lifetime)** — roughly 750 Solana or 470 Base
+  - **1,000 free credits per receiving wallet (lifetime)** — roughly 650 Solana or 430 Base
     settlements at the rates below
   - No API key required for ordinary exact payments
   - Testnet settlements are free and do not consume the allowance
@@ -57,23 +57,25 @@ moves by more than 5%. Testnets are always 0.
 
 ### Current rates (refreshed daily)
 
+Snapshot of 22 September 2026, 11:11 UTC. The daily refresh moves these with the chain, so
+treat [the live table](https://facilitator.payai.network/pricing) as authoritative.
+
 | Network | Scheme | Credits per settlement | USD |
 |---|---|---:|---:|
-| Solana mainnet | exact | 1.33 | $0.00133 |
-| Solana mainnet | upto — open and claim, each | 1.33 | $0.00133 |
-| Solana mainnet | batch settlement — deposit, claim, refund, each | 1.33 | $0.00133 |
-| Solana mainnet | batch settlement — settle | 0.67 | $0.00067 |
-| Base | exact (EIP-3009) | 2.12 | $0.00212 |
-| Base | exact (Permit2) | 2.00 | $0.00200 |
-| Polygon | exact | 3.98 | $0.00398 |
-| Arbitrum | exact | 6.08 | $0.00608 |
-| Avalanche | exact | 0.09 | $0.00009 |
-| Sei | exact | 0.43 | $0.00043 |
+| Solana mainnet | exact | 1.52 | $0.00152 |
+| Solana mainnet | upto — open and claim, each | 1.52 | $0.00152 |
+| Solana mainnet | batch settlement — deposit, claim, refund, each | 1.52 | $0.00152 |
+| Solana mainnet | batch settlement — settle | 0.76 | $0.00076 |
+| Base | exact (EIP-3009) | 2.31 | $0.00231 |
+| Base | exact (Permit2) | 2.18 | $0.00218 |
+| Polygon | exact | 4.42 | $0.00442 |
+| Arbitrum | exact | 6.63 | $0.00663 |
+| Avalanche | exact | 0.10 | $0.00010 |
+| Sei | exact | 0.59 | $0.00059 |
 | Base Sepolia, Solana devnet, Polygon Amoy, Avalanche Fuji, Sei testnet, Arbitrum Sepolia, X Layer testnet, SKALE testnet | any | 0 | free |
 
-These figures come from the rates in force since 21 September 2026, computed from measured
-gas and the token prices of 14 September 2026 (SOL $101.77, ETH $2,513.74). The daily
-refresh moves them with the chain. Batch settlement and `upto` are priced per
+These figures were computed from measured gas and the token prices of 22 September 2026
+(SOL $116.60, ETH $2,739.75). Batch settlement and `upto` are priced per
 on-chain transaction, so a channel's lifecycle is the sum of its legs.
 
 <Note>
@@ -95,8 +97,8 @@ upcoming change with its effective time. `GET /supported` carries the same objec
   "marginBps": 3000,
   "rates": [
     { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "scheme": "exact",
-      "transferMethod": "svm_transfer", "credits": "1.33", "usd": "0.00133",
-      "effectiveAt": "2026-09-21T12:00:00.000Z" }
+      "transferMethod": "svm_transfer", "credits": "1.52", "usd": "0.00152",
+      "effectiveAt": "2026-09-22T11:11:01.537Z" }
   ],
   "upcoming": []
 }
@@ -106,9 +108,9 @@ upcoming change with its effective time. `GET /supported` carries the same objec
 
 | Settlements | Solana exact | Base exact |
 |---|---|---|
-| 1 | 1.33 credits ($0.00133) | 2.12 credits ($0.00212) |
-| 1,000 | $1.33 | $2.12 |
-| 100,000 | $133 | $212 |
+| 1 | 1.52 credits ($0.00152) | 2.31 credits ($0.00231) |
+| 1,000 | $1.52 | $2.31 |
+| 100,000 | $152 | $231 |
 
 ## Credit System
 
