@@ -5,14 +5,12 @@ description: "PayAI Facilitator pricing — free credits, cost-plus per-settleme
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-<Warning>
-  **New pricing takes effect on 21 September 2026 at 12:00 UTC.** From that moment each
-  settlement is priced at the network's on-chain gas cost plus 30%, refreshed daily, and
-  testnet settlements are free. Credits stay at **$0.001 each**. Until then every settlement
-  costs 1 credit, as it does today. The live rate table — including any announced change —
-  is always at
+<Note>
+  Cost-plus pricing has been live since 21 September 2026: each settlement costs the
+  network's on-chain gas plus 30%, testnet settlements are free, and credits stay at
+  **$0.001 each**. The table below is refreshed daily — the authoritative copy is always
   [facilitator.payai.network/pricing](https://facilitator.payai.network/pricing).
-</Warning>
+</Note>
 
 ## Free Credits
 
@@ -57,7 +55,7 @@ The facilitator measures what it actually pays in gas on each network and recomp
 rates daily from the current gas and native-token prices. A rate is republished only when it
 moves by more than 5%. Testnets are always 0.
 
-### Rates effective 21 September 2026, 12:00 UTC
+### Current rates (refreshed daily)
 
 | Network | Scheme | Credits per settlement | USD |
 |---|---|---:|---:|
@@ -73,8 +71,9 @@ moves by more than 5%. Testnets are always 0.
 | Sei | exact | 0.43 | $0.00043 |
 | Base Sepolia, Solana devnet, Polygon Amoy, Avalanche Fuji, Sei testnet, Arbitrum Sepolia, X Layer testnet, SKALE testnet | any | 0 | free |
 
-These figures use the gas and token prices of 14 September 2026 (SOL $101.79, ETH $2,516).
-The daily refresh moves them with the chain. Batch settlement and `upto` are priced per
+These figures come from the rates in force since 21 September 2026, computed from measured
+gas and the token prices of 14 September 2026 (SOL $101.77, ETH $2,513.74). The daily
+refresh moves them with the chain. Batch settlement and `upto` are priced per
 on-chain transaction, so a channel's lifecycle is the sum of its legs.
 
 <Note>
