@@ -105,6 +105,7 @@ for p in sorted(ROOT.rglob("*.mdx")):
 
 # ---- llms.txt: served verbatim to agents, so its URLs must resolve too ------
 llms = ROOT / "llms.txt"
+llms_listed = set()
 if llms.exists():
     for m in re.finditer(r'https://docs\.payai\.network(/[^)\s]*)', llms.read_text()):
         raw = m.group(1)
@@ -115,6 +116,10 @@ if llms.exists():
         probe = target[:-3] if target.endswith(".md") else target
         if probe not in valid:
             broken["llms.txt"].append(raw)
+        llms_listed.add(probe)
+    # The file is hand-ordered, so a new nav page must be added to it by hand.
+    for target in sorted(nav_pages - llms_listed):
+        broken["llms.txt (nav page not listed)"].append(target)
 
 print(f"scanned {total} internal links across {len(list(ROOT.rglob('*.mdx')))} mdx files + llms.txt")
 print(f"valid routes known: {len(pages)} pages, {len(assets)} assets, {len(redirects)} redirects\n")
