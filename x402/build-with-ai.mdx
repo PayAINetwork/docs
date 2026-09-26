@@ -1,0 +1,117 @@
+---
+title: "Build with AI"
+description: "Connect coding agents to PayAI: the docs MCP server, llms.txt files, the facilitator MCP server, Context7 and the PayAI x402 skill."
+---
+
+import DiscordHelpCard from "/snippets/discord-help-card.mdx";
+
+Coding agents such as Claude Code, Cursor, Codex and VS Code write better x402 code when they read current PayAI documentation instead of relying on training data. This page lists the machine-readable sources PayAI publishes and how to connect each one.
+
+| Source | URL or ID | Use it to |
+| --- | --- | --- |
+| Docs MCP server | `https://docs.payai.network/mcp` | Search and read these docs from your agent |
+| llms.txt | `https://docs.payai.network/llms.txt` | Get an index of every docs page |
+| llms-full.txt | `https://docs.payai.network/llms-full.txt` | Load all docs as one file |
+| PayAI llms.txt | `https://payai.network/llms.txt` | Read a short brief on what PayAI is and when to use it |
+| Facilitator MCP server | `https://facilitator.payai.network/mcp` | Call the facilitator as MCP tools |
+| Context7 | `/websites/payai_network` | Pull PayAI docs through the Context7 MCP server |
+| Agent skill | `PayAINetwork/payai-x402-skill` | Install an x402 build guide into your agent |
+
+## Docs MCP server
+
+The docs site runs a Model Context Protocol (MCP) server at `https://docs.payai.network/mcp`. It uses streamable HTTP and needs no authentication. Your agent gets two tools: `search_pay_ai_documentation` to search the docs and `query_docs_filesystem_pay_ai_documentation` to read pages.
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    claude mcp add --transport http payai-docs https://docs.payai.network/mcp
+    ```
+  </Tab>
+  <Tab title="Cursor">
+    Add the server to `.cursor/mcp.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "payai-docs": {
+          "url": "https://docs.payai.network/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="VS Code">
+    Add the server to `.vscode/mcp.json`:
+
+    ```json
+    {
+      "servers": {
+        "payai-docs": {
+          "type": "http",
+          "url": "https://docs.payai.network/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Codex">
+    ```bash
+    codex mcp add payai-docs --url https://docs.payai.network/mcp
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>The menu at the top of every docs page can also copy the MCP server URL or connect it to Cursor or VS Code.</Tip>
+
+## llms.txt and Markdown pages
+
+- `https://docs.payai.network/llms.txt` lists every docs page with a one-line description. The quickstarts and facilitator reference come first.
+- `https://docs.payai.network/llms-full.txt` contains the full text of the docs in one file, for tools that load a whole corpus.
+- `https://payai.network/llms.txt` is a short brief for agents: what PayAI is, when to use it, and where to start.
+- Append `.md` to any docs URL to get the page as Markdown, for example `https://docs.payai.network/x402/quickstart.md`.
+
+## Facilitator MCP server
+
+The PayAI facilitator exposes its API as MCP tools at `https://facilitator.payai.network/mcp` (streamable HTTP). It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=network.payai) as `network.payai/facilitator`.
+
+| Tool | What it does |
+| --- | --- |
+| `get_supported` | Lists the networks, schemes and assets the facilitator supports right now |
+| `verify_payment` | Verifies a signed x402 payment against payment requirements without moving funds |
+| `settle_payment` | Broadcasts the payment on-chain |
+| `list_discovery_resources` | Pages through the [Bazaar](/x402/facilitators/bazaar) catalog |
+| `get_discovery_stats` | Returns aggregate Bazaar statistics |
+
+<Warning>`settle_payment` broadcasts a real on-chain transaction and moves funds. It is idempotent per signed payload: resubmitting the same payload returns the recorded outcome.</Warning>
+
+Connecting needs no authentication. If you set an `Authorization` header on the connection, the server forwards it to `/verify` and `/settle`, so [pricing](/x402/facilitators/pricing) and [authentication](/x402/facilitators/authentication) work the same way as over HTTP.
+
+Add it the same way as the docs server. For example, in Claude Code:
+
+```bash
+claude mcp add --transport http payai-facilitator https://facilitator.payai.network/mcp
+```
+
+## Context7
+
+[Context7](https://context7.com) serves library documentation to coding agents through its own MCP server. PayAI's docs are indexed under the library ID `/websites/payai_network`. With the Context7 MCP server installed, name the library in your prompt:
+
+```text
+Add x402 payments to my Express API with the PayAI facilitator. use library /websites/payai_network
+```
+
+## Agent skill
+
+The PayAI x402 skill is a `SKILL.md` guide for agents that support skills, such as Claude Code, Cursor and Codex. It covers the server quickstarts (Express, Hono, Next.js, FastAPI, Flask, Gin), the clients (Fetch, Axios, httpx, Go), the facilitator endpoints and supported networks.
+
+Run this in your project:
+
+```bash
+npx skills add PayAINetwork/payai-x402-skill
+```
+
+Add `-g` to install it for your user across all projects. The source is at [github.com/PayAINetwork/payai-x402-skill](https://github.com/PayAINetwork/payai-x402-skill).
+
+## Need help?
+
+<DiscordHelpCard />
