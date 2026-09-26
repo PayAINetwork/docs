@@ -10,7 +10,7 @@ SCRIPT = pathlib.Path(__file__).with_name("check-links.py")
 
 
 class LinkCheckTests(unittest.TestCase):
-    def check(self, body, nav=None, redirects=None):
+    def check(self, body, nav=None, redirects=None, llms=None):
         with tempfile.TemporaryDirectory(prefix="payai-doc-links-") as directory:
             root = pathlib.Path(directory)
             (root / "guide").mkdir()
@@ -20,6 +20,8 @@ class LinkCheckTests(unittest.TestCase):
                 "navigation": {"pages": nav or ["guide/start", "guide/next"]},
                 "redirects": redirects or [],
             }))
+            if llms is not None:
+                (root / "llms.txt").write_text(llms)
             return subprocess.run([sys.executable, str(SCRIPT), str(root)],
                                   capture_output=True, text=True)
 
@@ -65,6 +67,17 @@ class LinkCheckTests(unittest.TestCase):
     def test_skip_code_external_links_and_pure_fragments(self):
         result = self.check('[external](https://example.test/no) [section](#intro)\n'
                             '\x60\x60\x60jsx\n<a href="/illustrative-only">Example</a>\n\x60\x60\x60')
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_llms_txt_must_list_every_nav_page(self):
+        result = self.check("", llms="# Docs\n\n- [Start](https://docs.payai.network/guide/start.md)\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("nav page not listed", result.stdout)
+        self.assertIn("/guide/next", result.stdout)
+
+    def test_llms_txt_listing_every_nav_page_passes(self):
+        result = self.check("", llms="# Docs\n\n- [Start](https://docs.payai.network/guide/start.md)\n"
+                                     "\n## Optional\n\n- [Next](https://docs.payai.network/guide/next.md)\n")
         self.assertEqual(result.returncode, 0, result.stdout)
 
 
