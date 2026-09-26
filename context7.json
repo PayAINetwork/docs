@@ -1,0 +1,15 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "PayAI x402 Facilitator",
+  "description": "Accept and make x402 payments with the PayAI facilitator: merchant and client quickstarts, the facilitator API, supported networks, pricing and the Bazaar.",
+  "folders": ["x402", "x402-echo", "guides", "snippets"],
+  "excludeFolders": ["project-info", "onboarding"],
+  "excludeFiles": ["README.md", "llms.txt", "snippet-intro.mdx"],
+  "rules": [
+    "Use the PayAI facilitator at https://facilitator.payai.network. In TypeScript, import { facilitator } from \"@payai/facilitator\" and pass it to HTTPFacilitatorClient from \"@x402/core/server\".",
+    "The quickstarts use the x402 v2 packages (@x402/core, @x402/express, @x402/hono, @x402/next, @x402/svm, @x402/evm). Prefer them over the v1 packages (x402-express, x402-hono, x402-next).",
+    "Ordinary exact payments work without an API key. Solana batch settlement requires a merchant API key, read from PAYAI_API_KEY_ID and PAYAI_API_KEY_SECRET.",
+    "Before advertising payment terms, check GET https://facilitator.payai.network/supported for the networks and schemes that are live.",
+    "To test a client end to end without deploying a server, use the x402 Echo Merchant described in x402-echo/getting-started."
+  ]
+}
