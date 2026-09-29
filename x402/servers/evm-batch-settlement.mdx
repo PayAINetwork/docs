@@ -1,0 +1,127 @@
+---
+title: "EVM Batch Settlement on Base"
+description: "Payment channels for metered x402 APIs on Base: one USDC deposit, off-chain vouchers per request, batched claims and a single sweep. Public, no API key, gas paid by PayAI."
+---
+
+Batch settlement lets a customer fund a reusable on-chain channel once and pay for many requests with signed vouchers, while your server claims and sweeps the accumulated charges in batches. It is built for metered APIs, inference, and any service where the final price of a request is known only after the work is done. On EVM the scheme is implemented by the `x402BatchSettlement` contract, and PayAI relays every on-chain leg and pays the gas.
+
+<Note>
+  PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) from both `https://facilitator.payai.network` and `https://dev-facilitator.payai.network`. Access is public: no PayAI account or API key is needed. Add an API key only if you want to pay for settlement legs with credits after the free allowance.
+</Note>
+
+## How it works
+
+1. **Deposit.** The customer signs a USDC authorization (EIP-3009, or Permit2 for other ERC-20s) that funds a channel identified by its immutable config: payer, receiver, receiver authorizer, token, withdraw delay and a salt. PayAI submits the deposit; the customer pays no gas.
+2. **Vouchers.** Each request carries a voucher with a cumulative ceiling: everything charged so far plus this request's maximum. Your server verifies the signature locally in a few milliseconds and charges the actual amount, from zero up to the ceiling. Nothing touches the chain.
+3. **Claim.** On your schedule, your server sends the latest voucher per channel to PayAI, which submits one `claimWithSignature` transaction covering up to 25 channels.
+4. **Sweep.** A `settle` transaction transfers everything claimed for your receiver and token to your wallet in one transfer.
+5. **Refund or withdraw.** Your server can cooperatively refund a customer's unused balance at any time; the customer can always start a timed withdrawal (one to 24 hours under PayAI's policy) as a unilateral fallback.
+
+Partial charges are first class: the ceiling is authorized by the customer, the charge is decided by your server. Use the HTTP adapter's settlement override to bill less than the ceiling:
+
+```typescript
+import { setSettlementOverrides } from "@x402/express";
+
+app.get("/api/generate", (req, res) => {
+  const actualUsage = computeCost(); // atomic units, "50%", or "$0.001"
+  setSettlementOverrides(res, { amount: String(actualUsage) });
+  res.json({ result: "..." });
+});
+```
+
+## 1. Install the upstream SDK
+
+PayAI runs the merged x402 Foundation implementation. Use the published packages; no PayAI-specific build is required:
+
+```bash
+npm install @x402/core@^2.27.0 @x402/evm@^2.27.0 @x402/express@^2.27.0 viem
+```
+
+Use `BatchSettlementEvmScheme` from `@x402/evm/batch-settlement/server` on your server and the same-named class from `@x402/evm/batch-settlement/client` on the customer side. The reference server and client live in the x402 repository under `examples/typescript/servers/batch-settlement` and `examples/typescript/clients/batch-settlement`.
+
+## 2. Bring your own receiver authorizer
+
+The receiver authorizer is the key that signs claims and refunds for your channels. PayAI does **not** advertise a facilitator-held authorizer, so you must configure your own:
+
+```typescript
+import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
+import { BatchSettlementEvmScheme } from "@x402/evm/batch-settlement/server";
+import { RedisChannelStorage } from "@x402/evm/batch-settlement/server/redis-storage";
+
+const facilitator = new HTTPFacilitatorClient({
+  url: "https://facilitator.payai.network",
+  timeoutMs: 110_000, // PayAI answers within its 100 s budget; keep the client above it
+});
+
+const scheme = new BatchSettlementEvmScheme(receiverAddress, {
+  receiverAuthorizerSigner, // an EOA you control; no ETH or tokens needed
+  withdrawDelay: 3600,      // seconds; PayAI accepts 3600–86400
+  storage: new RedisChannelStorage({ client: redisClient }),
+});
+
+const server = new x402ResourceServer(facilitator).register("eip155:8453", scheme);
+```
+
+The SDK checks this at startup: without a `receiverAuthorizerSigner` it refuses to initialize against PayAI. This is upstream's recommended production mode. Your channels survive a facilitator change, because any facilitator can relay your signed claims and refunds. Keep the key until every channel it authorizes has drained; rotating it means opening new channels.
+
+## 3. Run the channel manager
+
+Claims and sweeps happen when your server asks for them. Run the exported channel manager against the same durable storage:
+
+```typescript
+const manager = scheme.createChannelManager(facilitator, "eip155:8453");
+manager.start({
+  claimIntervalSecs: 60,
+  settleIntervalSecs: 300,
+  refundIntervalSecs: 3600,
+  selectRefundChannels: channels =>
+    channels.filter(c => Date.now() - c.lastRequestTimestamp >= 3_600_000),
+});
+```
+
+Claim well inside the withdraw delay of your channels. Vouchers you have not claimed when a customer's withdrawal finalizes are lost. Use Redis or Valkey storage for anything beyond a single local process; the file and memory stores are for tests.
+
+## 4. Policy and limits
+
+Read `batchPolicy` from `GET /supported` for the live values; these are the defaults:
+
+| Limit | Value |
+| --- | --- |
+| Asset | USDC on Base mainnet (`0x8335…2913`); USDC on Base Sepolia (`0x036C…CF7e`) |
+| New channel deposit | 0.10–100 USDC (`100000`–`100000000` atomic units) |
+| Withdraw delay | 3,600–86,400 seconds |
+| Deposit attempts | 5 per minute per receiver, 10 per minute per client IP |
+| Channels per claim or refund request | 25 |
+
+Top-ups to an existing channel are not bound by the initial-deposit range. The upstream server announces a `minDeposit` hint of ten times the route price by default, which for a `$0.01` route is exactly PayAI's 0.10 USDC floor; raise the route's `extra.minDeposit` if your customers should fund more per channel.
+
+## 5. What PayAI bills
+
+Every on-chain leg PayAI relays for you is priced at the observed gas plus 30 percent: deposit, claim, sweep and refund. Vouchers are free; they never reach PayAI. Without an API key, legs draw on the public free-tier allowance for your `payTo` address and are refused when it is exhausted. With a [merchant API key](/x402/facilitators/authentication) they are billed as credits. There are no privileged legs: a refused claim or sweep never strands funds, because `claimWithSignature`, `settle` and `refundWithSignature` are permissionless on the contract and you can relay them yourself.
+
+Observed on Base mainnet: a deposit costs about 140,000 gas, a single-channel claim about 77,000, a sweep about 57,000 and a refund about 95,000. At Base fees today that is well under a cent per leg.
+
+## Recovery
+
+Retry the exact payload after a timeout, a `settlement_pending` answer, or a lost response. Deposits, claims and refunds are content-addressed: an identical retry returns the recorded outcome, and if the original transaction is still unconfirmed PayAI reconciles it from its receipt rather than broadcasting again. A claim that is no longer strictly increasing is refused with `batch_claim_not_increasing`, which means the earlier claim landed; reconcile against the channel's on-chain `totalClaimed`.
+
+Sweeps are different: a `settle` request sweeps whatever is owed now, so it has no durable identity. A second sweep while one is in flight returns `409 duplicate_settlement`. A sweep with nothing left to move returns `nothing_to_settle`, and when a recent sweep for that receiver and token is known the response carries `extra.lastSweep` with its transaction and amount. A `settlement_pending` sweep answered with an empty transaction hash means PayAI was still waiting for the receipt; retry after a minute.
+
+| Response | Meaning and action |
+| --- | --- |
+| `400 batch_target_mismatch` | The payload's receiver or token differs from `payTo`/`asset`; fix the requirements. |
+| `400 batch_claim_authorizer_signature_required` | Include your receiver-authorizer signature; PayAI holds no authorizer key. |
+| `400 batch_claim_simulation_failed` | The claim would revert; check voucher signatures and channel state. |
+| `400 batch_claim_not_increasing` | Already claimed on-chain; reconcile, do not retry. |
+| `400 batch_claim_too_many` or `batch_claim_duplicate_channel` | At most 25 distinct channels per request. |
+| `400 batch_deposit_below_minimum`, `batch_deposit_above_maximum`, `batch_withdraw_delay_out_of_range`, `batch_deposit_asset_not_supported` | Adjust the channel terms and obtain a new customer signature. |
+| `403 batch_new_channels_disabled` | New channels are paused; existing channels keep working. |
+| `403 invalid_scheme` | The network is not enabled for batch settlement. |
+| `429 batch_deposit_rate_limited` or `batch_claim_rate_limited` | Respect `Retry-After`. |
+| `free_tier_exhausted` | Add an API key to pay with credits, or relay the transaction yourself. |
+| `409 duplicate_settlement` | The same leg is in flight; wait and retry. |
+| `settlement_pending` | Non-terminal; retry the identical payload to reconcile. |
+
+## Test before taking customer traffic
+
+Use `https://dev-facilitator.payai.network` with Base Sepolia USDC from the Circle faucet. Exercise partial charges, a claim and sweep cycle, a lost response, a process restart, and a cooperative refund, and confirm your receiving wallet's USDC balance moves by the charged total. Then repeat with a small channel on Base mainnet against `https://facilitator.payai.network`.
