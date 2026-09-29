@@ -4,6 +4,8 @@
 
 ## Quickstarts
 
+- [x402 Solana Mainnet Express](https://docs.payai.network/x402/solana-mainnet-express.md): Tested merchant and guarded buyer using the PayAI facilitator and @x402/svm.
+
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
 - [Build with AI](https://docs.payai.network/x402/build-with-ai.md): Connect coding agents to PayAI: the docs MCP server, llms.txt files, the facilitator MCP server, Context7 and the PayAI x402 skill.
 - [Merchant Introduction](https://docs.payai.network/x402/servers/introduction.md): Learn how to sell services with x402.
@@ -31,6 +33,9 @@
 - [Capacity and Settlement Recovery](https://docs.payai.network/x402/facilitators/capacity-and-limits.md): Rate limits, pending settlement responses, and recovery using the original operation.
 
 ## Protocol and guides
+
+- [Solana Network Identifiers](https://docs.payai.network/x402/solana-network-identifiers.md): CAIP-2 network ID, full RPC genesis hash, native USDC and token program.
+- [Solana Mainnet Integration Metadata](https://docs.payai.network/solana-mainnet-integration.json): Versioned static companion for the tested integration; live capabilities remain at /supported.
 
 - [x402 Introduction](https://docs.payai.network/x402/introduction.md): Learn about the x402 protocol
 - [x402 Reference](https://docs.payai.network/x402/reference.md): Reference documentation for the x402 protocol
