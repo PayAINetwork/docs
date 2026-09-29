@@ -6,6 +6,7 @@ on:
       - 'x402/solana-*.mdx'
       - 'solana-mainnet-integration.json'
       - 'scripts/check-solana-integration.py'
+      - 'examples/solana-mainnet-express/**'
       - '.github/workflows/solana-integration.yml'
   push:
     branches: [main]
@@ -20,16 +21,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: docs
-      - uses: actions/checkout@v4
-        with:
-          repository: PayAINetwork/x402
-          ref: main
-          path: canonical-example
-          sparse-checkout: examples/typescript/solana-mainnet-express
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Validate docs against the runnable example
-        run: python3 docs/scripts/check-solana-integration.py --example-dir canonical-example/examples/typescript/solana-mainnet-express
+        run: python3 scripts/check-solana-integration.py --example-dir examples/solana-mainnet-express

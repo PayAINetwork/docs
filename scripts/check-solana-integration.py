@@ -26,7 +26,7 @@ EXPECTED_URLS = {
     "guide": "https://docs.payai.network/x402/solana-mainnet-express",
     "networkIdentifiers": "https://docs.payai.network/x402/solana-network-identifiers",
     "metadata": "https://docs.payai.network/solana-mainnet-integration.json",
-    "example": "https://github.com/PayAINetwork/x402/tree/main/examples/typescript/solana-mainnet-express",
+    "example": "https://github.com/PayAINetwork/docs/tree/main/examples/solana-mainnet-express",
 }
 CORE_FIELDS = (
     "schemaVersion",
@@ -136,8 +136,8 @@ def validate_companion(data: dict[str, Any]) -> None:
 
     generated_from = data.get("generatedFrom", {})
     if generated_from != {
-        "path": "examples/typescript/solana-mainnet-express/integration.json",
-        "url": "https://github.com/PayAINetwork/x402/blob/main/examples/typescript/solana-mainnet-express/integration.json",
+        "path": "examples/solana-mainnet-express/integration.json",
+        "url": "https://github.com/PayAINetwork/docs/blob/main/examples/solana-mainnet-express/integration.json",
     }:
         fail("generatedFrom must identify the canonical example integration.json")
     require_https(generated_from["url"], "generatedFrom.url")
@@ -222,7 +222,7 @@ def main() -> int:
     parser.add_argument(
         "--example-dir",
         type=pathlib.Path,
-        help="path to examples/typescript/solana-mainnet-express",
+        help="path to examples/solana-mainnet-express",
     )
     args = parser.parse_args()
 

@@ -1,11 +1,6 @@
 {
   "schemaVersion": 1,
-  "kind": "payai.x402.solana-mainnet-express",
   "testedOn": "2026-09-29",
-  "generatedFrom": {
-    "path": "examples/solana-mainnet-express/integration.json",
-    "url": "https://github.com/PayAINetwork/docs/blob/main/examples/solana-mainnet-express/integration.json"
-  },
   "network": {
     "x402": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
     "rpcGenesisHash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
@@ -28,18 +23,6 @@
     "@x402/express": "2.27.0",
     "@x402/svm": "2.27.0",
     "express": "5.1.0"
-  },
-  "prerequisites": {
-    "node": ">=20.18.0",
-    "merchantAddress": "Solana wallet address that receives native USDC",
-    "merchantUsdcAccount": "Existing associated token account for the native USDC mint",
-    "buyerKeypairFile": "Dedicated Solana JSON keypair file; never commit it",
-    "buyerUsdc": "Enough native USDC for the payment and configured atomic-unit cap",
-    "solanaRpc": "Mainnet RPC whose getGenesisHash result matches network.rpcGenesisHash"
-  },
-  "authority": {
-    "operationalCapabilities": "https://facilitator.payai.network/supported",
-    "note": "Fetch this endpoint at runtime. Its current schemes, networks, fee payer, blockhash and pricing override snapshots or examples."
   },
   "urls": {
     "guide": "https://docs.payai.network/x402/solana-mainnet-express",
