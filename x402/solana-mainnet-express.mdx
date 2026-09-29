@@ -1,0 +1,217 @@
+---
+title: "x402 on Solana Mainnet: Express merchant and buyer"
+description: "Build an x402 Solana Mainnet Express merchant and guarded buyer with @x402/svm, native USDC and the PayAI facilitator."
+keywords: ["x402 Solana Mainnet Express", "PayAI facilitator", "@x402/svm", "Solana x402 buyer", "USDC API payments"]
+---
+
+This guide runs one Solana-only Express merchant and one guarded buyer with the PayAI facilitator and `@x402/svm`. `GET /health` is free; `GET /premium` advertises an x402 v2 exact payment in native USDC on Solana Mainnet.
+
+The runnable example pins the versions tested on 29 September 2026:
+
+| Package | Version |
+| --- | --- |
+| `@payai/facilitator` | `2.4.4` |
+| `@solana-program/token` | `0.9.0` |
+| `@solana/kit` | `5.5.1` |
+| `@x402/core` | `2.27.0` |
+| `@x402/express` | `2.27.0` |
+| `@x402/svm` | `2.27.0` |
+| `express` | `5.1.0` |
+
+Two isolated historical pilot implementations used this network, asset and facilitator to settle one `0.001` USDC payment each, reach finalization and recover the funds. They are evidence that the integration is feasible, not live-payment validation of the example below. This example is currently verified by deterministic tests. A real payment happens only when you deliberately run the guarded payment command with a funded buyer.
+
+## Configuration
+
+Use these values together:
+
+```ts
+export const SOLANA_MAINNET =
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+export const NATIVE_USDC =
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const FACILITATOR_URL = "https://facilitator.payai.network";
+```
+
+The x402 network is a CAIP-2 identifier. An RPC returns the longer `5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d` genesis hash. See [Solana Mainnet network identifiers](/x402/solana-network-identifiers) before writing a cluster check.
+
+## Get the runnable example
+
+The complete source is in [PayAINetwork/x402](https://github.com/PayAINetwork/x402/tree/main/examples/typescript/solana-mainnet-express).
+
+```bash
+git clone https://github.com/PayAINetwork/x402.git
+cd x402/examples/typescript/solana-mainnet-express
+npm ci
+npm run typecheck
+npm run build
+npm test
+```
+
+The build and tests make no payment. They cover the unpaid `402`, paid `200`, malformed and mismatched requirements, amount caps, failed or uncertain settlement, the persistent attempt guard and finalization failures.
+
+Export the configuration in the shell that runs the example. The example does not load `.env` automatically:
+
+```bash
+export MERCHANT_ADDRESS=YOUR_SOLANA_MERCHANT_WALLET
+export SOLANA_RPC_URL=YOUR_SOLANA_MAINNET_RPC_URL
+export BUYER_KEYPAIR_FILE=/absolute/path/to/dedicated-buyer.json
+export MAX_AMOUNT_ATOMIC=1000
+```
+
+Use Node.js 20.18 or newer; the tested environment uses Node.js 24. Use a dedicated buyer keypair with only the funds you intend to test. Do not commit the keypair or print its contents. `MAX_AMOUNT_ATOMIC` is an integer in USDC base units: `1000` is `0.001` USDC because native USDC has six decimals.
+
+## Prepare the merchant account
+
+The merchant wallet needs an associated token account for native USDC before payment. With the official SPL Token CLI installed, create the deterministic associated token account using a separate setup keypair that holds enough SOL for rent and the setup transaction:
+
+```bash
+export USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+export SETUP_KEYPAIR_FILE=/absolute/path/to/setup-fee-payer.json
+MERCHANT_ATA="$(spl-token address --token "$USDC_MINT" --owner "$MERCHANT_ADDRESS")"
+solana account "$MERCHANT_ATA" --url "$SOLANA_RPC_URL" >/dev/null 2>&1 || \
+  spl-token create-account "$USDC_MINT" \
+    --owner "$MERCHANT_ADDRESS" \
+    --fee-payer "$SETUP_KEYPAIR_FILE" \
+    --url "$SOLANA_RPC_URL"
+```
+
+This command targets the merchant's associated token account, so it does not create a different recipient on a rerun. If the account already exists, keep it and continue. Account creation consumes SOL for the rent-exempt balance and its setup transaction fee. The setup signer pays those costs. This is separate from the live facilitator fee payer that sponsors the x402 settlement transaction. `npm run payment:preflight` checks that the account exists without paying.
+
+## Run the merchant
+
+The server creates a standard `HTTPFacilitatorClient` from `@x402/core/server`, using the config exported by `@payai/facilitator`, then registers `ExactSvmScheme` from `@x402/svm/exact/server`:
+
+```ts
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
+
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+const resourceServer = new x402ResourceServer(facilitatorClient).register(
+  SOLANA_MAINNET,
+  new ExactSvmScheme(),
+);
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /premium": {
+        accepts: {
+          scheme: "exact",
+          network: SOLANA_MAINNET,
+          payTo: process.env.MERCHANT_ADDRESS!,
+          price: {
+            amount: "1000",
+            asset: NATIVE_USDC,
+            extra: { decimals: 6 },
+          },
+        },
+        description: "Premium API content",
+        mimeType: "application/json",
+      },
+    },
+    resourceServer,
+  ),
+);
+```
+
+Start the server, then confirm the free and protected routes:
+
+```bash
+MERCHANT_ADDRESS="$MERCHANT_ADDRESS" npm start
+curl http://127.0.0.1:3000/health
+curl -i http://127.0.0.1:3000/premium
+```
+
+The second request should return `402 Payment Required` with a `PAYMENT-REQUIRED` header.
+
+## Read live facilitator support
+
+`GET https://facilitator.payai.network/supported` is the authority for capabilities that can change. Abridged to the relevant shape, a response contains:
+
+```json
+{
+  "kinds": [
+    {
+      "x402Version": 2,
+      "scheme": "exact",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "extra": {
+        "feePayer": "CURRENT_FEE_PAYER_ADDRESS",
+        "recentBlockhash": "CURRENT_BLOCKHASH",
+        "lastValidBlockHeight": "CURRENT_BLOCK_HEIGHT"
+      }
+    }
+  ],
+  "extensions": ["bazaar"],
+  "signers": {
+    "solana:*": ["CURRENT_FEE_PAYER_ADDRESS"]
+  }
+}
+```
+
+The placeholder values change and must never be hardcoded. Select the current exact Mainnet capability before signing:
+
+```ts
+const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+const supported = await facilitatorClient.getSupported();
+
+const capability = supported.kinds.find(
+  (kind) =>
+    kind.x402Version === 2 &&
+    kind.scheme === "exact" &&
+    kind.network === SOLANA_MAINNET,
+);
+if (!capability?.extra?.feePayer) {
+  throw new Error("PayAI does not currently advertise sponsored exact Solana Mainnet settlement");
+}
+```
+
+This selects an operational network and scheme. `@payai/facilitator` adds merchant authentication when `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` are configured. Query capabilities through the same helper and credentials used by the merchant so the advertised fee-payer lane matches the generated payment requirement. A public unauthenticated `/supported` response may use a different lane.
+
+The response is not an exhaustive token list. The static metadata names native USDC as the asset tested by this example; it does not claim support for every Solana token.
+
+## Preflight and make one payment
+
+The buyer first verifies the full RPC genesis hash, fetches the unpaid `402`, and rejects any unexpected scheme, network, mint, recipient or amount. It checks the buyer balance and merchant USDC account, discovers the current fee payer through `/supported`, then signs and submits at most once.
+
+Keep the merchant running. In a second shell, enter the example directory and export the same four variables before running:
+
+```bash
+npm run payment:preflight
+npm run payment:once
+```
+
+`PREMIUM_URL` defaults to `http://127.0.0.1:3000/premium`. `PAYMENT_ATTEMPT_FILE` defaults to `payment-attempt.json`; set an absolute path if you want the durable guard elsewhere. If the merchant uses PayAI API-key authentication, export the same `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` in both shells for this merchant-operated smoke test. Never distribute the merchant secret to independent buyers.
+
+The payment runner preserves a persistent attempt record before submission. If the HTTP result is missing or uncertain, do not delete that record and do not submit another payment. Use the read-only reconciliation command to inspect the saved signature or transaction fingerprint:
+
+```bash
+npm run payment:reconcile
+```
+
+After success the runner decodes `PAYMENT-RESPONSE`, waits for finalized confirmation and checks exact integer USDC balance deltas.
+
+## Facilitator credits and fees
+
+New receiving wallets have **1,000 lifetime free credits** for ordinary exact settlements. One credit is **$0.001**. After the free allowance, the settlement charge is the facilitator's measured on-chain gas plus 30%, converted to credits. Current rates can change; read [facilitator pricing](/x402/facilitators/pricing) or the `pricing` object returned by `/supported`.
+
+Ordinary exact payments can use the free allowance without an API key. For production, configure the PayAI merchant credentials described in [facilitator authentication](/x402/facilitators/authentication). The facilitator charge is separate from the USDC price paid to your API.
+
+## Static integration metadata
+
+[`solana-mainnet-integration.json`](/solana-mainnet-integration.json) is a versioned, stable companion for tooling. Schema version `1` contains:
+
+- `kind`: the metadata document type;
+- `testedOn`: the date the example and versions were validated;
+- `generatedFrom`: the canonical example metadata path and source URL;
+- `network`: the x402 CAIP-2 identifier and full RPC genesis hash;
+- `asset`: the tested native USDC mint, decimals and token program;
+- `facilitator`: the base URL and capability path;
+- `packages`: exact tested package versions;
+- `prerequisites`: the runtime, wallet, token-account and RPC requirements;
+- `authority`: the live endpoint that takes precedence for operational capabilities;
+- `urls`: canonical guide, identifier reference, metadata and example URLs.
+
+Use the static file for integration constants and discovery links. Use the live `/supported` response for current networks, schemes, fee payer, blockhash and pricing.
