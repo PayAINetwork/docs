@@ -1,0 +1,74 @@
+---
+title: "Solana Mainnet network identifiers for x402"
+description: "Use the correct x402 CAIP-2 network, full Solana RPC genesis hash, native USDC mint and Token Program on Solana Mainnet."
+keywords: ["x402 Solana Mainnet", "Solana genesis hash", "CAIP-2", "@x402/svm", "USDC mint"]
+---
+
+Solana Mainnet has two similar-looking identifiers. They serve different purposes and both are correct.
+
+| Use | Value |
+| --- | --- |
+| x402 v2 network (CAIP-2) | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` |
+| Full `getGenesisHash` RPC result | `5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d` |
+
+The CAIP-2 chain reference is the first 32 characters of the genesis hash because CAIP-2 chain references have a 32-character limit. Do not append the remaining genesis-hash characters to an x402 `network` field. Conversely, do not compare the shortened CAIP-2 reference with the full result returned by `getGenesisHash`.
+
+## Fail closed on the RPC network
+
+Before loading a buyer signer or making a payment, call `getGenesisHash` and compare the complete result:
+
+```ts
+const SOLANA_MAINNET_GENESIS =
+  "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
+
+export async function assertSolanaMainnetRpc(rpcUrl: string): Promise<void> {
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "getGenesisHash",
+      params: [],
+    }),
+  });
+  if (!response.ok) throw new Error(`Solana RPC returned HTTP ${response.status}`);
+
+  const body = (await response.json()) as {
+    result?: string;
+    error?: unknown;
+  };
+  if (body.error || body.result !== SOLANA_MAINNET_GENESIS) {
+    throw new Error(`Expected Solana Mainnet genesis hash; received ${body.result ?? "RPC error"}`);
+  }
+}
+```
+
+This check catches a wrong cluster and the common error of comparing the RPC result with the shortened x402 identifier.
+
+## Native USDC
+
+The tested asset is Circle-issued native USDC on Solana Mainnet:
+
+| Field | Value |
+| --- | --- |
+| Mint | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| Decimals | `6` |
+| Token program | `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` |
+
+The mint uses the original SPL Token Program, not Token-2022. An x402 `payTo` value is the merchant wallet address. That wallet's associated token account for this mint must exist before settlement.
+
+Creating the associated token account is a separate setup transaction. The account-creation transaction's signer pays its SOL network fee and rent-exempt balance. PayAI's fee payer, discovered from the live facilitator capability response, sponsors the ordinary x402 payment transaction; that sponsorship does not fund merchant account setup.
+
+<Note>
+  These constants are also published in the [machine-readable integration metadata](/solana-mainnet-integration.json). For changing facilitator capabilities, always query [`/supported`](https://facilitator.payai.network/supported).
+</Note>
+
+Continue with the [x402 Solana Mainnet Express guide](/x402/solana-mainnet-express).
+
+## Primary references
+
+- [Solana namespace CAIP identifiers](https://github.com/ChainAgnostic/namespaces/blob/main/solana/caip10.md)
+- [Solana `getGenesisHash` RPC method](https://solana.com/docs/rpc/http/getgenesishash)
+- [Circle native USDC on Solana](https://www.circle.com/multi-chain-usdc/solana)
+- [Solana Token Program account](https://explorer.solana.com/address/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA?cluster=mainnet)

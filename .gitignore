@@ -4,3 +4,6 @@
 sync.log
 pr-body.md
 .sync-result.json
+
+# Python validation cache
+__pycache__/

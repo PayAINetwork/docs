@@ -1,0 +1,35 @@
+name: Solana Mainnet integration consistency
+
+on:
+  pull_request:
+    paths:
+      - 'x402/solana-*.mdx'
+      - 'solana-mainnet-integration.json'
+      - 'scripts/check-solana-integration.py'
+      - '.github/workflows/solana-integration.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: docs
+      - uses: actions/checkout@v4
+        with:
+          repository: PayAINetwork/x402
+          ref: main
+          path: canonical-example
+          sparse-checkout: examples/typescript/solana-mainnet-express
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate docs against the runnable example
+        run: python3 docs/scripts/check-solana-integration.py --example-dir canonical-example/examples/typescript/solana-mainnet-express
