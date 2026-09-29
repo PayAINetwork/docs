@@ -79,7 +79,7 @@ The public preview limits are below. Read `batchPolicy` from `/supported` for th
 
 | Limit | Public preview |
 | --- | --- |
-| Asset | USDC on Solana mainnet; devnet USDC for testing |
+| Asset | USDC on Solana mainnet |
 | New channel deposit | 0.01–100 USDC, expressed as `10000`–`100000000` atomic units |
 | Open or closing channels per merchant identity | 10. Authenticated usage is shared across the account's API keys; public usage is grouped by Solana receiving address. In-flight reservations count. |
 | Deposit attempts, including new top-ups | 5 per minute per merchant identity and network; public traffic also has a 10/minute/IP anti-abuse ceiling |
@@ -145,4 +145,4 @@ Automatic cleanup can pay already-claimed funds during channel closure; it canno
 
 ## Test before accepting customer traffic
 
-Use `https://dev-facilitator.payai.network` and devnet USDC first. Exercise partial charges, concurrent requests, receipt verification, lost responses, process restart, payout to the actual receiving ATA, customer refund, and closure. Then repeat with a small mainnet channel on the public shared lane, or with production credentials when testing an assigned lane. Confirm your ATA, wallet balances, durable stores, payout worker, and alerting before opening it.
+Start with a small mainnet channel on the public shared lane, or with production credentials when testing an assigned lane. Exercise partial charges, concurrent requests, receipt verification, lost responses, process restart, payout to the actual receiving ATA, customer refund, and closure before you raise the deposit size. Confirm your ATA, wallet balances, durable stores, payout worker, and alerting before opening it to customers.
