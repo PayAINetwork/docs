@@ -4,3 +4,10 @@
 sync.log
 pr-body.md
 .sync-result.json
+
+# Python validation cache
+__pycache__/
+
+# Standalone example build output
+node_modules/
+dist/

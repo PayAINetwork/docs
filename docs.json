@@ -25,6 +25,7 @@
             "pages": [
               "x402/introduction",
               "x402/quickstart",
+              "x402/solana-mainnet-express",
               "x402/build-with-ai"
             ]
           },
@@ -101,7 +102,8 @@
           {
             "group": "x402 Reference",
             "pages": [
-              "x402/reference"
+              "x402/reference",
+              "x402/solana-network-identifiers"
             ]
           },
           {
@@ -285,6 +287,6 @@
     }
   },
   "banner": {
-    "content": "🎉 x402 is now live on Solana!"
+    "content": "\ud83c\udf89 x402 is now live on Solana!"
   }
 }
