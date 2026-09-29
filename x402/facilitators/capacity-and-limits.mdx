@@ -9,7 +9,7 @@ The PayAI facilitator applies per-client rate limits at its edge, and bounds how
 
 ## Batch channel admission
 
-[Solana batch settlement](/x402/servers/batch-settlement) has additional account-wide limits on sponsored channels and deposit attempts. The public `/supported` response publishes them in `batchPolicy`. A full account or service-wide channel quota returns 429 with `Retry-After`; reuse an existing funded channel or complete its cleanup. API-key rotation does not reset an account's quota. Claims, distribution, recovery, and closure remain available during an admission pause.
+[Solana batch settlement](/x402/servers/batch-settlement) has additional limits on sponsored channels and deposit attempts. The public `/supported` response publishes them in `batchPolicy`. Authenticated requests share the quota across an account's API keys. Anonymous requests use a deterministic merchant bucket derived from the Solana receiving address and also have a 10 deposit-attempts/minute/IP anti-abuse limit. A full merchant or service-wide channel quota returns 429 with `Retry-After`; reuse an existing funded channel or complete its cleanup. Claims, distribution, recovery, and closure remain available during an admission pause.
 
 ## Per-IP rate limits
 
