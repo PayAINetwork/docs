@@ -49,8 +49,8 @@ HTTP compatibility alone is not payment compatibility: both ends must support th
 
 ## Configure PayAI and prepare production
 
-1. Follow your framework guide's PayAI facilitator configuration. Review the [free allowance and production pricing](/x402/facilitators/pricing); batch verification and settlement require authentication from the first request. Public discovery remains available without a key.
-2. Keep facilitator credentials on the server. See [facilitator authentication](/x402/facilitators/authentication) for package-based and direct HTTP setup.
+1. Follow your framework guide's PayAI facilitator configuration. Review the [free allowance and production pricing](/x402/facilitators/pricing); ordinary exact payments and the public Solana batch lane work without authentication.
+2. If you use paid account usage or an assigned lane, keep facilitator credentials on the server. See [facilitator authentication](/x402/facilitators/authentication) for package-based and direct HTTP setup.
 3. Configure [Bazaar discovery](/x402/facilitators/bazaar) if you want to expose supported discovery metadata. Serving an HTTP endpoint alone does not list it automatically.
 4. For variable charges, follow the [dynamic pricing guide](/guides/dynamic-pricing-x402) and validate that the payment authorization covers the accepted terms.
 5. Plan for capacity limits, timeouts and uncertain outcomes using the [capacity and recovery guidance](/x402/facilitators/capacity-and-limits). A request timeout does not establish that settlement failed.
