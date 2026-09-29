@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "testedOn": "2026-09-29",
+  "network": {
+    "x402": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "rpcGenesisHash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
+  },
+  "asset": {
+    "symbol": "USDC",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "decimals": 6,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  },
+  "facilitator": {
+    "url": "https://facilitator.payai.network",
+    "capabilitiesPath": "/supported"
+  },
+  "packages": {
+    "@payai/facilitator": "2.4.4",
+    "@solana-program/token": "0.9.0",
+    "@solana/kit": "5.5.1",
+    "@x402/core": "2.27.0",
+    "@x402/express": "2.27.0",
+    "@x402/svm": "2.27.0",
+    "express": "5.1.0"
+  },
+  "urls": {
+    "guide": "https://docs.payai.network/x402/solana-mainnet-express",
+    "networkIdentifiers": "https://docs.payai.network/x402/solana-network-identifiers",
+    "metadata": "https://docs.payai.network/solana-mainnet-integration.json",
+    "example": "https://github.com/PayAINetwork/docs/tree/main/examples/solana-mainnet-express"
+  }
+}

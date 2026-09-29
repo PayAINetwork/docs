@@ -3,8 +3,8 @@
   "kind": "payai.x402.solana-mainnet-express",
   "testedOn": "2026-09-29",
   "generatedFrom": {
-    "path": "examples/typescript/solana-mainnet-express/integration.json",
-    "url": "https://github.com/PayAINetwork/x402/blob/main/examples/typescript/solana-mainnet-express/integration.json"
+    "path": "examples/solana-mainnet-express/integration.json",
+    "url": "https://github.com/PayAINetwork/docs/blob/main/examples/solana-mainnet-express/integration.json"
   },
   "network": {
     "x402": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
@@ -45,6 +45,6 @@
     "guide": "https://docs.payai.network/x402/solana-mainnet-express",
     "networkIdentifiers": "https://docs.payai.network/x402/solana-network-identifiers",
     "metadata": "https://docs.payai.network/solana-mainnet-integration.json",
-    "example": "https://github.com/PayAINetwork/x402/tree/main/examples/typescript/solana-mainnet-express"
+    "example": "https://github.com/PayAINetwork/docs/tree/main/examples/solana-mainnet-express"
   }
 }

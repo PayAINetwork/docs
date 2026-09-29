@@ -42,3 +42,7 @@ Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/sett
 ### Resources
 - [Mintlify documentation](https://mintlify.com/docs)
 - [Mintlify community](https://mintlify.com/community)
+
+## Runnable integration
+
+The [Solana Mainnet Express merchant and buyer](examples/solana-mainnet-express/) uses exact released npm packages and includes deterministic payment-flow tests. Follow the [canonical guide](https://docs.payai.network/x402/solana-mainnet-express).
