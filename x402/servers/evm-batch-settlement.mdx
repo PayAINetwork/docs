@@ -6,7 +6,7 @@ description: "Payment channels for metered x402 APIs on Base: one USDC deposit, 
 Batch settlement lets a customer fund a reusable on-chain channel once and pay for many requests with signed vouchers, while your server claims and sweeps the accumulated charges in batches. It is built for metered APIs, inference, and any service where the final price of a request is known only after the work is done. On EVM the scheme is implemented by the `x402BatchSettlement` contract, and PayAI relays every on-chain leg and pays the gas.
 
 <Note>
-  PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) from both `https://facilitator.payai.network` and `https://dev-facilitator.payai.network`. Access is public: no PayAI account or API key is needed. Add an API key only if you want to pay for settlement legs with credits after the free allowance.
+  PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) at `https://facilitator.payai.network`. Access is public: no PayAI account or API key is needed. Add an API key only if you want to pay for settlement legs with credits after the free allowance.
 </Note>
 
 ## How it works
@@ -124,4 +124,4 @@ Sweeps are different: a `settle` request sweeps whatever is owed now, so it has 
 
 ## Test before taking customer traffic
 
-Use `https://dev-facilitator.payai.network` with Base Sepolia USDC from the Circle faucet. Exercise partial charges, a claim and sweep cycle, a lost response, a process restart, and a cooperative refund, and confirm your receiving wallet's USDC balance moves by the charged total. Then repeat with a small channel on Base mainnet against `https://facilitator.payai.network`.
+Start on Base Sepolia with USDC from the Circle faucet, using the same facilitator URL. Exercise partial charges, a claim and sweep cycle, a lost response, a process restart, and a cooperative refund, and confirm your receiving wallet's USDC balance moves by the charged total. Then repeat with a small channel on Base mainnet.
