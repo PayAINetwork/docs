@@ -38,7 +38,7 @@ Ordinary exact payments can start within the free allowance below.
 Get started immediately with zero setup. Jump to the [quickstart](/x402/quickstart) to start building.
 
 <Note>
-  [Solana batch settlement](/x402/servers/batch-settlement) requires a merchant API key from the first facilitator call. The free allowance is separate from portal credits and ATA setup costs.
+  [Solana batch settlement](/x402/servers/batch-settlement) can use the public shared lane without an API key. Its on-chain legs count against the same receiving-wallet and shared free-tier allowances. Use an API key and credits beyond that allowance or for an assigned enterprise lane. The allowance is separate from portal credits and ATA setup costs.
 </Note>
 
 ## Beyond the Free Credits
@@ -143,14 +143,14 @@ sets a different margin.
 |---|---|---|
 | **Facilitator fee** | $0 within the allowance | Network gas + 30%, in credits |
 | **Included** | 1,000 credits per receiving wallet (lifetime) | Unlimited (credit-based) |
-| **API key required** | No for ordinary exact payments; yes for batch | Yes |
+| **API key required** | No for ordinary exact payments or the public Solana batch lane | Yes beyond the allowance or for assigned lanes |
 | **Credits** | Not required | 1 credit = $0.001 |
 | **Credit expiry** | — | Never |
 | **Dashboard access** | Not required | [merchant.payai.network](https://merchant.payai.network) |
 
 ## How to get started
 
-1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments without an API key, or the [batch guide](/x402/servers/batch-settlement) for authenticated metered payments
+1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments, or the [batch guide](/x402/servers/batch-settlement) for public metered payments
 2. When you're ready to scale beyond the free allowance, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
 3. Top up credits from the dashboard
 4. Get your API key ID and secret
