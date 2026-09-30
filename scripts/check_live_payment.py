@@ -70,13 +70,12 @@ def diagnose_failure(client_output):
     does not distinguish them:
 
       * our documented example is wrong, or
-      * upstream shipped a protocol change and the PayAI facilitator has not
-        absorbed it yet.
+      * upstream shipped a protocol change and the deployed PayAI facilitator
+        has not absorbed it yet.
 
-    The second is real: the facilitator runs PayAI's own @payai/x402-* line,
-    which is versioned and released separately from upstream's @x402/*. So ask
-    the facilitator what it currently supports and compare against what the
-    documented example just offered.
+    The facilitator deployment is versioned separately from the public
+    upstream SDK packages. Ask the live facilitator what it currently supports
+    and compare that with what the documented example just offered.
     """
     offered = sorted(set(re.findall(r"network: '([^']+)'", client_output)))
     try:
@@ -96,7 +95,7 @@ def diagnose_failure(client_output):
             f"    NOT supported by the facilitator right now: {', '.join(unsupported)}",
             "",
             "    This points at the facilitator, not the docs. Upstream has most likely",
-            "    shipped a protocol or network change that @payai/x402-* has not picked up.",
+            "    shipped a protocol or network change that the deployed facilitator has not picked up.",
             "    Check payai-x402-facilitator before editing these pages.",
         ]
     else:

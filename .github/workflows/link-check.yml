@@ -18,6 +18,8 @@ jobs:
           node-version: "24"
       - name: Check internal links
         run: python3 scripts/check-links.py
+      - name: Reject vendored x402 SDK dependencies
+        run: python3 scripts/check-upstream-sdk.py
       - name: Test link checker boundaries
         run: python3 scripts/test_check_links.py
       - name: Check v2 reference examples
