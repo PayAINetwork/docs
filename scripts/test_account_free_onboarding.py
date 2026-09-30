@@ -41,6 +41,8 @@ class AccountFreeOnboardingTest(unittest.TestCase):
             with self.subTest(path=path):
                 text = source(path)
                 self.assertIn("mainnet payments in production", text)
+                self.assertIn("The examples above use testnets.", text)
+                self.assertIn("adding credentials alone does not switch networks", text)
                 self.assertIn("no API key or portal signup", text)
                 self.assertIn(AGENT_KEYS, text)
                 self.assertIn(DASHBOARD, text)
