@@ -6,7 +6,7 @@ description: "Metered Solana payments with merchant-signed vouchers, public shar
 Batch settlement lets a customer fund a reusable Solana channel and pay for multiple requests before the merchant claims and distributes the accumulated charges. It supports metered APIs, inference, and other services where the final charge is known after the work finishes.
 
 <Note>
-  This is a public preview with bounded channel capacity. The shared lane requires no PayAI account or API key. Use an API key for paid usage, account attribution, or an assigned enterprise lane. The SDK is pinned to the tested PayAI integration build; it is not a stable upstream release.
+  PayAI's facilitator support is a public preview with bounded channel capacity. The shared lane requires no PayAI account or API key. Use an API key for paid usage, account attribution, or an assigned enterprise lane. The client and server implementation is available in the official upstream `@x402/core` and `@x402/svm` npm packages.
 </Note>
 
 ## 1. Choose public or authenticated access
@@ -33,23 +33,15 @@ You can create the ATA yourself and fund its rent, or use the [merchant portal](
 
 The free settlement allowance is not a signup grant of portal credits. Check your credit balance in the portal.
 
-## 3. Install the compatible preview SDK
+## 3. Install the upstream SDK
 
-Use both packages from the [immutable PayAI-owned payai6 prerelease](https://github.com/PayAINetwork/x402-batch-preview/releases/tag/payai-batch-preview-20260929-payai6):
+SVM batch settlement is included in the official upstream [`@x402/core`](https://www.npmjs.com/package/@x402/core) and [`@x402/svm`](https://www.npmjs.com/package/@x402/svm) packages starting with version 2.28.0. Pin both packages to the same release for a reproducible integration:
 
 ```bash
-npm install \
-  https://github.com/PayAINetwork/x402-batch-preview/releases/download/payai-batch-preview-20260929-payai6/x402-core-2.27.0-c84154b5.tgz \
-  https://github.com/PayAINetwork/x402-batch-preview/releases/download/payai-batch-preview-20260929-payai6/x402-svm-2.27.0-5e6bf4177-payai6.tgz \
-  @solana/kit@^5.5.1
+npm install @x402/core@2.28.0 @x402/svm@2.28.0 @solana/kit@^5.5.1
 ```
 
-Commit the resulting lockfile, including its resolved tarball URLs and integrity values. Pin both artifacts together, and verify the release's [SHA256SUMS](https://github.com/PayAINetwork/x402-batch-preview/releases/download/payai-batch-preview-20260929-payai6/SHA256SUMS):
-
-- `x402-core-2.27.0-c84154b5.tgz`: `cc5dda38a1697546e163d41601aa92765b826ff4d74f952f82757090f740b99b`
-- `x402-svm-2.27.0-5e6bf4177-payai6.tgz`: `a995f65e65ec536a6aaf235d91672c4ddc9984b8ab613e12a6cd294e12952d5a`
-
-This build uses the merged upstream batch-settlement implementation and bounded channel-PDA cache from x402 Foundation commit `c84154b5d6a31d77fd5b9dbb01213053fd9cb9eb`. PayAI built the preview SVM artifact from commit `5e6bf4177da704aaad8885680e9a085d957d1f47`, which adds PayAI's recovery, cleanup, payer-initiated close compatibility, hardened completed-request replay, and close-payout accounting fixes. The x402 Foundation repository remains the protocol source of truth; the PayAI revision identifies this preview artifact's source and does not define a separate protocol. The replay fix is proposed upstream in [x402-foundation/x402#3605](https://github.com/x402-foundation/x402/pull/3605), and the payout-callback fix is proposed in [x402-foundation/x402#3606](https://github.com/x402-foundation/x402/pull/3606). The packages retain the names `@x402/core` and `@x402/svm`; they are pinned preview artifacts rather than stable npm releases. If another dependency pins an older `@x402/core`, use a package-manager override so the preview SVM package resolves the matching core. Mixing versions can remove the metered settlement hooks.
+Commit the resulting lockfile. The packages and SVM batch-settlement exports are maintained by the [x402 Foundation upstream repository](https://github.com/x402-foundation/x402); the [SVM batch-settlement specification](https://github.com/x402-foundation/x402/blob/main/specs/schemes/batch-settlement/scheme_batch_settlement_svm.md) is the protocol source of truth. PayAI operates the facilitator described in this guide but does not own or publish these SDK packages. Keep `@x402/core` and `@x402/svm` on the same version when upgrading.
 
 Use `BatchSvmScheme` from `@x402/svm/batch-settlement/server` for the merchant, and the same-named class from `@x402/svm/batch-settlement/client` for the customer. For merchant-signed vouchers, configure the server's `operator` signer. The terms identify `voucherSigner: "server"` and the operator's public key.
 
@@ -115,7 +107,7 @@ The public preview supports at most four channels per claim transaction. Configu
 
 For new channels, advertise a merchant `receiverAuthorizer` in the payment terms and retain its signing key. The facilitator binds that key at the first deposit; a key supplied only in a later close request is not trusted. Configure the same signer as `BatchChannelManager.closeAuthorizer`. If a claim encounters a payer-initiated Closing channel, the manager submits its latest retained voucher as a merchant-authenticated `seal` during withdrawal grace. You can call `sealClosingChannel(channelId)` directly. The facilitator applies `settle_and_seal` and distributes in one transaction; verify the merchant USDC receipt and payer refund from that transaction. Channels opened before the key binding was stored cannot use merchant seal; keep ordinary claims current before any close.
 
-PayAI6 routes confirmed cooperative seal payouts through `onDistributionConfirmed` and records cooperative-refund distributions. It persists the payout amount and callback marker across retries, and returns `settlement_pending` while durable accounting still needs to finish. Keep callback implementations idempotent by transaction.
+PayAI's facilitator deployment routes confirmed cooperative seal payouts through `onDistributionConfirmed` and records cooperative-refund distributions. The facilitator persists the payout amount and callback marker across retries, and returns `settlement_pending` while durable accounting still needs to finish. Keep callback implementations idempotent by transaction.
 
 A merchant outage can still lose revenue: PayAI does not retain unclaimed vouchers on the merchant's behalf, and idle cleanup only sees the on-chain settled watermark. Keep vouchers and claim intents durable, run the claim worker frequently, and alert when it falls behind. The 72-hour idle window does not extend the withdrawal grace of a channel already closing.
 
@@ -133,13 +125,13 @@ A merchant outage can still lose revenue: PayAI does not retain unclaimed vouche
 | 503, `batch_signer_funding_headroom_exhausted` | Sponsorship is temporarily unavailable. Respect `Retry-After`; keep existing-channel payout, recovery and cleanup running. |
 | `settlement_pending`, `duplicate_settlement`, or a lost HTTP response | Retain the exact payment payload and any transaction signature; reconcile by retrying that payload unchanged. A changed charge ceiling is a different request and cannot recover the completed response. |
 
-Do not allocate another charge or build a replacement transaction merely because a response was lost. The preview SDK preserves pending transaction identity and reconciles outcomes after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly. PayAI retains unresolved signatures and signed bytes without automatic expiry; completed results retain a 24-hour recovery window. Keep permanent receipts in your own storage. An expired blockhash plus missing transaction history does not authorize a replacement payment. Restore history or contact PayAI if the outcome remains unknown.
+Do not allocate another charge or build a replacement transaction merely because a response was lost. Retain the official SDK's original payment payload and retry it unchanged; PayAI's facilitator preserves pending transaction identity so the combined flow can reconcile the outcome after restart. A later cumulative watermark alone does not prove that a particular request succeeded. Keep recovery records and retry promptly. PayAI retains unresolved signatures and signed bytes without automatic expiry; completed results retain a 24-hour recovery window. Keep permanent receipts in your own storage. An expired blockhash plus missing transaction history does not authorize a replacement payment. Restore history or contact PayAI if the outcome remains unknown.
 
 There is no operation-status lookup endpoint in this preview. Retrying the exact payment payload remains the transaction-reconciliation mechanism after a timeout. Reconcile payouts using the confirmed transaction signature, channel membership, cumulative watermark, and receiver USDC balance delta. A retry response alone is not a new payment.
 
 ## Preview deprecation policy
 
-For a planned shutdown of new batch-channel admission, PayAI will give at least **30 days' notice**. Admission can be paused sooner for an incident or safety issue. For every channel admitted before admission stops, PayAI will continue claims, merchant payouts, customer refunds, closure, cleanup, and transaction recovery until the channel has drained. Keep the admitted channel terms, keys, and merchant voucher records until closure is verified. PayAI will switch these installation instructions to compatible upstream packages only after those versions are merged and published.
+For a planned shutdown of new batch-channel admission, PayAI will give at least **30 days' notice**. Admission can be paused sooner for an incident or safety issue. For every channel admitted before admission stops, PayAI will continue claims, merchant payouts, customer refunds, closure, cleanup, and transaction recovery until the channel has drained. Keep the admitted channel terms, keys, and merchant voucher records until closure is verified.
 
 Automatic cleanup can pay already-claimed funds during channel closure; it cannot claim vouchers held only by an offline merchant. Keep your redemption worker running inside the withdrawal grace period. PayAI records background payouts in the same transaction-deduplicated ledger. If a receiving ATA also receives the customer refund or treasury sweep, aggregate credits cannot reliably separate those transfers; that case requires reconciliation rather than being reported as a zero payout.
 

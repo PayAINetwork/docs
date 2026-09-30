@@ -48,7 +48,7 @@ End-to-end response time also includes application work, network transport and t
 - Protect signing keys: do not put private keys in public frontend code or commit them to source control.
 - Set spending limits appropriate to the resource and check the advertised amount, network and recipient before authorizing payment.
 - Check both payment and resource-delivery outcomes. A failed HTTP response does not prove that a payment did not settle; use the [capacity and recovery guidance](/x402/facilitators/capacity-and-limits) before retrying an uncertain payment.
-- Treat [Solana batch settlement](/x402/servers/batch-settlement) as a separate public-preview integration with pinned SDK versions, funded channels and its own recovery procedure, not a drop-in replacement for an exact-payment client.
+- Treat [Solana batch settlement](/x402/servers/batch-settlement) as a separate public-preview facilitator integration with matching official `@x402/core` and `@x402/svm` versions, funded channels and its own recovery procedure, not a drop-in replacement for an exact-payment client.
 
 ## Need help?
 
