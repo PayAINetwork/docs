@@ -28,6 +28,8 @@ jobs:
         run: python3 scripts/check-guide-hubs.py
       - name: Test guide index regression guard
         run: python3 scripts/test_check_guide_hubs.py
+      - name: Test account-free onboarding regression guard
+        run: python3 scripts/test_account_free_onboarding.py
       - name: Test isolated manual examples (no network or payments)
         run: |
           node --test scripts/test-manual-typescript.mjs

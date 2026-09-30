@@ -158,11 +158,16 @@ Just set your environment variables to match your local server, install the depe
 
 ## Going to production
 
-This setup works on the **free tier** out of the box — no API keys required.
+This setup can serve ordinary exact mainnet payments in production within the
+[free allowance](/x402/facilitators/pricing) — no API key or portal signup is
+required. Production readiness still includes normal controls such as secret
+management, monitoring, and failure handling.
 
-Beyond the free tier the facilitator authenticates merchants with short-lived
-Ed25519 JWTs. Create a merchant account at
-[merchant.payai.network](https://merchant.payai.network), then add your keys to
+Beyond the allowance the facilitator authenticates merchants with short-lived
+Ed25519 JWTs. An autonomous agent can [buy credits and receive an API key over
+x402](/x402/facilitators/agent-api-keys); PayAI creates a wallet-owned agent
+account programmatically. You can also use the optional [merchant
+dashboard](https://merchant.payai.network). Add the resulting credentials to
 your `.env`:
 
 ```env
