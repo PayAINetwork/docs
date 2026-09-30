@@ -5,6 +5,8 @@
   "sourceCommit": "a3669bd148afd60f4ff1c3893c0a1e8c2baab8cd",
   "packages": { "@payai/facilitator": "2.4.4", "@x402/core": "2.27.0", "@x402/express": "2.27.0", "@x402/svm": "2.27.0" },
   "portalCredentialsUsed": false,
+  "facilitatorApiCredentialsUsed": false,
+  "credentialIsolation": "Merchant and buyer child processes received explicit environment allowlists; no PAYAI_API_KEY_ID or PAYAI_API_KEY_SECRET was passed.",
   "transport": "Temporary public HTTPS tunnel, shut down after verification; not a durable production deployment",
   "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
   "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
