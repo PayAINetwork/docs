@@ -7,6 +7,8 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 This page gets you set up quickly as a merchant (server) or a buyer (client).
 
+If your goal is to let AI agents pay for an API or SaaS operation, start with [Accept payments from AI agents](/guides/accept-payments-from-ai-agents) for the end-to-end path.
+
 For a complete Solana Mainnet merchant and buyer, follow the [x402 Express guide](/x402/solana-mainnet-express), with pinned `@x402/svm` APIs and payment checks.
 
 Choose your language and framework below to get started.
@@ -77,7 +79,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
 
-The facilitator works immediately on the **free tier**. When you're ready for production, set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` environment variables to authenticate — see [Facilitator Pricing](/x402/facilitators/pricing).
+The facilitator works immediately for ordinary exact payments, including mainnet production traffic within the [free allowance](/x402/facilitators/pricing). No API key or portal signup is required to launch. When you need paid capacity beyond the allowance, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. You can also use the optional [merchant dashboard](https://merchant.payai.network). Then set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` to authenticate.
 
 The PayAI facilitator supports the following endpoints:
 

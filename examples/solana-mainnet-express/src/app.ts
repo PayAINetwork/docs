@@ -11,8 +11,15 @@ if (facilitator.url !== FACILITATOR_URL) throw new Error("@payai/facilitator URL
 export function createApp(
   merchantAddress: string,
   facilitatorClient: FacilitatorClient = new HTTPFacilitatorClient(facilitator),
+  publicResourceUrl?: string,
 ): express.Express {
   address(merchantAddress);
+  if (publicResourceUrl !== undefined) {
+    const url = new URL(publicResourceUrl);
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/premium" || url.search || url.hash) {
+      throw new Error("PUBLIC_RESOURCE_URL must be an HTTPS /premium URL without credentials, query or fragment");
+    }
+  }
   const app = express();
   const resourceServer = new x402ResourceServer(facilitatorClient).register(
     NETWORK,
@@ -32,6 +39,7 @@ export function createApp(
             maxTimeoutSeconds: 60,
           },
           description: "Premium Solana Mainnet content",
+          ...(publicResourceUrl ? { resource: publicResourceUrl } : {}),
           mimeType: "application/json",
         },
       },

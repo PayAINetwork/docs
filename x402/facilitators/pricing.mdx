@@ -28,8 +28,8 @@ Ordinary exact payments can start within the free allowance below.
 <Note>
   Free credits are counted per receiving wallet. Requests from shared hosts or IP
   addresses (e.g. shared cloud platforms) also draw from a shared pool, so those
-  deployments may reach the limit sooner — create a merchant account and top up
-  credits before reaching the applicable limit. Some older receiving wallets retain
+  deployments may reach the limit sooner — obtain a key and top up credits before
+  reaching the applicable limit. Some older receiving wallets retain
   a legacy allowance of 10,000 credits; the 1,000-credit figure is the current
   default for new wallets, not a monthly reset. Settlements made before 21 September
   2026 count as 1 credit each toward the allowance.
@@ -114,9 +114,7 @@ upcoming change with its effective time. `GET /supported` carries the same objec
 
 ## Credit System
 
-To maintain access beyond the free allowance, merchants log into a dashboard and top up credits.
-
-Autonomous agents can also [purchase credits and receive an API key programmatically over x402](/x402/facilitators/agent-api-keys), without first creating a portal account.
+To maintain access beyond the free allowance, autonomous agents can [purchase credits and receive an API key programmatically over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal. Humans can instead use the optional [merchant dashboard](https://merchant.payai.network).
 
 - **1 credit = $0.001**; a settlement debits its network's rate in credits (fractional credits are normal)
 - **Credits never expire**
@@ -146,15 +144,14 @@ sets a different margin.
 | **API key required** | No for ordinary exact payments or the public Solana batch lane | Yes beyond the allowance or for assigned lanes |
 | **Credits** | Not required | 1 credit = $0.001 |
 | **Credit expiry** | — | Never |
-| **Dashboard access** | Not required | [merchant.payai.network](https://merchant.payai.network) |
+| **Dashboard access** | Not required | Optional; agents can use [x402 key vending](/x402/facilitators/agent-api-keys) |
 
 ## How to get started
 
 1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments, or the [batch guide](/x402/servers/batch-settlement) for public metered payments
-2. When you're ready to scale beyond the free allowance, create a merchant account at [merchant.payai.network](https://merchant.payai.network)
-3. Top up credits from the dashboard
-4. Get your API key ID and secret
-5. Set the environment variables in your server:
+2. When you're ready to scale beyond the free allowance, [buy credits and receive a key over x402](/x402/facilitators/agent-api-keys) with no portal signup, or use the optional [merchant dashboard](https://merchant.payai.network)
+3. Store your API key ID and one-time secret securely. If the paying wallet is already linked to a portal account, the vending payment adds credits only; manage its keys in the dashboard
+4. Set the environment variables in your server:
 
 ```env
 PAYAI_API_KEY_ID=your-key-id

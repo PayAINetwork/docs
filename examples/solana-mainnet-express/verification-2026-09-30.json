@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "payai.shipped-example.mainnet-smoke",
+  "testedAt": "2026-09-30T08:19:52.395Z",
+  "sourceCommit": "a3669bd148afd60f4ff1c3893c0a1e8c2baab8cd",
+  "packages": { "@payai/facilitator": "2.4.4", "@x402/core": "2.27.0", "@x402/express": "2.27.0", "@x402/svm": "2.27.0" },
+  "portalCredentialsUsed": false,
+  "facilitatorApiCredentialsUsed": false,
+  "credentialIsolation": "Merchant and buyer child processes received explicit environment allowlists; no PAYAI_API_KEY_ID or PAYAI_API_KEY_SECRET was passed.",
+  "transport": "Temporary public HTTPS tunnel, shut down after verification; not a durable production deployment",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "amountAtomic": "1000",
+  "unpaidStatus": 402,
+  "paidStatus": 200,
+  "resourceDelivered": true,
+  "settlement": {
+    "signature": "4KTiATAhoTUJ7NEQy3FJfGSiVYjysFQfFX7FT1nvRxr8Th22FvZkUBZpezRC5VbCEynnkJWmT5UNNNaNV8mL8Xhs",
+    "confirmationStatus": "finalized",
+    "buyerDeltaAtomic": "-1000",
+    "merchantDeltaAtomic": "1000",
+    "facilitatorPaidFeeLamports": 10001,
+    "transactionMessageSha256": "1618a2ecd052b6ad0b825b013e0f54cc9807aedaa710c259154bdedca28faf04",
+    "responseBodySha256": "0bcac902f35d6467e7a00ed256091b4d68340ea84e799f2ea967801e1be56375"
+  },
+  "recovery": {
+    "signature": "5zRt49oWeRYktYBc7zTe9XFDdipwuv3wokhXyswhWL3Lr8FAnoeybjSL8CvD4qe5re7h9Bi5v9osVGNVQnMq3DMy",
+    "confirmationStatus": "finalized",
+    "returnedAtomic": "1000",
+    "merchantRemainingAtomic": "0"
+  },
+  "accountClosure": {
+    "signature": "3ys8kVWv4Q2YmwJHJynPB6Pnxu5LZxEo5jAd6eWx7PbyVZff7M2NCYhWJiGntPo8jZH2LCnQxhQeCF2ekmtphqpN",
+    "confirmationStatus": "finalized",
+    "rentReturnedToFunder": true
+  },
+  "funderNetCostLamports": 25000,
+  "evidenceSha256": {
+    "plan.json": "5395b34735fb4d68f5679a30a3d8dbca836801c55e53806ede9af8e9f113924c",
+    "pay-result.json": "22f039e28e99ee8b280dd40ed880bc211213a72177c4dfecad39a0639d334e45",
+    "recovery.json": "bd9098fe55a9fa0e737a2e292b4a850b4149fcd32ec623c326b349610243dff1",
+    "close.json": "a8b9e12d90ad90f30a56a3ac39e120136b73733be6a569e2d5404828a89d8cc6"
+  },
+  "limitations": [
+    "One explicit operator-run smoke, not an unbiased agent discovery sample, throughput benchmark, or reliability claim.",
+    "SPL Token CLI setup/recovery instructions needed correction; the merchant and buyer payment code remained unchanged for the paid test.",
+    "The frozen example advertised an HTTP resource URL behind TLS termination. An explicit HTTPS resource option was added and verified afterward without another payment.",
+    "The separately published facilitator package 2.4.5 was verified in npm; this test deliberately retained the shipped example lockfile at 2.4.4.",
+    "No paid credit/key vending purchase was made; its onboarding route is documented separately."
+  ]
+}

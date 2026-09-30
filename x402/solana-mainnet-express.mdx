@@ -18,7 +18,7 @@ The runnable example pins the versions tested on 29 September 2026:
 | `@x402/svm` | `2.27.0` |
 | `express` | `5.1.0` |
 
-Two isolated historical pilot implementations used this network, asset and facilitator to settle one `0.001` USDC payment each, reach finalization and recover the funds. They are evidence that the integration is feasible, not live-payment validation of the example below. This example is currently verified by deterministic tests. A real payment happens only when you deliberately run the guarded payment command with a funded buyer.
+On **2026-09-30**, the shipped example at commit `a3669bd148afd60f4ff1c3893c0a1e8c2baab8cd` completed one `0.001` USDC Mainnet payment without PayAI credentials over temporary public HTTPS: unpaid `402`, paid `200`, finalized settlement, exact balance deltas and full USDC recovery. See the [versioned receipt](https://github.com/PayAINetwork/docs/blob/main/examples/solana-mainnet-express/verification-2026-09-30.json). This is a single smoke test, not a durable deployment or performance benchmark. Setup/recovery CLI instructions were corrected during validation. The HTTPS resource-metadata option below was added and checked afterward without another payment. A real payment happens only when you deliberately run the guarded payment command with a funded buyer.
 
 ## Configuration
 
@@ -65,19 +65,21 @@ Use Node.js 20.18 or newer; the tested environment uses Node.js 24. Use a dedica
 The merchant wallet needs an associated token account for native USDC before payment. With the official SPL Token CLI installed, create the deterministic associated token account using a separate setup keypair that holds enough SOL for rent and the setup transaction:
 
 ```bash
-export USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 export SETUP_KEYPAIR_FILE=/absolute/path/to/setup-fee-payer.json
-MERCHANT_ATA="$(spl-token address --token "$USDC_MINT" --owner "$MERCHANT_ADDRESS")"
+MERCHANT_ATA="$(node --input-type=module -e \
+  'import("./dist/rpc.js").then(async ({ getUsdcAta }) => console.log(await getUsdcAta(process.env.MERCHANT_ADDRESS)))')"
 solana account "$MERCHANT_ATA" --url "$SOLANA_RPC_URL" >/dev/null 2>&1 || \
-  spl-token create-account "$USDC_MINT" \
+  spl-token create-account EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v \
     --owner "$MERCHANT_ADDRESS" \
     --fee-payer "$SETUP_KEYPAIR_FILE" \
     --url "$SOLANA_RPC_URL"
 ```
 
-This command targets the merchant's associated token account, so it does not create a different recipient on a rerun. If the account already exists, keep it and continue. Account creation consumes SOL for the rent-exempt balance and its setup transaction fee. The setup signer pays those costs. This is separate from the live facilitator fee payer that sponsors the x402 settlement transaction. `npm run payment:preflight` checks that the account exists without paying.
+Run this after `npm run build`; it derives the ATA with the example's exported `getUsdcAta` helper instead of depending on SPL Token CLI output formatting. The command targets the merchant's associated token account, so it does not create a different recipient on a rerun. If the account already exists, keep it and continue. Account creation consumes SOL for the rent-exempt balance and its setup transaction fee. The setup signer pays those costs. This is separate from the live facilitator fee payer that sponsors the x402 settlement transaction. `npm run payment:preflight` checks that the account exists without paying.
 
 ## Run the merchant
+
+Behind an HTTPS reverse proxy, set `PUBLIC_RESOURCE_URL=https://YOUR_HOST/premium` on the server and use the same URL for the buyer's `PREMIUM_URL`. This keeps the payment resource metadata on HTTPS without trusting arbitrary forwarded headers. The server binds to loopback by default; set `HOST=0.0.0.0` only when required by your deployment and its network controls.
 
 The server creates a standard `HTTPFacilitatorClient` from `@x402/core/server`, using the config exported by `@payai/facilitator`, then registers `ExactSvmScheme` from `@x402/svm/exact/server`:
 
@@ -197,7 +199,7 @@ After success the runner decodes `PAYMENT-RESPONSE`, waits for finalized confirm
 
 New receiving wallets have **1,000 lifetime free credits** for ordinary exact settlements. One credit is **$0.001**. After the free allowance, the settlement charge is the facilitator's measured on-chain gas plus 30%, converted to credits. Current rates can change; read [facilitator pricing](/x402/facilitators/pricing) or the `pricing` object returned by `/supported`.
 
-Ordinary exact payments can use the free allowance without an API key. For production, configure the PayAI merchant credentials described in [facilitator authentication](/x402/facilitators/authentication). The facilitator charge is separate from the USDC price paid to your API.
+Ordinary exact payments can serve mainnet production traffic within the free allowance without an API key or portal signup. When you need paid capacity beyond it, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route. Configure the resulting credentials as described in [facilitator authentication](/x402/facilitators/authentication). The facilitator charge is separate from the USDC price paid to your API.
 
 ## Static integration metadata
 
