@@ -77,6 +77,15 @@ def page_block(page, lang, index):
     return blocks[index], text, blocks
 
 
+def replace_page_block(text, lang, current, expected):
+    """Replace only the synced fence, preserving guide prose before and after it."""
+    old = "```" + lang + "\n" + current + "```"
+    if text.count(old) != 1:
+        raise RuntimeError("expected exactly one matching code fence during sync")
+    new = "```" + lang + "\n" + expected.rstrip("\n") + "\n```"
+    return text.replace(old, new, 1)
+
+
 EXT = {"ts": "ts", "typescript": "ts", "python": "py", "go": "go"}
 
 
@@ -126,8 +135,7 @@ def sync(keys, write):
                     fromfile=f"docs/{key}", tofile=f"expected/{key}", lineterm=""))[:40]:
                 print("    " + line)
             if write:
-                new = text.replace("```" + lang + "\n" + current + "```",
-                                   "```" + lang + "\n" + expected.rstrip("\n") + "\n```", 1)
+                new = replace_page_block(text, lang, current, expected)
                 (ROOT / page).write_text(new)
                 print(f"    updated {page}")
             print()
@@ -194,4 +202,5 @@ def main():
     return 0
 
 
-sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main())

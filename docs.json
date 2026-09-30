@@ -110,6 +110,7 @@
           {
             "group": "Guides",
             "pages": [
+              "guides/accept-payments-from-ai-agents",
               "guides/dynamic-pricing-x402"
             ]
           },

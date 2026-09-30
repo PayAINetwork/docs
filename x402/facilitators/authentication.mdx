@@ -10,7 +10,7 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 The [PayAI facilitator](https://facilitator.payai.network) authenticates merchants using short-lived **JWTs signed with Ed25519** (the EdDSA algorithm). If you use the `@payai/facilitator` TypeScript package, this is handled automatically. This guide explains the underlying protocol so you can implement authentication in **any language** without depending on PayAI packages.
 
 <Note>
-  Authentication is optional for ordinary exact payments and Solana batch settlement on the public shared lane. Use an API key for paid usage, account attribution, or an assigned enterprise lane. If you send a credential, it must be valid; PayAI does not silently downgrade invalid credentials to anonymous access. Create a merchant account at [merchant.payai.network](https://merchant.payai.network) to get your keys. Autonomous agents can also [buy a key over x402 without creating an account](/x402/facilitators/agent-api-keys).
+  Authentication is optional for ordinary exact payments and Solana batch settlement on the public shared lane. Use an API key for paid usage, account attribution, or an assigned enterprise lane. If you send a credential, it must be valid; PayAI does not silently downgrade invalid credentials to anonymous access. Autonomous agents can [buy credits and receive a key over x402](/x402/facilitators/agent-api-keys) without portal signup; PayAI creates a wallet-owned agent account programmatically. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route.
 </Note>
 
 <Tip>
@@ -19,7 +19,7 @@ The [PayAI facilitator](https://facilitator.payai.network) authenticates merchan
 
 ## API key structure
 
-Your API key has two parts, available from the [merchant dashboard](https://merchant.payai.network):
+Your API key has two parts, returned by the [portal-free agent vending flow](/x402/facilitators/agent-api-keys) or available from the [merchant dashboard](https://merchant.payai.network):
 
 | Part | Environment Variable | Description |
 |------|---------------------|-------------|

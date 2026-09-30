@@ -12,6 +12,8 @@ export MERCHANT_ADDRESS=YOUR_MERCHANT_SOLANA_ADDRESS
 npm start
 ```
 
+For an HTTPS deployment behind a TLS-terminating proxy, set `PUBLIC_RESOURCE_URL=https://YOUR_HOST/premium` on the server and `PREMIUM_URL` to the same URL for the smoke buyer. The explicit resource URL keeps the `402` metadata on HTTPS without trusting arbitrary forwarded headers. The example binds to loopback by default; set `HOST=0.0.0.0` only when your deployment requires it and applies its normal network controls.
+
 The standard `HTTPFacilitatorClient` receives the config exported by `@payai/facilitator`. Ordinary exact payments can start without credentials using the current allowance of 1,000 lifetime free credits per new receiving wallet; shared host/IP limits can apply. One credit is $0.001. Each settlement consumes its live network rate, calculated from settlement gas plus 30%; it does not necessarily consume one credit. Set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` for authenticated credit use; the helper creates short-lived Bearer JWTs. See the [pricing guide](https://docs.payai.network/x402/facilitators/pricing) and live [`/supported`](https://facilitator.payai.network/supported) response for current rates.
 
 ## Create the merchant USDC account first
@@ -23,7 +25,9 @@ export SOLANA_RPC_URL=https://YOUR_MAINNET_RPC
 export SETUP_KEYPAIR_FILE=/absolute/path/to/setup-fee-payer.json
 export USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 
-MERCHANT_ATA="$(spl-token address --token "$USDC_MINT" --owner "$MERCHANT_ADDRESS")"
+npm run build
+MERCHANT_ATA="$(node --input-type=module -e \
+  'import { getUsdcAta } from "./dist/rpc.js"; console.log(await getUsdcAta(process.env.MERCHANT_ADDRESS));')"
 solana account "$MERCHANT_ATA" --url "$SOLANA_RPC_URL" >/dev/null 2>&1 || \
   spl-token create-account "$USDC_MINT" \
     --owner "$MERCHANT_ADDRESS" \
@@ -91,7 +95,7 @@ For this example's `1000`-atomic payment, return `0.001` USDC. Confirm that amou
 spl-token transfer "$USDC_MINT" 0.001 "$FUNDER_ADDRESS" \
   --owner /absolute/path/to/disposable-merchant-owner.json \
   --fee-payer /absolute/path/to/recovery-fee-payer.json \
-  --fund-recipient --commitment finalized --url "$SOLANA_RPC_URL"
+  --fund-recipient --url "$SOLANA_RPC_URL"
 ```
 
 Record the recovery signature, independently confirm it is finalized, and capture the balances again:
@@ -106,11 +110,11 @@ Using integer arithmetic, require the funder's increase and merchant's decrease 
 Only after the recovery is finalized and the merchant ATA balance is zero, close it:
 
 ```sh
-spl-token close "$MERCHANT_ATA" \
+spl-token close --address "$MERCHANT_ATA" \
   --owner /absolute/path/to/disposable-merchant-owner.json \
   --fee-payer /absolute/path/to/recovery-fee-payer.json \
   --recipient YOUR_RECOVERY_RENT_ADDRESS \
-  --commitment finalized --url "$SOLANA_RPC_URL"
+  --url "$SOLANA_RPC_URL"
 ```
 
 Keep the payment record, settlement signature, recovery signature and before/after integer balances. Do not close an ATA that still holds tokens.
@@ -123,6 +127,6 @@ npm run build
 npm test
 ```
 
-Tests use a local Express server, a deterministic mock facilitator and mocked RPC responses. They make no live payment. Historical evidence, separate from this example run: on 2026-09-29 two isolated pilots each finalized one 1,000-atomic-USDC PayAI settlement and fully recovered it afterward.
+Tests use a local Express server, a deterministic mock facilitator and mocked RPC responses. They make no live payment. On 2026-09-30 the shipped example at commit `a3669bd148afd60f4ff1c3893c0a1e8c2baab8cd` completed an unauthenticated 1,000-atomic-USDC Mainnet payment over temporary public HTTPS, delivered the protected resource, finalized, and fully recovered the USDC. See [the receipt](./verification-2026-09-30.json). Setup/recovery CLI instructions were corrected during that test. The optional public resource URL was added afterward and tested without another payment; the frozen original advertised an HTTP resource URL behind TLS termination. This is a single smoke test, not a durable deployment or throughput benchmark.
 
 See the canonical [Solana Mainnet Express guide](https://docs.payai.network/x402/solana-mainnet-express) and [network identifier reference](https://docs.payai.network/x402/solana-network-identifiers).
