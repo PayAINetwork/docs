@@ -4,6 +4,7 @@
 
 ## Quickstarts
 
+- [Accept payments from AI agents](https://docs.payai.network/guides/accept-payments-from-ai-agents.md): Add x402 to an API or SaaS, start without portal signup, verify a real payment, and scale with programmatic credits.
 - [x402 Solana Mainnet Express](https://docs.payai.network/x402/solana-mainnet-express.md): Tested merchant and guarded buyer using the PayAI facilitator and @x402/svm.
 
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
@@ -43,7 +44,7 @@
 - [x402 Server Manual Flow (Python)](https://docs.payai.network/x402/servers/python/manual-flow.md): Step-by-step guide to building the x402 PAYMENT-REQUIRED response manually in Python without server SDK or middleware.
 - [x402 Client Manual Flow (TypeScript)](https://docs.payai.network/x402/clients/typescript/manual-flow.md): Step-by-step guide to implementing the x402 payment protocol manually in TypeScript without SDK wrappers.
 - [x402 Client Manual Flow (Python)](https://docs.payai.network/x402/clients/python/manual-flow.md): Step-by-step guide to implementing the x402 payment protocol manually in Python without SDK wrappers.
-- [Solana Batch Settlement](https://docs.payai.network/x402/servers/batch-settlement.md): Public preview, API-key requirements, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.
+- [Solana Batch Settlement](https://docs.payai.network/x402/servers/batch-settlement.md): Public unauthenticated lane, merchant USDC ATA setup, pinned SDK, limits, payout, and recovery.
 - [EVM Batch Settlement on Base](https://docs.payai.network/x402/servers/evm-batch-settlement.md): Payment channels for metered x402 APIs on Base: one USDC deposit, off-chain vouchers per request, batched claims and a single sweep. Public, no API key, gas paid by PayAI.
 - [Dynamic pricing with x402](https://docs.payai.network/guides/dynamic-pricing-x402.md): Per-request and tier-based pricing for paid APIs: charge by tier, headers, or request data in TypeScript, Python and Go.
 - [x402 Echo Merchant Introduction](https://docs.payai.network/x402-echo/introduction.md): Echo Merchant overview and use cases.

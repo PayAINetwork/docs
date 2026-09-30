@@ -100,3 +100,28 @@ test("unsuccessful settlement never returns premium content", async () => {
   assert.ok(receipt);
   assert.equal(decodePaymentResponseHeader(receipt).success, false);
 });
+
+test("explicit public HTTPS resource survives TLS termination without trusting forwarded headers", async () => {
+  const publicUrl = "https://merchant.example/premium";
+  const app = createApp(MERCHANT, facilitator, publicUrl);
+  assert.equal(app.get("trust proxy"), false);
+  const proxied = app.listen(0);
+  await new Promise<void>(resolve => proxied.once("listening", resolve));
+  try {
+    const listening = proxied.address();
+    if (!listening || typeof listening === "string") throw new Error("No test port");
+    const response = await fetch(`http://127.0.0.1:${listening.port}/premium`, {
+      headers: { "x-forwarded-host": "attacker.example", "x-forwarded-proto": "http" },
+    });
+    assert.equal(response.status, 402);
+    assert.equal(decodePaymentRequiredHeader(response.headers.get("payment-required")!).resource.url, publicUrl);
+  } finally {
+    await new Promise<void>((resolve, reject) => proxied.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+test("public resource rejects unsafe or wrong-route URLs", () => {
+  for (const url of ["http://merchant.example/premium", "https://user:pass@merchant.example/premium", "https://merchant.example/other", "https://merchant.example/premium?key=secret", "https://merchant.example/premium#fragment", "not-a-url"]) {
+    assert.throws(() => createApp(MERCHANT, facilitator, url));
+  }
+});

@@ -15,8 +15,12 @@ It revives the `HTTP 402 Payment Required` status so that servers can charge for
 
 Clients (human users or AI agents) can pay programmatically to access resources
 without creating a separate account with every service. Merchant facilitator
-credentials are a different layer: PayAI requires them for
-[batch settlement](/x402/servers/batch-settlement) and paid facilitator usage.
+credentials are a separate layer: ordinary exact payments and the public shared
+[Solana batch settlement](/x402/servers/batch-settlement) lane can start without
+an API key, while paid facilitator usage and assigned lanes require one.
+Autonomous merchants can [buy credits and receive a key over x402](/x402/facilitators/agent-api-keys)
+without portal signup; vending creates a wallet-owned agent account. The
+[merchant dashboard](https://merchant.payai.network) is the optional human-managed route.
 
 <Note>Learn more about the x402 project at [x402.org](https://x402.org).</Note>
 
