@@ -94,6 +94,30 @@ test("health is free and unpaid premium returns the exact Base Mainnet requireme
   assert.equal(accepted.extra.version, USDC_VERSION);
 });
 
+test("route variants and unsupported methods never expose the unpaid premium resource", async () => {
+  for (const path of ["/Premium", "/premium/", "/%70remium"]) {
+    const response = await fetch(`${baseUrl}${path}`);
+    assert.equal(response.status, 404, `expected ${path} to be rejected before payment`);
+    assert.doesNotMatch(await response.text(), /premium content/);
+  }
+
+  const queried = await fetch(`${baseUrl}/premium?x=1`);
+  assert.equal(queried.status, 402, "the exact path with a query must remain payment-protected");
+  assert.doesNotMatch(await queried.text(), /premium content/);
+
+  const head = await fetch(`${baseUrl}/premium`, { method: "HEAD" });
+  assert.equal(head.status, 405, "HEAD must not invoke Express's automatic GET fallback");
+  assert.equal(head.headers.get("allow"), "GET");
+  assert.equal(await head.text(), "");
+
+  for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+    const response = await fetch(`${baseUrl}/premium`, { method });
+    assert.equal(response.status, 405, `${method} must be rejected before the paid handler`);
+    assert.equal(response.headers.get("allow"), "GET");
+    assert.doesNotMatch(await response.text(), /premium content/, `${method} exposed the resource`);
+  }
+});
+
 test("verified and settled payment returns premium bytes and PAYMENT-RESPONSE", async () => {
   const accepted = await requirement();
   const response = await fetch(`${baseUrl}/premium`, {
@@ -146,4 +170,3 @@ test("explicit public HTTPS resource survives TLS termination without forwarded-
     await new Promise<void>((resolve, reject) => proxied.close(error => (error ? reject(error) : resolve())));
   }
 });
-

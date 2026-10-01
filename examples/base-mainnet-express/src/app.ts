@@ -37,6 +37,32 @@ export function createApp(
     }
   }
   const app = express();
+  app.set("case sensitive routing", true);
+  app.set("strict routing", true);
+
+  app.use((request, response, next) => {
+    let decodedPath = request.path;
+    try {
+      decodedPath = decodeURIComponent(decodedPath);
+    } catch {
+      // Leave malformed escapes unmatched so Express returns its normal 404.
+    }
+    const normalizedPath = decodedPath
+      .replace(/\/+/g, "/")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+    if (normalizedPath !== "/premium") return next();
+    if (request.path !== "/premium") {
+      response.status(404).end();
+      return;
+    }
+    if (request.method !== "GET") {
+      response.status(405).set("Allow", "GET").end();
+      return;
+    }
+    next();
+  });
+
   const resourceServer = new x402ResourceServer(facilitatorClient).register(
     NETWORK,
     new ExactEvmScheme(),
@@ -69,4 +95,3 @@ export function createApp(
   app.get("/premium", (_request, response) => response.json({ content: "premium content" }));
   return app;
 }
-

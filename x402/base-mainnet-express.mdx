@@ -71,6 +71,8 @@ app.use(
 
 Keep existing authorization around private or user-specific data. Payment proves payment, not permission to read another customer's resource.
 
+The runnable server additionally enforces its canonical route and rejects unsupported methods before payment middleware, including Express's automatic `HEAD` fallback. Preserve those guards when adapting the snippet.
+
 ## Prepare a bounded buyer
 
 Use a new disposable Base wallet with only the USDC you intend to spend. Store its private key in a `chmod 600` file outside the repository; the runner reads it from `BUYER_KEY_FILE`, never from a command argument, and never prints or persists it. The merchant address must be different.
