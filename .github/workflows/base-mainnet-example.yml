@@ -1,0 +1,44 @@
+name: Base Mainnet released-package example
+
+on:
+  pull_request:
+    paths:
+      - 'examples/base-mainnet-express/**'
+      - 'x402/base-mainnet-express.mdx'
+      - 'guides/accept-payments-from-ai-agents.mdx'
+      - 'scripts/check-base-mainnet-example.py'
+      - '.github/workflows/base-mainnet-example.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'examples/base-mainnet-express/**'
+      - 'x402/base-mainnet-express.mdx'
+      - 'guides/accept-payments-from-ai-agents.mdx'
+      - 'scripts/check-base-mainnet-example.py'
+      - '.github/workflows/base-mainnet-example.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-example:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: examples/base-mainnet-express/package-lock.json
+      - run: python3 scripts/check-base-mainnet-example.py
+      - working-directory: examples/base-mainnet-express
+        run: npm ci
+      - working-directory: examples/base-mainnet-express
+        run: npm run typecheck
+      - working-directory: examples/base-mainnet-express
+        run: npm run build
+      - working-directory: examples/base-mainnet-express
+        run: npm test
+

@@ -1,0 +1,33 @@
+{
+  "name": "@payai/example-base-mainnet-express",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "payment:once": "tsx src/smoke.ts",
+    "payment:preflight": "tsx src/smoke.ts --preflight",
+    "payment:reconcile": "tsx src/smoke.ts --reconcile",
+    "start": "tsx src/server.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@payai/facilitator": "2.4.5",
+    "@x402/core": "2.27.0",
+    "@x402/evm": "2.27.0",
+    "@x402/express": "2.27.0",
+    "express": "5.1.0",
+    "viem": "2.57.2"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "@types/node": "24.5.2",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2"
+  }
+}

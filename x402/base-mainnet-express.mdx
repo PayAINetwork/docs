@@ -1,0 +1,126 @@
+---
+title: "x402 on Base Mainnet: Express merchant and guarded buyer"
+description: "Accept exact USDC payments on Base Mainnet with Express, upstream x402 packages, a one-shot buyer and finalized receipt verification."
+keywords: ["x402 Base Mainnet Express", "PayAI facilitator", "Base USDC API payments", "AI agent payments"]
+---
+
+This maintained example protects one Express route with x402 v2 exact USDC on Base Mainnet. It uses the upstream `@x402/core`, `@x402/evm` and `@x402/express` packages plus the PayAI facilitator config. The merchant supplies only a receiving address; ordinary exact payments can start without a PayAI portal signup or API key within the free allowance.
+
+| Field | Value |
+| --- | --- |
+| Network | Base Mainnet, `eip155:8453` |
+| Asset | Native USDC, `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Price | `10000` atomic units, or `0.01 USDC` |
+| Facilitator | `https://facilitator.payai.network` |
+| Protected route | `GET /premium` |
+
+## Get the runnable example
+
+The complete source and offline safety tests are in [PayAINetwork/docs](https://github.com/PayAINetwork/docs/tree/main/examples/base-mainnet-express).
+
+```bash
+git clone https://github.com/PayAINetwork/docs.git docs
+cd docs/examples/base-mainnet-express
+npm ci
+npm run typecheck
+npm run build
+npm test
+```
+
+These commands do not make a payment. The example pins `@payai/facilitator` 2.4.5, x402 2.27.0, Express 5.1.0 and viem 2.57.2.
+
+An October 1, 2026 live check returned unpaid `402`, then paid `200` for exactly `0.01 USDC`, with matching transfer and authorization events in a canonical finalized Base block. The [sanitized verification record](https://github.com/PayAINetwork/docs/blob/main/examples/base-mainnet-express/verification-2026-10-01.json) retains the receipt, dependency versions and evidence hashes. This was a disposable HTTPS route, not a performance benchmark or permanent deployment.
+
+## Merchant route
+
+The resource server uses the standard upstream EVM exact scheme:
+
+```ts
+import { facilitator } from "@payai/facilitator";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+
+const resourceServer = new x402ResourceServer(
+  new HTTPFacilitatorClient(facilitator),
+).register("eip155:8453", new ExactEvmScheme());
+
+app.use(
+  paymentMiddleware(
+    {
+      "GET /premium": {
+        accepts: {
+          scheme: "exact",
+          network: "eip155:8453",
+          payTo: process.env.MERCHANT_ADDRESS!,
+          price: {
+            amount: "10000",
+            asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            extra: { name: "USD Coin", version: "2" },
+          },
+          maxTimeoutSeconds: 60,
+        },
+        description: "Premium Base Mainnet content",
+        mimeType: "application/json",
+      },
+    },
+    resourceServer,
+  ),
+);
+```
+
+Keep existing authorization around private or user-specific data. Payment proves payment, not permission to read another customer's resource.
+
+The runnable server additionally enforces its canonical route and rejects unsupported methods before payment middleware, including Express's automatic `HEAD` fallback. Preserve those guards when adapting the snippet.
+
+## Prepare a bounded buyer
+
+Use a new disposable Base wallet with only the USDC you intend to spend. Store its private key in a `chmod 600` file outside the repository; the runner reads it from `BUYER_KEY_FILE`, never from a command argument, and never prints or persists it. The merchant address must be different.
+
+```bash
+export MERCHANT_ADDRESS=0xYourBaseMerchantAddress
+export BASE_RPC_URL=https://your-base-mainnet-rpc
+export BUYER_KEY_FILE=/absolute/path/to/disposable-buyer.key
+export MAX_AMOUNT_ATOMIC=10000
+```
+
+The RPC must report chain ID `8453`, serve native USDC bytecode and support the `finalized` block tag. Historical balance reads at the receipt block are optional reporting only. If an RPC cannot serve them, the guard records “unavailable”; it does not relabel a current balance as historical.
+
+## Run and verify one payment
+
+Serve the route through HTTPS for a public test and use the same exact URL in both processes:
+
+```bash
+export PUBLIC_RESOURCE_URL=https://your-host.example/premium
+npm start
+```
+
+In a second shell:
+
+```bash
+export PREMIUM_URL=https://your-host.example/premium
+npm run payment:preflight
+npm run payment:once
+```
+
+Preflight verifies the unpaid `402`, scheme, network, USDC address, merchant, amount cap, EIP-712 domain, buyer balance and current exact capability in `/supported`. `payment:once` writes a durable guard before signing and sends the paid request exactly once.
+
+Success requires two separate results: HTTP `200` with the protected resource and a valid `PAYMENT-RESPONSE`; then a successful transaction at or below Base's `finalized` head with exactly one matching USDC `Transfer` and `AuthorizationUsed` event for the authorized payer, recipient, amount and nonce.
+
+## Reconcile without another authorization
+
+If transport or RPC reporting is uncertain, keep the guard:
+
+```bash
+npm run payment:reconcile
+```
+
+The command never signs or submits. It uses the recorded transaction hash when present. Otherwise it searches only the guard's recorded 600-block range for the exact finalized authorization event. If the finalized head is still behind the start block, it waits for a later read-only reconciliation instead of issuing an invalid log query. **Never pay again** to diagnose an uncertain result, and never delete its guard.
+
+Read the example [README](https://github.com/PayAINetwork/docs/blob/main/examples/base-mainnet-express/README.md) before a live check. It covers HTTPS metadata, key handling, evidence and recovery boundaries.
+
+## Allowance, scaling and upstream references
+
+The starter allowance is finite; it is not a promise of free unlimited production. Review [pricing](/x402/facilitators/pricing) and live [`/supported`](https://facilitator.payai.network/supported). An agent can [buy credits and a key over x402](/x402/facilitators/agent-api-keys) when it needs paid capacity; the [merchant dashboard](https://merchant.payai.network) remains optional.
+
+For protocol context, see the official x402 [seller quickstart](https://github.com/x402-foundation/x402/blob/main/docs/getting-started/quickstart-for-sellers.mdx) and [facilitator directory](https://github.com/x402-foundation/x402/blob/main/docs/dev-tools/facilitators.md).
