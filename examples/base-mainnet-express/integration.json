@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "payai.x402.base-mainnet-express",
+  "preparedOn": "2026-10-01",
+  "network": {
+    "x402": "eip155:8453",
+    "chainId": 8453
+  },
+  "asset": {
+    "symbol": "USDC",
+    "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "decimals": 6,
+    "eip712Name": "USD Coin",
+    "eip712Version": "2"
+  },
+  "facilitator": {
+    "url": "https://facilitator.payai.network",
+    "capabilitiesPath": "/supported"
+  },
+  "packages": {
+    "@payai/facilitator": "2.4.5",
+    "@x402/core": "2.27.0",
+    "@x402/evm": "2.27.0",
+    "@x402/express": "2.27.0",
+    "express": "5.1.0",
+    "viem": "2.57.2"
+  }
+}

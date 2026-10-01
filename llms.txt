@@ -5,6 +5,7 @@
 ## Quickstarts
 
 - [Accept payments from AI agents](https://docs.payai.network/guides/accept-payments-from-ai-agents.md): Add x402 to an API or SaaS, start without portal signup, verify a real payment, and scale with programmatic credits.
+- [x402 Base Mainnet Express](https://docs.payai.network/x402/base-mainnet-express.md): Upstream exact-EVM merchant and one-shot buyer with bounded reconciliation and finalized USDC receipt checks.
 - [x402 Solana Mainnet Express](https://docs.payai.network/x402/solana-mainnet-express.md): Tested merchant and guarded buyer using the PayAI facilitator and @x402/svm.
 
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
