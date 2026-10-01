@@ -52,7 +52,7 @@
   "limitations": [
     "One operator-run live smoke, not a discovery, throughput or reliability benchmark.",
     "The original finality wait timed out after the successful paid response. Read-only reconciliation finalized the same transaction; no second authorization or paid request was sent.",
-    "Runtime and lockfile were frozen before payment and unchanged afterward; README recovery wording and this proof were added afterward.",
+    "The live payment used the frozen source manifest above. Afterward, an Express method/route guard was added to reject HEAD and unsupported methods before the GET handler; 16 offline tests passed. Signing, settlement, finality and locked dependencies are unchanged. No second live payment was made for this guard-only hardening.",
     "No portal signup, paid credit/key purchase or durable hosting deployment was tested."
   ]
 }

@@ -17,7 +17,7 @@ npm test
 
 These commands make no payment. The tests cover unpaid `402`, paid `200`, settlement response, forged and failed payments, changed requirements, the spending cap, single submission, bounded reconciliation, Base finality, and RPC reporting failures.
 
-The [October 1 Mainnet verification](verification-2026-10-01.json) records an actual unpaid `402`, paid `200`, exact `0.01 USDC` transfer and canonical finalized receipt. A timed-out finality wait was resolved by read-only reconciliation, without paying again. Runtime and locked dependencies match that tested snapshot; this is not a throughput or reliability claim.
+The [October 1 Mainnet verification](verification-2026-10-01.json) records an actual unpaid `402`, paid `200`, exact `0.01 USDC` transfer and canonical finalized receipt. A timed-out finality wait was resolved by read-only reconciliation, without paying again. A later method/route guard closes Express's automatic HEAD-to-GET fallback and passes offline regression tests; signing, settlement and locked dependencies are unchanged. This is not a throughput or reliability claim.
 
 ## Configure a bounded live check
 
