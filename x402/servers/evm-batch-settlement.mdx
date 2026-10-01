@@ -1,12 +1,12 @@
 ---
 title: "EVM Batch Settlement on Base"
-description: "Payment channels for metered x402 APIs on Base: one USDC deposit, off-chain vouchers per request, batched claims and a single sweep. Public, no API key, gas paid by PayAI."
+description: "Payment channels for metered x402 APIs on Base: one USDC deposit, off-chain vouchers per request, batched claims and a single sweep. Public, no API key, gas paid by PayAI; or let PayAI hold the receiver authorizer with an API key."
 ---
 
 Batch settlement lets a customer fund a reusable on-chain channel once and pay for many requests with signed vouchers, while your server claims and sweeps the accumulated charges in batches. It is built for metered APIs, inference, and any service where the final price of a request is known only after the work is done. On EVM the scheme is implemented by the `x402BatchSettlement` contract, and PayAI relays every on-chain leg and pays the gas.
 
 <Note>
-  PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) at `https://facilitator.payai.network`. Access is public: no PayAI account or API key is needed. Add an API key only if you want to pay for settlement legs with credits after the free allowance.
+  PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) at `https://facilitator.payai.network`. Access is public: no PayAI account or API key is needed when you run your own receiver authorizer. With a PayAI API key you can instead let PayAI hold the authorizer key (see section 2), and pay for settlement legs with credits after the free allowance.
 </Note>
 
 ## How it works
@@ -39,9 +39,11 @@ npm install @x402/core@^2.27.0 @x402/evm@^2.27.0 @x402/express@^2.27.0 viem
 
 Use `BatchSettlementEvmScheme` from `@x402/evm/batch-settlement/server` on your server and the same-named class from `@x402/evm/batch-settlement/client` on the customer side. The reference server and client live in the x402 repository under `examples/typescript/servers/batch-settlement` and `examples/typescript/clients/batch-settlement`.
 
-## 2. Bring your own receiver authorizer
+## 2. Choose a receiver authorizer
 
-The receiver authorizer is the key that signs claims and refunds for your channels. PayAI does **not** advertise a facilitator-held authorizer, so you must configure your own:
+The receiver authorizer is the key that signs claims and refunds for your channels. You have two options. The address is part of every channel's immutable config, so pick one before you open channels.
+
+### Option A: your own key (default, no account needed)
 
 ```typescript
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
@@ -62,7 +64,40 @@ const scheme = new BatchSettlementEvmScheme(receiverAddress, {
 const server = new x402ResourceServer(facilitator).register("eip155:8453", scheme);
 ```
 
-The SDK checks this at startup: without a `receiverAuthorizerSigner` it refuses to initialize against PayAI. This is upstream's recommended production mode. Your channels survive a facilitator change, because any facilitator can relay your signed claims and refunds. Keep the key until every channel it authorizes has drained; rotating it means opening new channels.
+This is upstream's recommended production mode. Your channels survive a facilitator change, because any facilitator can relay your signed claims and refunds. Keep the key until every channel it authorizes has drained; rotating it means opening new channels.
+
+### Option B: PayAI holds the authorizer (API key required)
+
+If you would rather not operate a signing key, PayAI can sign claims and refunds for you. PayAI advertises its authorizer address in `/supported` **only to authenticated callers**, so every facilitator call from your server must carry a PayAI JWT ([how to mint one](/x402/facilitators/authentication)), including the `/supported` call the SDK makes at startup. Each JWT must carry a unique `jti`: PayAI consumes it on `/verify` and `/settle`, so mint a fresh token per call.
+
+```typescript
+const facilitator = new HTTPFacilitatorClient({
+  url: "https://facilitator.payai.network",
+  timeoutMs: 110_000,
+  createAuthHeaders: async () => {
+    const headers = { Authorization: `Bearer ${await generatePayAIJwt(apiKeyId, apiKeySecret)}` };
+    return { verify: headers, settle: headers, supported: headers };
+  },
+});
+
+const scheme = new BatchSettlementEvmScheme(receiverAddress, {
+  // no receiverAuthorizerSigner: the SDK takes extra.receiverAuthorizer from /supported
+  withdrawDelay: 3600,
+  storage: new RedisChannelStorage({ client: redisClient }),
+});
+```
+
+How PayAI binds channels to your account:
+
+- The first authenticated deposit `/verify` for a channel reserves it for your account; the deposit `/settle` from the same account binds it. First writer wins.
+- Claims, refunds and voucher or refund verifies on that channel must come from your account. Requests from any other account, or without a JWT, are refused. Sweeps stay public because they only pay the channel's receiver.
+- Delegated legs bill like any authenticated leg: the free allowance first, then credits, at the same per-leg prices.
+
+What to know before choosing this option:
+
+- **Lock-in.** PayAI's authorizer address is hashed into every channel id. To move those channels to another facilitator, claim outstanding vouchers and refund the remaining balances first.
+- **Fallback.** If PayAI is unavailable, the channel's receiver can still call `claim` and `refund` on the contract directly, but only if the receiver is an EOA or a contract able to make those calls. Use Option A if your `payTo` is a routing contract.
+- **Rotation.** If PayAI rotates its advertised address, channels on the old address keep working, but one claim batch cannot mix channels from two authorizers; drain old channels before your channel manager mixes them. Restart your server after a rotation so it reads the new address.
 
 ## 3. Run the channel manager
 
@@ -110,7 +145,13 @@ Sweeps are different: a `settle` request sweeps whatever is owed now, so it has 
 | Response | Meaning and action |
 | --- | --- |
 | `400 batch_target_mismatch` | The payload's receiver or token differs from `payTo`/`asset`; fix the requirements. |
-| `400 batch_claim_authorizer_signature_required` | Include your receiver-authorizer signature; PayAI holds no authorizer key. |
+| `400 batch_claim_authorizer_signature_required` | Option A channel without a receiver-authorizer signature; include it. |
+| `400 batch_claim_signature_not_allowed` or `batch_claim_mixed_authorizers` | Option B channels must be unsigned, and one batch cannot mix authorizers. |
+| `401 missing_api_key_token`, `jwt_jti_required`, `jwt_replayed` | Option B calls need a fresh PayAI JWT with a unique `jti` on every request. |
+| `403 batch_channel_owner_mismatch`, `batch_channel_unreserved`, `batch_channel_unbound` | The channel belongs to another account, or was never reserved and bound through PayAI; see Option B. |
+| `403 batch_delegated_disabled` or `batch_delegated_channel_cap` | Delegation is paused, or your account has reached its open-channel cap. |
+| `409 batch_refund_nonce_conflict` | The channel's refund nonce moved; re-read it and resubmit. |
+| `429 batch_delegated_rate_limited` | Respect `Retry-After`. |
 | `400 batch_claim_simulation_failed` | The claim would revert; check voucher signatures and channel state. |
 | `400 batch_claim_not_increasing` | Already claimed on-chain; reconcile, do not retry. |
 | `400 batch_claim_too_many` or `batch_claim_duplicate_channel` | At most 25 distinct channels per request. |
