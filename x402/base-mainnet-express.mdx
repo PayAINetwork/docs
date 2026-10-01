@@ -29,6 +29,8 @@ npm test
 
 These commands do not make a payment. The example pins `@payai/facilitator` 2.4.5, x402 2.27.0, Express 5.1.0 and viem 2.57.2.
 
+An October 1, 2026 live check returned unpaid `402`, then paid `200` for exactly `0.01 USDC`, with matching transfer and authorization events in a canonical finalized Base block. The [sanitized verification record](https://github.com/PayAINetwork/docs/blob/main/examples/base-mainnet-express/verification-2026-10-01.json) retains the receipt, dependency versions and evidence hashes. This was a disposable HTTPS route, not a performance benchmark or permanent deployment.
+
 ## Merchant route
 
 The resource server uses the standard upstream EVM exact scheme:
