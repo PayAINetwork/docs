@@ -46,3 +46,11 @@ Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/sett
 ## Runnable integration
 
 The [Solana Mainnet Express merchant and buyer](examples/solana-mainnet-express/) uses exact released npm packages and includes deterministic payment-flow tests. Follow the [canonical guide](https://docs.payai.network/x402/solana-mainnet-express).
+
+The [Base Mainnet Express merchant and buyer](examples/base-mainnet-express/) adds a one-cent USDC route, a single-attempt buyer, and canonical finalized-receipt verification. Start with the [agent-payments guide](https://docs.payai.network/guides/accept-payments-from-ai-agents).
+
+## IndexNow ownership file
+
+`fa8ac188ceb4559d3724e23d0f512617.txt` is a public ownership key, not an account credential. Before submitting changed canonical URLs, verify the deployed root URL returns the exact file as raw text. Submit only added, materially changed, redirected or deleted URLs; the sitemap remains the full inventory. Record submission responses separately from actual index status: acceptance does not guarantee indexing.
+
+To rotate, deploy and verify a new random key file, switch submissions to it, then remove the old file after callers have migrated. Do not add key files to navigation or include secrets in submissions. See the [IndexNow protocol](https://www.indexnow.org/documentation).

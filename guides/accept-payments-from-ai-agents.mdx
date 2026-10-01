@@ -1,6 +1,6 @@
 ---
 title: "Accept payments from AI agents in your API or SaaS"
-description: "Add x402 payments to an API or SaaS with PayAI. Start on Mainnet without portal signup, test a real payment, and add credits programmatically when you need them."
+description: "Accept USDC payments from AI agents over x402 on Base or Solana. Start on Mainnet with PayAI without portal signup or an API key."
 ---
 
 Want an AI agent to pay for an API call? Protect a route with **x402**: your server returns an HTTP `402` with the price and payment requirements, the buyer authorizes payment, and your server uses a facilitator to verify and settle it before delivering the resource.
@@ -11,13 +11,20 @@ Want an AI agent to pay for an API call? Protect a route with **x402**: your ser
 
 | What you are building | Start here |
 | --- | --- |
-| An API that accepts payments from AI agents | [Solana Mainnet Express example](/x402/solana-mainnet-express): complete merchant, guarded buyer and receipt checks |
+| An API on Base Mainnet | [Base Mainnet Express example](/x402/base-mainnet-express): upstream EVM exact scheme, one-shot buyer and finalized receipt checks |
+| An API on Solana Mainnet | [Solana Mainnet Express example](/x402/solana-mainnet-express): complete merchant, guarded buyer and receipt checks |
 | An existing Express, Hono, Next.js, Python or Go service | [Merchant guides](/x402/servers/introduction): add middleware to the routes you want to monetize |
 | A SaaS with an agent-facing API | Keep existing login and subscriptions; add a paid route for a bounded unit of work, then follow the merchant guide for your framework |
 | An agent that needs to buy API access | [Client guides](/x402/clients/introduction): respond to a `402` using a funded wallet |
 | High-frequency metered usage | [Solana batch settlement](/x402/servers/batch-settlement) or [Base batch settlement](/x402/servers/evm-batch-settlement): review the channel lifecycle before integrating |
 
-For a first integration, choose one network, one asset and one route. The Mainnet Express example uses Solana USDC and charges `0.001 USDC` per request. To charge **one cent**, use `0.01 USDC` (`10000` atomic units for USDC) and update the buyer's explicit cap to match. Do not raise a buyer's limit silently.
+For a first integration, choose one network, one asset and one route. The Base example charges `0.01 USDC` (`10000` atomic units); the Solana example charges `0.001 USDC` (`1000` atomic units). Keep the buyer's explicit cap equal to the intended price. Do not raise it silently.
+
+## x402, Stripe, or both?
+
+Use x402 when an agent needs to buy a bounded API call, tool action, data result or other HTTP resource. Keep your existing commerce stack for carts, subscriptions, tax, refunds, fulfillment and customer billing. They can coexist: continue using Stripe or another processor for human and customer commerce, and add x402 only to machine-facing routes that benefit from per-request payment.
+
+Stripe describes support for both MPP and x402 in its [machine-payments overview](https://stripe.com/blog/machine-payments-protocol). PayAI's route in this guide is x402; this page does not claim that PayAI implements MPP.
 
 ## What you need—and what you do not
 
@@ -38,15 +45,17 @@ The current starter allowance is **1,000 lifetime free credits per new receiving
 4. Keep existing API keys and subscriptions for existing customers. Offer x402 as another access path; do not remove authorization from private data or user-specific operations.
 5. Deploy the service over HTTPS and run the paid-path checks below.
 
+For protocol context, use the official x402 [seller quickstart](https://github.com/x402-foundation/x402/blob/main/docs/getting-started/quickstart-for-sellers.mdx) and [facilitator directory](https://github.com/x402-foundation/x402/blob/main/docs/dev-tools/facilitators.md). PayAI already appears in both; these links are upstream references, not a separate PayAI protocol.
+
 Payment proves payment, not permission to access another customer's data. For long-running jobs or requests with side effects, make job creation and delivery idempotent. Do not blindly authorize another payment after a timeout.
 
 ## Prove the paid path, not just the implementation
 
-The [runnable Mainnet example](/x402/solana-mainnet-express) includes a guarded smoke buyer and reconciliation command. Before calling an integration complete, retain evidence of:
+The runnable [Base](/x402/base-mainnet-express) and [Solana](/x402/solana-mainnet-express) examples include guarded smoke buyers and reconciliation commands. Before calling an integration complete, retain evidence of:
 
 - An unpaid request returning `402` with the expected recipient, asset, network and price.
 - A buyer authorization within an explicit spending cap.
-- A successful paid HTTP response **and** the matching finalized on-chain settlement with exact balance changes.
+- A successful paid HTTP response **and** the matching finalized on-chain settlement with the exact asset, payer, recipient and amount. Balance-delta reporting is additional evidence when the chain and RPC can provide it accurately.
 - Recovery of disposable test funds, where you control both wallets. Recovery has its own network fee; a merchant refund is not automatic.
 
 If the HTTP response is lost, reconcile the original authorization before trying again. Follow [capacity and settlement recovery](/x402/facilitators/capacity-and-limits); do not treat an ambiguous response as a failed payment.

@@ -24,6 +24,7 @@ ONBOARDING_PAGES = EXACT_GUIDES + (
     "x402/quickstart.mdx",
     "x402/introduction.mdx",
     "x402/servers/introduction.mdx",
+    "x402/base-mainnet-express.mdx",
     "x402/solana-mainnet-express.mdx",
     "x402/facilitators/introduction.mdx",
     "x402/facilitators/authentication.mdx",
@@ -76,6 +77,23 @@ class AccountFreeOnboardingTest(unittest.TestCase):
         intro = source("x402/introduction.mdx")
         self.assertIn("public shared", intro)
         self.assertNotRegex(intro, r"requires them for\s*\[batch settlement\]")
+
+    def test_base_mainnet_route_is_account_free_bounded_and_discoverable(self):
+        guide = source("x402/base-mainnet-express.mdx")
+        canonical = source("guides/accept-payments-from-ai-agents.mdx")
+        readme = source("examples/base-mainnet-express/README.md")
+        self.assertIn("without a PayAI portal signup or API key", guide)
+        self.assertIn(AGENT_KEYS, guide)
+        self.assertIn(DASHBOARD, guide)
+        self.assertIn("600-block", guide)
+        self.assertIn("Never pay again", guide)
+        self.assertIn("BUYER_KEY_FILE", readme)
+        self.assertIn("chmod 600", readme)
+        self.assertNotRegex(readme, r"export\s+(?:EVM_PRIVATE_KEY|PRIVATE_KEY)=")
+        self.assertIn("/x402/base-mainnet-express", canonical)
+        self.assertIn("x402, Stripe, or both?", canonical)
+        self.assertIn("seller quickstart", canonical)
+        self.assertIn("facilitator directory", canonical)
 
     def test_solana_setup_and_recovery_commands_are_cli_compatible(self):
         for path in (
