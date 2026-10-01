@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "payai.released-package.base-mainnet-smoke",
+  "submittedAt": "2026-10-01T08:44:36.078Z",
+  "paidResponseAt": "2026-10-01T08:44:38.772Z",
+  "finalizedAt": "2026-10-01T09:01:40.202Z",
+  "testedSourceManifestSha256": "124ca0edbbd0197f4f00b0bcd97175635c033d47ef2bf4856f8232ef25137c1d",
+  "packages": {
+    "@payai/facilitator": "2.4.5",
+    "@x402/core": "2.27.0",
+    "@x402/evm": "2.27.0",
+    "@x402/express": "2.27.0",
+    "express": "5.1.0",
+    "viem": "2.57.2"
+  },
+  "portalCredentialsUsed": false,
+  "facilitatorApiCredentialsUsed": false,
+  "credentialIsolation": "Merchant and buyer received explicit environment allowlists; no PayAI API credentials were forwarded. Merchant process received only the public receiving address, not its private key.",
+  "transport": "Disposable route behind a temporary public HTTPS tunnel; not a durable deployment",
+  "network": "eip155:8453",
+  "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "amountAtomic": "10000",
+  "unpaidStatus": 402,
+  "paidStatus": 200,
+  "resourceDelivered": true,
+  "paidBodySha256": "0bcac902f35d6467e7a00ed256091b4d68340ea84e799f2ea967801e1be56375",
+  "settlement": {
+    "transaction": "0xb5b2c91951edd32801ac392ea96bedc209b6adbc8bcef1d02710bd65c2c0890d",
+    "blockNumber": "52027466",
+    "blockHash": "0x1b1abe2f50868fc8aad92021f41748ae502b3d6f2139a1881310f76e10735a29",
+    "confirmationStatus": "finalized",
+    "canonicalBlockHashMatched": true,
+    "exactTransferAndAuthorizationUsedMatched": true,
+    "buyer": "0x14e875bFa18BEA5897A4364642De6C9Ada182BB8",
+    "merchant": "0x809ba12930eE71238B92d3967e62b0A6071437f3",
+    "authorizationNonce": "0xf331b16880f25444017e40e8e5fe051de5a2dff2af1c8a470baf236fe2f05ffb",
+    "historicalBalancesAtReceiptBlock": { "buyerAtomic": "0", "merchantAtomic": "10000" }
+  },
+  "recovery": {
+    "transaction": "0xe1152107bd413c4754b13d968b789720d1b3d4f8246687cd8fd86a456f58121c",
+    "confirmationStatus": "confirmed; finality tracked separately",
+    "returnedAtomic": "10000",
+    "buyerRemainingAtomic": "0",
+    "merchantRemainingAtomic": "0",
+    "method": "Separate operator-sponsored bounded transfer to the original funder; not another resource payment"
+  },
+  "evidenceSha256": {
+    "acceptance-plan.json": "b7649aff92b5f73ee292e9ae94ec317d80c7d5426fc7588e652425e1ce9947b2",
+    "payment-attempt.json": "97f8fdd8f6d06d8870dc0be22162aaefc6bd4ab7014d0431372c272220014951",
+    "recover-mainnet.result.json": "785150c4442482155ccd95ea66536c41b95854a8f0cb5187f2f5803efe202e72"
+  },
+  "limitations": [
+    "One operator-run live smoke, not a discovery, throughput or reliability benchmark.",
+    "The original finality wait timed out after the successful paid response. Read-only reconciliation finalized the same transaction; no second authorization or paid request was sent.",
+    "Runtime and lockfile were frozen before payment and unchanged afterward; README recovery wording and this proof were added afterward.",
+    "No portal signup, paid credit/key purchase or durable hosting deployment was tested."
+  ]
+}
