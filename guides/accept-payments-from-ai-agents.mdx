@@ -5,7 +5,7 @@ description: "Accept USDC payments from AI agents over x402 on Base or Solana. S
 
 Want an AI agent to pay for an API call? Protect a route with **x402**: your server returns an HTTP `402` with the price and payment requirements, the buyer authorizes payment, and your server uses a facilitator to verify and settle it before delivering the resource.
 
-**PayAI lets you start accepting ordinary exact payments on Mainnet without creating a portal account or obtaining an API key.** You supply a receiving wallet and the route you want to charge for. The free allowance gets the integration started; an agent can later buy credits and a key programmatically, without sending a human through signup.
+**PayAI lets you start accepting ordinary exact payments on Mainnet without creating a portal account or obtaining an API key.** You supply a receiving wallet and the route you want to charge for. Your 1,000 free credits get the integration started; an agent can later buy credits and a key programmatically, without sending a human through signup.
 
 ## Choose the shortest path to a working payment
 
@@ -35,7 +35,7 @@ Stripe describes support for both MPP and x402 in its [machine-payments overview
 
 You **do not need a PayAI portal signup or facilitator API key** for the ordinary exact starter flow. Do not add a signup step just because an SDK supports credentials.
 
-The current starter allowance is **1,000 lifetime free credits per new receiving wallet**, subject to shared host/IP limits. This is a credit allowance, not a promise of 1,000 settlements. Rates depend on settlement gas plus 30%; see [pricing](/x402/facilitators/pricing) and the live [`/supported`](https://facilitator.payai.network/supported) response. Testnets are free.
+You start with **1,000 free credits**. Each payment costs its network's rate in credits, so 1,000 credits is not 1,000 payments. Rates track on-chain gas; see [pricing](/x402/facilitators/pricing) and the [live rates](https://facilitator.payai.network/pricing). Testnets are free.
 
 ## Add payments without rebuilding your application
 
@@ -62,7 +62,7 @@ If the HTTP response is lost, reconcile the original authorization before trying
 
 ## Scale without a signup handoff
 
-When the starter allowance is no longer enough, an agent can [buy a facilitator key and credits over x402](/x402/facilitators/agent-api-keys). The paying wallet becomes the account identity: **no pre-created portal account is required**, although a wallet-owned account is created by vending. Store the returned secret immediately and configure [server authentication](/x402/facilitators/authentication).
+When your free credits run out, an agent can [buy a facilitator key and credits over x402](/x402/facilitators/agent-api-keys). The paying wallet becomes the account identity: **no pre-created portal account is required**, although a wallet-owned account is created by vending. Store the returned secret immediately and configure [server authentication](/x402/facilitators/authentication).
 
 Vending starts at $1 and purchased credits are non-refundable. A wallet already linked to a human portal account receives credits only; manage its keys in that portal. The [portal](https://merchant.payai.network/?payai_campaign=docs-agent-guide) remains an optional interface for people who want it.
 

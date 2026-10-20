@@ -177,12 +177,12 @@ Just set your environment variables to match your local server, install the depe
 
 The examples above use testnets. For Mainnet, update the route's network and any explicit scheme registrations together, use the matching asset and funded buyer, and verify the paid path. The [Solana Mainnet example](/x402/solana-mainnet-express) provides a complete tested configuration; adding credentials alone does not switch networks.
 
-This setup can serve ordinary exact mainnet payments in production within the
-[free allowance](/x402/facilitators/pricing) — no API key or portal signup is
+This setup can serve ordinary exact mainnet payments in production with your
+[1,000 free credits](/x402/facilitators/pricing) — no API key or portal signup is
 required. Production readiness still includes normal controls such as secret
 management, monitoring, and failure handling.
 
-Beyond the allowance the facilitator authenticates merchants with short-lived
+After your free credits run out, the facilitator authenticates merchants with short-lived
 Ed25519 JWTs. An autonomous agent can [buy credits and receive an API key over
 x402](/x402/facilitators/agent-api-keys); PayAI creates a wallet-owned agent
 account programmatically. You can also use the optional [merchant
@@ -273,7 +273,7 @@ facilitator = HTTPFacilitatorClient(
 
 The provider caches each token and re-signs 30 seconds before expiry, so a
 long-running server signs roughly once every two minutes rather than on every
-request. See [Facilitator Pricing](/x402/facilitators/pricing) for tier details
+request. See [Facilitator Pricing](/x402/facilitators/pricing) for rates
 and [Facilitator Authentication](/x402/facilitators/authentication) for the
 protocol reference.
 

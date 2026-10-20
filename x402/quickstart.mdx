@@ -79,7 +79,7 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
 
-The facilitator works immediately for ordinary exact payments, including mainnet production traffic within the [free allowance](/x402/facilitators/pricing). No API key or portal signup is required to launch. When you need paid capacity beyond the allowance, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. You can also use the optional [merchant dashboard](https://merchant.payai.network). Then set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` to authenticate.
+The facilitator works immediately for ordinary exact payments, including mainnet production traffic, with [1,000 free credits](/x402/facilitators/pricing). No API key or portal signup is required to launch. When your free credits run out, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. You can also use the optional [merchant dashboard](https://merchant.payai.network). Then set `PAYAI_API_KEY_ID` and `PAYAI_API_KEY_SECRET` to authenticate.
 
 The PayAI facilitator supports the following endpoints:
 
