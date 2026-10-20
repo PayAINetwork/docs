@@ -5,7 +5,7 @@ description: "PayAI Facilitator pricing: 1,000 free credits to start, then $1 = 
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-Start with 1,000 free credits. No sign-up or API key needed. After that, buy credits as you go.
+Start with 1,000 free credits. No sign-up or API key needed. When they run out, buy more credits and keep going.
 
 <CardGroup cols={2}>
   <Card title="Free" icon="gift">
@@ -66,13 +66,13 @@ Batch settlement and `upto` are priced per on-chain transaction, so a channel co
 }
 ```
 
-## Buying credits
+## When your free credits run out
 
-Agents can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal. People can use the optional [merchant dashboard](https://merchant.payai.network/?payai_campaign=docs-pricing).
+When your free credits run out, the facilitator stops settling new payments for that wallet. Its error message includes a top-up link. To keep going:
 
-Credits never expire. Paying with `$PAYAI` on Solana gets a 10% discount; review the quote before you pay. Your customers do not need `$PAYAI` to pay your API in USDC.
-
-Add your API key to your server's environment:
+1. Open [merchant.payai.network/top-up](https://merchant.payai.network/top-up?payai_campaign=docs-pricing) and sign in. The link in the error already has your wallet and network filled in.
+2. Buy credits. Credits never expire. Paying with `$PAYAI` on Solana gets a 10% discount; review the quote before you pay. Your customers do not need `$PAYAI` to pay your API in USDC.
+3. Add your API key to your server's environment:
 
 ```env
 PAYAI_API_KEY_ID=your-key-id
@@ -87,6 +87,14 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 
 // Automatically uses API keys from environment when available
 const facilitatorClient = new HTTPFacilitatorClient(facilitator);
+```
+
+Agents can do this without a person. An agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal.
+
+Check a wallet's remaining free credits:
+
+```bash
+curl "https://facilitator.payai.network/free-credits?payTo=<address>&network=<caip2>"
 ```
 
 <Note>
