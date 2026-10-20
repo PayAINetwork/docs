@@ -91,7 +91,7 @@ How PayAI binds channels to your account:
 
 - The first authenticated deposit `/verify` for a channel reserves it for your account; the deposit `/settle` from the same account binds it. First writer wins.
 - Claims, refunds and voucher or refund verifies on that channel must come from your account. Requests from any other account, or without a JWT, are refused. Sweeps stay public because they only pay the channel's receiver.
-- Delegated legs bill like any authenticated leg: the free allowance first, then credits, at the same per-leg prices.
+- Delegated legs bill like any authenticated leg: free credits first, then purchased credits, at the same per-leg prices.
 
 What to know before choosing this option:
 
@@ -132,7 +132,7 @@ Top-ups to an existing channel are not bound by the initial-deposit range. The u
 
 ## 5. What PayAI bills
 
-Every on-chain leg PayAI relays for you is priced at the observed gas plus 30 percent: deposit, claim, sweep and refund. Vouchers are free; they never reach PayAI. Without an API key, legs draw on the public free-tier allowance for your `payTo` address and are refused when it is exhausted. With a [merchant API key](/x402/facilitators/authentication) they are billed as credits. There are no privileged legs: a refused claim or sweep never strands funds, because `claimWithSignature`, `settle` and `refundWithSignature` are permissionless on the contract and you can relay them yourself.
+Every on-chain leg PayAI relays for you is priced at the observed gas plus 30 percent: deposit, claim, sweep and refund. Vouchers are free; they never reach PayAI. Without an API key, legs use your 1,000 free credits and are refused when they run out. With a [merchant API key](/x402/facilitators/authentication) they are billed as credits. There are no privileged legs: a refused claim or sweep never strands funds, because `claimWithSignature`, `settle` and `refundWithSignature` are permissionless on the contract and you can relay them yourself.
 
 Observed on Base mainnet: a deposit costs about 140,000 gas, a single-channel claim about 77,000, a sweep about 57,000 and a refund about 95,000. At Base fees today that is well under a cent per leg.
 
@@ -159,7 +159,7 @@ Sweeps are different: a `settle` request sweeps whatever is owed now, so it has 
 | `403 batch_new_channels_disabled` | New channels are paused; existing channels keep working. |
 | `403 invalid_scheme` | The network is not enabled for batch settlement. |
 | `429 batch_deposit_rate_limited` or `batch_claim_rate_limited` | Respect `Retry-After`. |
-| `free_tier_exhausted` | Add an API key to pay with credits, or relay the transaction yourself. |
+| `free_tier_exhausted` | Your free credits ran out. Add an API key to pay with credits, or relay the transaction yourself. |
 | `409 duplicate_settlement` | The same leg is in flight; wait and retry. |
 | `settlement_pending` | Non-terminal; retry the identical payload to reconcile. |
 

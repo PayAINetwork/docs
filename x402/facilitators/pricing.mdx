@@ -1,82 +1,46 @@
 ---
 title: "Facilitator Pricing"
-description: "PayAI Facilitator pricing — free credits, cost-plus per-settlement rates by network, and credits"
+description: "PayAI Facilitator pricing: 1,000 free credits to start, then $1 = 1,000 credits, with each payment priced by network."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
-<Note>
-  Cost-plus pricing has been live since 21 September 2026: each settlement costs the
-  network's on-chain gas plus 30%, testnet settlements are free, and credits stay at
-  **$0.001 each**. The table below is refreshed daily — the authoritative copy is always
-  [facilitator.payai.network/pricing](https://facilitator.payai.network/pricing).
-</Note>
+Start with 1,000 free credits. No sign-up or API key needed. After that, buy credits as you go.
 
-## Free Credits
+<CardGroup cols={2}>
+  <Card title="Free" icon="gift">
+    **1,000 free credits**
 
-Ordinary exact payments can start within the free allowance below.
+    - No sign-up or API key needed
+    - Covers ordinary payments and public batch settlement
+    - Testnets are always free
+  </Card>
+  <Card title="Pay as you go" icon="coins">
+    **$1 = 1,000 credits**
 
-<Card title="Free" icon="gift">
-  **$0/month**
+    - Each payment costs its network's rate in credits
+    - Credits never expire
+    - [See live rates](https://facilitator.payai.network/pricing)
+  </Card>
+</CardGroup>
 
-  - **1,000 free credits per receiving wallet (lifetime)** — roughly 650 Solana or 430 Base
-    settlements at the rates below
-  - No API key required for ordinary exact payments
-  - Testnet settlements are free and do not consume the allowance
-</Card>
+Jump to the [quickstart](/x402/quickstart) to start building.
 
-<Note>
-  Free credits are counted per receiving wallet. Requests from shared hosts or IP
-  addresses (e.g. shared cloud platforms) also draw from a shared pool, so those
-  deployments may reach the limit sooner — obtain a key and top up credits before
-  reaching the applicable limit. Some older receiving wallets retain
-  a legacy allowance of 10,000 credits; the 1,000-credit figure is the current
-  default for new wallets, not a monthly reset. Settlements made before 21 September
-  2026 count as 1 credit each toward the allowance.
-</Note>
+## What a payment costs
 
-Get started immediately with zero setup. Jump to the [quickstart](/x402/quickstart) to start building.
+One credit is $0.001. Each payment your server settles costs its network's rate in credits. The rate tracks the on-chain gas PayAI pays to settle on that network, plus 30%, and refreshes daily. It is never a percentage of the payment amount. Testnets are free.
 
-<Note>
-  [Solana batch settlement](/x402/servers/batch-settlement) can use the public shared lane without an API key. Its on-chain legs count against the same receiving-wallet and shared free-tier allowances. Use an API key and credits beyond that allowance or for an assigned enterprise lane. The allowance is separate from portal credits and ATA setup costs.
-</Note>
+For example, if the Solana rate is 1.33 credits:
 
-## Beyond the Free Credits
+| Payments | Credits | Cost |
+|---|---:|---:|
+| 1 | 1.33 | $0.00133 |
+| 1,000 | 1,330 | $1.33 |
+| 100,000 | 133,000 | $133 |
 
-Beyond the free allowance, each settlement costs the facilitator's **on-chain gas for that
-network plus 30%**, paid in credits:
+Rates differ by network and change with gas prices. See the [live rates](https://facilitator.payai.network/pricing) for every network.
 
-<Card title="Cost-plus, per settlement" icon="coins">
-  **price = network gas cost × 1.30**, converted to credits at $0.001 per credit and rounded
-  up to the nearest 0.01 credit
-</Card>
-
-The facilitator measures what it actually pays in gas on each network and recomputes the
-rates daily from the current gas and native-token prices. A rate is republished only when it
-moves by more than 5%. Testnets are always 0.
-
-### Current rates (refreshed daily)
-
-Snapshot of 22 September 2026, 11:11 UTC. The daily refresh moves these with the chain, so
-treat [the live table](https://facilitator.payai.network/pricing) as authoritative.
-
-| Network | Scheme | Credits per settlement | USD |
-|---|---|---:|---:|
-| Solana mainnet | exact | 1.52 | $0.00152 |
-| Solana mainnet | upto — open and claim, each | 1.52 | $0.00152 |
-| Solana mainnet | batch settlement — deposit, claim, refund, each | 1.52 | $0.00152 |
-| Solana mainnet | batch settlement — settle | 0.76 | $0.00076 |
-| Base | exact (EIP-3009) | 2.31 | $0.00231 |
-| Base | exact (Permit2) | 2.18 | $0.00218 |
-| Polygon | exact | 4.42 | $0.00442 |
-| Arbitrum | exact | 6.63 | $0.00663 |
-| Avalanche | exact | 0.10 | $0.00010 |
-| Sei | exact | 0.59 | $0.00059 |
-| Base Sepolia, Solana devnet, Polygon Amoy, Avalanche Fuji, Sei testnet, Arbitrum Sepolia, X Layer testnet, SKALE testnet | any | 0 | free |
-
-These figures were computed from measured gas and the token prices of 22 September 2026
-(SOL $116.60, ETH $2,739.75). Batch settlement and `upto` are priced per
-on-chain transaction, so a channel's lifecycle is the sum of its legs.
+Batch settlement and `upto` are priced per on-chain transaction, so a channel costs the sum of its legs (deposit, claim, refund and so on). Solana token-account (ATA) setup is a separate cost. Enterprise (invoiced) accounts use the same rates unless their agreement says otherwise.
 
 <Note>
   The facilitator fee is separate from the price your API charges its customer.
@@ -85,11 +49,9 @@ on-chain transaction, so a channel's lifecycle is the sum of its legs.
   [limits](/x402/servers/batch-settlement); they are not the price of each API request.
 </Note>
 
-### Reading the live table
+### Reading rates from your server
 
-`GET https://facilitator.payai.network/pricing` returns the current rates and any
-upcoming change with its effective time. `GET /supported` carries the same object under
-`pricing`, so a server can read the price for the network it is about to use.
+`GET /supported` carries the current rates under `pricing`, so a server can read the price for the network it is about to use. `GET https://facilitator.payai.network/pricing` returns the same object when you request JSON (`Accept: application/json`), including any upcoming change and its effective time.
 
 ```json
 {
@@ -97,68 +59,27 @@ upcoming change with its effective time. `GET /supported` carries the same objec
   "marginBps": 3000,
   "rates": [
     { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "scheme": "exact",
-      "transferMethod": "svm_transfer", "credits": "1.52", "usd": "0.00152",
-      "effectiveAt": "2026-09-22T11:11:01.537Z" }
+      "transferMethod": "svm_transfer", "credits": "1.33", "usd": "0.00133",
+      "effectiveAt": "2026-10-15T12:00:00.002Z" }
   ],
   "upcoming": []
 }
 ```
 
-### Pricing examples
+## Buying credits
 
-| Settlements | Solana exact | Base exact |
-|---|---|---|
-| 1 | 1.52 credits ($0.00152) | 2.31 credits ($0.00231) |
-| 1,000 | $1.52 | $2.31 |
-| 100,000 | $152 | $231 |
+Agents can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal. People can use the optional [merchant dashboard](https://merchant.payai.network/?payai_campaign=docs-pricing).
 
-## Credit System
+Credits never expire. Paying with `$PAYAI` on Solana gets a 10% discount; review the quote before you pay. Your customers do not need `$PAYAI` to pay your API in USDC.
 
-To maintain access beyond the free allowance, autonomous agents can [purchase credits and receive an API key programmatically over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal. Humans can instead use the optional [merchant dashboard](https://merchant.payai.network/?payai_campaign=docs-pricing).
-
-- **1 credit = $0.001**; a settlement debits its network's rate in credits (fractional credits are normal)
-- **Credits never expire**
-
-The merchant portal currently applies a **10% discount** when buying credits with
-`$PAYAI` on Solana. Review the displayed quote before paying. This credit-purchase
-discount is separate from the token and price your service accepts from its
-customers; customers do not need `$PAYAI` to use an API priced in USDC.
-
-<Card
-  title="Top Up Credits"
-  icon="credit-card"
-  href="https://merchant.payai.network/?payai_campaign=docs-pricing"
->
-  Log in to the merchant dashboard to manage your credits.
-</Card>
-
-Enterprise (invoiced) accounts are billed at the same rate card unless their agreement
-sets a different margin.
-
-## Comparison
-
-| | Free | Beyond Free |
-|---|---|---|
-| **Facilitator fee** | $0 within the allowance | Network gas + 30%, in credits |
-| **Included** | 1,000 credits per receiving wallet (lifetime) | Unlimited (credit-based) |
-| **API key required** | No for ordinary exact payments or the public Solana batch lane | Yes beyond the allowance or for assigned lanes |
-| **Credits** | Not required | 1 credit = $0.001 |
-| **Credit expiry** | — | Never |
-| **Dashboard access** | Not required | Optional; agents can use [x402 key vending](/x402/facilitators/agent-api-keys) |
-
-## How to get started
-
-1. Follow the [quickstart](/x402/quickstart) for ordinary exact payments, or the [batch guide](/x402/servers/batch-settlement) for public metered payments
-2. When you're ready to scale beyond the free allowance, [buy credits and receive a key over x402](/x402/facilitators/agent-api-keys) with no portal signup, or use the optional [merchant dashboard](https://merchant.payai.network/?payai_campaign=docs-pricing)
-3. Store your API key ID and one-time secret securely. If the paying wallet is already linked to a portal account, the vending payment adds credits only; manage its keys in the dashboard
-4. Set the environment variables in your server:
+Add your API key to your server's environment:
 
 ```env
 PAYAI_API_KEY_ID=your-key-id
 PAYAI_API_KEY_SECRET=your-key-secret
 ```
 
-If you're using `@payai/facilitator` (used throughout the TypeScript server guides), your server will automatically authenticate with the facilitator — no code changes needed.
+If you use `@payai/facilitator` (as the TypeScript server guides do), it reads these variables automatically. No code changes are needed. For other languages, see [facilitator authentication](/x402/facilitators/authentication).
 
 ```typescript
 import { facilitator } from "@payai/facilitator";
@@ -169,10 +90,7 @@ const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 ```
 
 <Note>
-  Rates track the chains' gas and token prices and are refreshed daily; material changes
-  are announced ahead of their effective time on the live table. Visit
-  [facilitator.payai.network/pricing](https://facilitator.payai.network/pricing) for the
-  latest figures.
+  Free credits are tracked per receiving wallet, and per account when you use an API key. Very high-volume shared hosts may be asked to use an API key sooner.
 </Note>
 
 ## Need help?

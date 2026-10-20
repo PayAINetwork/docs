@@ -13,7 +13,7 @@ Batch settlement lets a customer fund a reusable Solana channel and pay for mult
 
 The public shared lane accepts facilitator `POST /verify` and `POST /settle` without an `Authorization` header. This includes deposits, claims, distributions, merchant seals, refunds, and exact-request recovery. Customers and merchants do not need a PayAI account to use that lane.
 
-Authentication is optional. Create a key in the [merchant portal](https://merchant.payai.network) when you need paid usage beyond the free allowance, dashboard attribution, or an assigned enterprise lane, then follow the [authentication guide](/x402/facilitators/authentication). If an `Authorization` header is present, PayAI validates it; an invalid, expired, or revoked credential returns **401 Unauthorized** instead of silently falling back to anonymous access. An authenticated request refused by policy may return **403**. These are separate from the **402 Payment Required** challenge your service sends to its customer.
+Authentication is optional. Create a key in the [merchant portal](https://merchant.payai.network) when you buy credits to keep going after your [1,000 free credits](/x402/facilitators/pricing), for dashboard attribution, or for an assigned enterprise lane, then follow the [authentication guide](/x402/facilitators/authentication). If an `Authorization` header is present, PayAI validates it; an invalid, expired, or revoked credential returns **401 Unauthorized** instead of silently falling back to anonymous access. An authenticated request refused by policy may return **403**. These are separate from the **402 Payment Required** challenge your service sends to its customer.
 
 `GET /supported` is public. Read it without authentication:
 
@@ -31,7 +31,7 @@ The wallet in `payTo` must have its **USDC associated token account (ATA) on the
 
 You can create the ATA yourself and fund its rent, or use the [merchant portal](https://merchant.payai.network). Link the wallet you will use as `payTo` and follow the token-account setup flow. The portal may sponsor the first linked Solana wallet's USDC ATA when eligible and within its daily allowance; manual creation currently defaults to **200 credits**. Check the portal's displayed price and eligibility. A separate voucher-signing operator does not replace the receiving wallet's ATA.
 
-The free settlement allowance is not a signup grant of portal credits. Check your credit balance in the portal.
+Your 1,000 free credits are separate from credits you buy in the portal.
 
 ## 3. Install the upstream SDK
 

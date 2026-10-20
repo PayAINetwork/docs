@@ -4,7 +4,7 @@ description: "Accept exact USDC payments on Base Mainnet with Express, upstream 
 keywords: ["x402 Base Mainnet Express", "PayAI facilitator", "Base USDC API payments", "AI agent payments"]
 ---
 
-This maintained example protects one Express route with x402 v2 exact USDC on Base Mainnet. It uses the upstream `@x402/core`, `@x402/evm` and `@x402/express` packages plus the PayAI facilitator config. The merchant supplies only a receiving address; ordinary exact payments can start without a PayAI portal signup or API key within the free allowance.
+This maintained example protects one Express route with x402 v2 exact USDC on Base Mainnet. It uses the upstream `@x402/core`, `@x402/evm` and `@x402/express` packages plus the PayAI facilitator config. The merchant supplies only a receiving address; ordinary exact payments can start without a PayAI portal signup or API key, using your 1,000 free credits.
 
 | Field | Value |
 | --- | --- |
@@ -119,8 +119,8 @@ The command never signs or submits. It uses the recorded transaction hash when p
 
 Read the example [README](https://github.com/PayAINetwork/docs/blob/main/examples/base-mainnet-express/README.md) before a live check. It covers HTTPS metadata, key handling, evidence and recovery boundaries.
 
-## Allowance, scaling and upstream references
+## Free credits, scaling and upstream references
 
-The starter allowance is finite; it is not a promise of free unlimited production. Review [pricing](/x402/facilitators/pricing) and live [`/supported`](https://facilitator.payai.network/supported). An agent can [buy credits and a key over x402](/x402/facilitators/agent-api-keys) when it needs paid capacity; the [merchant dashboard](https://merchant.payai.network) remains optional.
+You start with 1,000 free credits; they are not unlimited. Review [pricing](/x402/facilitators/pricing) and the [live rates](https://facilitator.payai.network/pricing). When they run out, an agent can [buy credits and a key over x402](/x402/facilitators/agent-api-keys); the [merchant dashboard](https://merchant.payai.network) remains optional.
 
 For protocol context, see the official x402 [seller quickstart](https://github.com/x402-foundation/x402/blob/main/docs/getting-started/quickstart-for-sellers.mdx) and [facilitator directory](https://github.com/x402-foundation/x402/blob/main/docs/dev-tools/facilitators.md).

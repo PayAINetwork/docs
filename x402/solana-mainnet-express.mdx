@@ -197,9 +197,9 @@ After success the runner decodes `PAYMENT-RESPONSE`, waits for finalized confirm
 
 ## Facilitator credits and fees
 
-New receiving wallets have **1,000 lifetime free credits** for ordinary exact settlements. One credit is **$0.001**. After the free allowance, the settlement charge is the facilitator's measured on-chain gas plus 30%, converted to credits. Current rates can change; read [facilitator pricing](/x402/facilitators/pricing) or the `pricing` object returned by `/supported`.
+You start with **1,000 free credits**. One credit is **$0.001**. Each settlement costs its network's rate in credits, which tracks on-chain gas and refreshes daily. Read [facilitator pricing](/x402/facilitators/pricing) or the `pricing` object returned by `/supported`.
 
-Ordinary exact payments can serve mainnet production traffic within the free allowance without an API key or portal signup. When you need paid capacity beyond it, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route. Configure the resulting credentials as described in [facilitator authentication](/x402/facilitators/authentication). The facilitator charge is separate from the USDC price paid to your API.
+Ordinary exact payments can serve mainnet production traffic with your free credits, without an API key or portal signup. When they run out, an autonomous agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys); the paying wallet gets a wallet-owned agent account programmatically. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route. Configure the resulting credentials as described in [facilitator authentication](/x402/facilitators/authentication). The facilitator charge is separate from the USDC price paid to your API.
 
 ## Static integration metadata
 
