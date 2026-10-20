@@ -87,7 +87,7 @@ x402 is a payment protocol that enables **pay-per-use API transactions**. The na
 - 1,000 free credits to start, no sign-up or API key needed
 - After that: \$1 = 1,000 credits (1 credit = \$0.001). Each payment costs its network's rate in credits, which tracks on-chain gas and refreshes daily. It is never a percentage of the payment amount. Testnets are free.
 - Credits never expire
-- Merchants buy credits in the dashboard at merchant.payai.network; agents can buy credits and an API key over x402
+- Merchants top up credits at merchant.payai.network/top-up; agents can buy credits and an API key over x402
 - Live rates: facilitator.payai.network/pricing
 
 **URL:** https://facilitator.payai.network
