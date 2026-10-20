@@ -90,7 +90,7 @@ const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 
 Agents can do this without a person. An agent can [buy credits and receive an API key over x402](/x402/facilitators/agent-api-keys), with no portal signup. PayAI creates a wallet-owned agent account during the purchase. A paying wallet already linked to a portal account receives credits but not a new agent key; manage that account's keys in the portal.
 
-Check a wallet's remaining free credits:
+Check whether a wallet still has free credits. Anyone can look up any wallet, so the answer is `available`, `low` (20% or less left) or `exhausted`, not exact numbers. You see exact numbers in the [merchant portal](https://merchant.payai.network) after you link the wallet.
 
 ```bash
 curl "https://facilitator.payai.network/free-credits?payTo=<address>&network=<caip2>"
