@@ -92,8 +92,8 @@ Reconciliation does not create or submit an authorization. It uses the saved tra
 
 Do not delete the guard or use a new guard path while an outcome is uncertain. After a finalized result, archive the evidence before deliberately configuring a separate test. A successful payment is not automatically refundable; recovery is a separate wallet operation with its own gas and safety review.
 
-## Account-free allowance and scaling
+## Free credits and scaling
 
-Ordinary exact Base Mainnet payments can start without a PayAI portal signup or facilitator API key within the [free allowance](https://docs.payai.network/x402/facilitators/pricing). When you need more capacity, an autonomous agent can [buy a facilitator key and credits over x402](https://docs.payai.network/x402/facilitators/agent-api-keys); vending creates a wallet-owned agent account. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route.
+Ordinary exact Base Mainnet payments can start without a PayAI portal signup or facilitator API key, using your [1,000 free credits](https://docs.payai.network/x402/facilitators/pricing). When they run out, an autonomous agent can [buy a facilitator key and credits over x402](https://docs.payai.network/x402/facilitators/agent-api-keys); vending creates a wallet-owned agent account. The [merchant dashboard](https://merchant.payai.network) is the optional human-managed route.
 
 Live schemes and networks remain authoritative at [`/supported`](https://facilitator.payai.network/supported). See the [maintained guide](https://docs.payai.network/x402/base-mainnet-express) for the complete integration path.
