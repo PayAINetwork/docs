@@ -83,7 +83,7 @@ x402 is a payment protocol that enables **pay-per-use API transactions**. The na
 **What it is:** Our core product—a hosted service that handles x402 payment verification and settlement.
 
 **Key features:**
-- Solana-first, multi-network support (Base, Polygon, SKALE, Avalanche, and more)
+- Solana-first, multi-network support (Base, BNB Smart Chain, Polygon, SKALE, Avalanche, and more)
 - 1,000 free credits to start, no sign-up or API key needed
 - After that: \$1 = 1,000 credits (1 credit = \$0.001). Each payment costs its network's rate in credits, which tracks on-chain gas and refreshes daily. It is never a percentage of the payment amount. Testnets are free.
 - Credits never expire
@@ -456,11 +456,16 @@ Our content is organized into four main pillars:
 ### Supported Networks
 
 - Solana (Primary)
-- Base
-- Polygon
-- SKALE
+- Arbitrum
 - Avalanche
+- Base
+- BNB Smart Chain (BSC; v2 exact Permit2, initial approval requires payer BNB)
+- Polygon
 - Sei
+- SKALE
+- X Layer
+
+Confirm current mainnet/testnet availability and scheme limits in the [supported-network reference](https://docs.payai.network/x402/supported-networks) and the facilitator's [/supported endpoint](https://facilitator.payai.network/supported) before publishing claims.
 
 ### Ecosystem Projects
 
