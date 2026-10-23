@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 24, check-latest: true }
       - uses: actions/setup-python@v5
         # x402 on PyPI requires >=3.10
         with: { python-version: "3.12" }
