@@ -11,6 +11,35 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 <SupportedNetworksTable />
 
+## BNB Smart Chain
+
+BNB Smart Chain (BSC, chain 56) supports x402 **v2 exact payments using Permit2**. Both supported stablecoins have **18 decimals**:
+
+| Token | BSC contract address |
+| --- | --- |
+| Binance-Peg USDC | `0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d` |
+| Binance-Peg USDT | `0x55d398326f99059fF775485246999027B3197955` |
+
+Set the token and amount explicitly. For 0.01 USDC, use this payment requirement:
+
+```json
+{
+  "scheme": "exact",
+  "network": "eip155:56",
+  "asset": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+  "amount": "10000000000000000",
+  "payTo": "YOUR_BSC_RECEIVING_ADDRESS",
+  "maxTimeoutSeconds": 300,
+  "extra": { "assetTransferMethod": "permit2" }
+}
+```
+
+Use a BSC-capable v2 Permit2 client. Before its first payment, the payer must approve the selected token for canonical Permit2 at `0x000000000022D473030F116dDEE9F6B43aC78BA3`. **That approval requires BNB in the payer's wallet.** After approval, payments require a signature and the facilitator pays settlement gas. Having a merchant API key does not sponsor the initial approval.
+
+BSC does not support x402 v1, EIP-3009 transfers, `upto`, or batch settlement. Do not assume six-decimal USDC amounts, a default dollar-price asset, or Base's token authorization fields. These Binance-Peg tokens are distinct from native USDC on other networks.
+
+Try the live Echo routes for [BSC USDC](https://x402.payai.network/api/bsc/paid-content) or [BSC USDT](https://x402.payai.network/api/bsc-usdt/paid-content). Each charges and refunds 0.01 token. For current availability and fees, check the facilitator's [`/supported`](https://facilitator.payai.network/supported) and [`/pricing`](https://facilitator.payai.network/pricing) endpoints.
+
 ## Solana batch settlement
 
 [Batch settlement](/x402/servers/batch-settlement) is available as a public preview for USDC. The public `/supported` endpoint advertises the shared-lane fee payer and admission limits. Its `/verify` and `/settle` requests work without an API key on the shared lane; credentials remain available for paid usage and assigned enterprise lanes.
