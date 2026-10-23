@@ -38,7 +38,7 @@ Use a BSC-capable v2 Permit2 client. Before its first payment, the payer must ap
 
 BSC does not support x402 v1, EIP-3009 transfers, `upto`, or batch settlement. Do not assume six-decimal USDC amounts, a default dollar-price asset, or Base's token authorization fields. These Binance-Peg tokens are distinct from native USDC on other networks.
 
-Try the live Echo routes for [BSC USDC](https://x402.payai.network/api/bsc/paid-content) or [BSC USDT](https://x402.payai.network/api/bsc-usdt/paid-content). Each charges and refunds 0.01 token. For current availability and fees, check the facilitator's [`/supported`](https://facilitator.payai.network/supported) and [`/pricing`](https://facilitator.payai.network/pricing) endpoints.
+Try the live Echo routes for [BSC mainnet USDC](https://x402.payai.network/api/bsc/paid-content) or [BSC testnet USDC](https://x402.payai.network/api/bsc-testnet/paid-content). Each charges and refunds 0.01 token. The testnet route uses the 18-decimal community test token `0x64544969ed7EBf5f083679233325356EbE738930` (not Circle-issued USDC) and requires testnet BNB for the initial Permit2 approval. For current availability and fees, check the facilitator's [`/supported`](https://facilitator.payai.network/supported) and [`/pricing`](https://facilitator.payai.network/pricing) endpoints.
 
 ### BSC testnet
 
