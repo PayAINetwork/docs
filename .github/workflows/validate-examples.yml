@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 24, check-latest: true }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Boot the documented server, pay it with the documented client
@@ -68,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 24, check-latest: true }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Boot the documented FastAPI server with the PayAI auth provider
