@@ -1,6 +1,6 @@
 ---
-title: "Facilitator Introduction"
-description: "Learn about the role of an x402 facilitator"
+title: "PayAI x402 facilitator"
+description: "Verify and settle x402 payments with PayAI. Start ordinary exact payments without a portal account or API key, and connect a working merchant on Base or Solana."
 ---
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
@@ -58,12 +58,14 @@ const facilitatorClient = new HTTPFacilitatorClient(facilitator);
 
 For ordinary exact payments and the public shared [Solana batch settlement](/x402/servers/batch-settlement) lane, this works with **1,000 free credits** and no API key.
 
+The package configures the facilitator endpoint at `https://facilitator.payai.network`. See [supported networks](/x402/supported-networks) for the current network and scheme coverage.
+
 <Card
-  title="Try the PayAI Facilitator"
+  title="Accept payments from AI agents"
   icon="rocket"
-  href="https://facilitator.payai.network"
+  href="/guides/accept-payments-from-ai-agents"
 >
-  Ready to start? Visit the PayAI Facilitator to get started.
+  Choose your network and framework, run a merchant and buyer, and verify a successful payment. Start ordinary exact payments without a portal signup or facilitator API key.
 </Card>
 
 ## API key authentication
