@@ -11,10 +11,10 @@ Want an AI agent to pay for an API call? Protect a route with **x402**: your ser
 
 | What you are building | Start here |
 | --- | --- |
-| An API on Base Mainnet | [Base Mainnet Express example](/x402/base-mainnet-express): upstream EVM exact scheme, one-shot buyer and finalized receipt checks |
+| An API that charges 0.01 USDC per call on Base | [Runnable Express example](/x402/base-mainnet-express): merchant, capped buyer and finalized receipt verification |
 | An API on Solana Mainnet | [Solana Mainnet Express example](/x402/solana-mainnet-express): complete merchant, guarded buyer and receipt checks |
 | An existing Express, Hono, Next.js, Python or Go service | [Merchant guides](/x402/servers/introduction): add middleware to the routes you want to monetize |
-| A SaaS with an agent-facing API | Keep existing login and subscriptions; add a paid route for a bounded unit of work, then follow the merchant guide for your framework |
+| A SaaS with an agent-facing API | [Add an agent-paid route to your SaaS](#add-an-agent-paid-route-to-your-saas) |
 | An agent that needs to buy API access | [Client guides](/x402/clients/introduction): respond to a `402` using a funded wallet |
 | High-frequency metered usage | [Solana batch settlement](/x402/servers/batch-settlement) or [Base batch settlement](/x402/servers/evm-batch-settlement): review the channel lifecycle before integrating |
 
@@ -36,6 +36,10 @@ Stripe describes support for both MPP and x402 in its [machine-payments overview
 You **do not need a PayAI portal signup or facilitator API key** for the ordinary exact starter flow. Do not add a signup step just because an SDK supports credentials.
 
 You start with **1,000 free credits**. Each payment costs its network's rate in credits, so 1,000 credits is not 1,000 payments. Rates track on-chain gas; see [pricing](/x402/facilitators/pricing) and the [live rates](https://facilitator.payai.network/pricing). Testnets are free.
+
+### Add an agent-paid route to your SaaS
+
+Sell one useful operation: a report, lookup or export. Keep your existing subscriptions and API keys, and offer x402 as an additional payment option. A public-data lookup is a simple starting point; private customer exports still need authorization. Use the [framework guides](/x402/servers/introduction) to adapt the route to your service.
 
 ## Add payments without rebuilding your application
 
