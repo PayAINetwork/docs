@@ -5,6 +5,11 @@ description: "Metered Solana payments with merchant-signed vouchers, public shar
 
 Batch settlement lets a customer fund a reusable Solana channel and pay for multiple requests before the merchant claims and distributes the accumulated charges. It supports metered APIs, inference, and other services where the final charge is known after the work finishes.
 
+Funded channel vouchers avoid the per-request EIP-3009/blockhash expiry issue
+that affects deferred `exact` payments. Confirm deposits and top-ups before
+reserving channel capacity; vouchers still require durable storage and timely
+redemption. See [payment safety](/x402/servers/payment-safety).
+
 <Note>
   PayAI's facilitator support is a public preview with bounded channel capacity. The shared lane requires no PayAI account or API key. Use an API key for paid usage, account attribution, or an assigned enterprise lane. The client and server implementation is available in the official upstream `@x402/core` and `@x402/svm` npm packages.
 </Note>

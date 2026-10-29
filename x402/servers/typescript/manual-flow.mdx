@@ -5,6 +5,13 @@ description: "Step-by-step guide to building the x402 PAYMENT-REQUIRED response 
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
+<Note>
+For inference, streaming, or other costly `exact` requests, confirm settlement
+before starting the work. Verification alone does not guarantee payment, and
+middleware may settle after your handler runs. See [payment safety](/x402/servers/payment-safety)
+for ordering, expiry checks, and the separate guidance for funded channels.
+</Note>
+
 ## Manual x402 server flow (TypeScript)
 
 This page shows how to respond with **402 Payment Required** and build the **PAYMENT-REQUIRED** header by hand in TypeScript—no `@x402/express` or other server SDK. You decide when payment is required, construct the payment-requirements payload, base64-encode it, and send it in the response.
