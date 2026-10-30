@@ -5,6 +5,11 @@ description: "Payment channels for metered x402 APIs on Base: one USDC deposit, 
 
 Batch settlement lets a customer fund a reusable on-chain channel once and pay for many requests with signed vouchers, while your server claims and sweeps the accumulated charges in batches. It is built for metered APIs, inference, and any service where the final price of a request is known only after the work is done. On EVM the scheme is implemented by the `x402BatchSettlement` contract, and PayAI relays every on-chain leg and pays the gas.
 
+Funded channel vouchers avoid the per-request EIP-3009/blockhash expiry issue
+that affects deferred `exact` payments. Confirm deposits and top-ups before
+reserving channel capacity; vouchers still require durable storage and timely
+redemption. See [payment safety](/x402/servers/payment-safety).
+
 <Note>
   PayAI serves `batch-settlement` on **Base mainnet** (`eip155:8453`) and **Base Sepolia** (`eip155:84532`) at `https://facilitator.payai.network`. Access is public: no PayAI account or API key is needed when you run your own receiver authorizer. With a PayAI API key you can instead let PayAI hold the authorizer key (see section 2), and pay for settlement legs with credits after the free allowance.
 </Note>

@@ -4,6 +4,13 @@ description: "Protect Next.js pages and API routes with x402 payments using the 
 
 import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
+<Note>
+For inference, streaming, or other costly `exact` requests, confirm settlement
+before starting the work. Verification alone does not guarantee payment, and
+middleware may settle after your handler runs. See [payment safety](/x402/servers/payment-safety)
+for ordering, expiry checks, and the separate guidance for funded channels.
+</Note>
+
 ## Getting started with Next.js
 
 Start accepting x402 payments in your Next.js app in 2 minutes.
