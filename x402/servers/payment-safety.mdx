@@ -1,0 +1,103 @@
+---
+title: "Payment Safety for Servers"
+description: "When to start paid work, handle expiring exact payments, and use funded channels for metered requests."
+---
+
+Choose payment ordering before starting costly work. A successful `/verify`
+validates an authorization at that moment; it does not reserve the customer's
+funds or guarantee that a later `/settle` will succeed.
+
+| Payment flow | Before starting work | After work |
+| --- | --- | --- |
+| `exact` for inference, streaming or other costly work | Verify the payment against your server's terms, settle it, and confirm successful payment | Deliver the result; handle service failures under your refund policy |
+| Funded `batch-settlement` / payment channel | Confirm channel funding, validate its state and authorization, and atomically reserve enough capacity for this request | Persist the actual charge/voucher and redeem on the channel's schedule |
+
+## Exact payments: confirm before inference or streaming
+
+An attacker can sign an authorization that expires shortly after verification.
+If your server verifies, runs inference, streams the result, and only then tries
+to collect, the payment may already have expired. Keeping a sufficient token
+balance does not prevent this attack.
+
+For costly exact-payment endpoints:
+
+1. Match the payment to your server-controlled network, asset, recipient, amount
+   and resource requirements. Do not let the client choose the terms you verify.
+2. Call `/verify` and require `isValid: true`.
+3. Immediately call `/settle` with that same payment and requirements. Wait for
+   the confirmed successful outcome before starting inference, irreversible
+   effects, or any paid response bytes.
+4. If the outcome is pending or unknown, keep the application operation pending
+   too. Preserve the original payload and transaction identity, then follow
+   [settlement recovery](/x402/facilitators/capacity-and-limits).
+
+Use your SDK's documented upfront settlement flow when it supports it, or
+implement this ordering explicitly. Middleware that waits to settle until after
+your handler runs can protect delivery of a buffered response while still
+leaving you with unpaid inference cost. Check when the handler executes, not
+just when response bytes leave the server.
+
+An HTTP 200, a transaction hash, successful simulation, or a broadcast
+acknowledgment alone is not a confirmed payment. `settlement_pending`,
+`duplicate_settlement`, and a lost response require reconciliation. Do not
+start a replacement payment merely because the original authorization expired:
+the original transfer may already have landed.
+
+## EVM: use the signed expiry
+
+For EIP-3009, inspect the signed `authorization.validBefore`. For Permit2, inspect
+the signed `permit2Authorization.deadline` and any required sponsored approval's
+expiry. `maxTimeoutSeconds` in your requirements is not proof that the client
+signed that much remaining lifetime.
+
+PayAI's default EVM verification buffer is approximately six seconds. This is a
+settlement buffer, not a promise that an authorization will survive your handler.
+If you enforce a longer resource-specific margin, allow for verification,
+queueing, transaction inclusion and clock skew, and configure compatible clients.
+A 120-second floor is useful defense in depth, but does not secure a longer
+stream or reserve the wallet's balance. Confirm exact payment before costly work.
+
+## Solana: validity now is not remaining lifetime
+
+PayAI verifies the original signed blockhash through simulation. An expired
+blockhash is rejected, but a nearly expired one may still pass.
+[`isBlockhashValid`](https://solana.com/docs/rpc/http/isblockhashvalid) also returns
+only current validity, not remaining lifetime.
+
+For a resource-specific freshness policy:
+
+1. Retain a trusted `{blockhash, lastValidBlockHeight}` pair from
+   [`getLatestBlockhash`](https://solana.com/docs/rpc/http/getlatestblockhash) or a
+   trusted facilitator response.
+2. Decode the signed transaction and match its actual blockhash to that stored
+   pair. An unsigned client-supplied height is not authoritative.
+3. Compare the stored height with [`getBlockHeight`](https://solana.com/docs/rpc/http/getblockheight)
+   from a healthy RPC at consistent commitment. Require enough remaining blocks
+   for your settlement path. Reject unknown or stale hashes under this policy
+   and obtain a fresh signed payment only when no prior payment is unresolved.
+
+Do not use a newly fetched hash's expiry for a different transaction, compare
+slots to block heights, or assume a fixed lifetime in seconds. PayAI's
+`/supported` blockhash hints do not force clients to use them; a freshness policy
+must check the actual signed hash. Replacing that hash invalidates the payer's
+signature. For exact payments, confirm settlement before work:
+[`sendTransaction`](https://solana.com/docs/rpc/http/sendtransaction) only
+acknowledges submission.
+
+## Funded channels: reserve before work, redeem afterward
+
+Funded batch settlement does not defer a separate EIP-3009 transfer or signed
+Solana transaction for every resource request. Its per-request vouchers avoid
+this specific authorization/blockhash expiry issue, so the exact-payment advice
+to settle each request before inference does **not** apply to funded vouchers.
+
+The initial deposit or a top-up can still expire or fail. Confirm funding before
+treating it as spendable channel capacity. Validate the channel's current state,
+reserve request capacity atomically across replicas, retain authorization and
+voucher records, and redeem within withdrawal grace. Pending funding, an
+exhausted channel, or a closing channel is not permission to keep serving.
+
+Follow the [Solana batch guide](/x402/servers/batch-settlement) or
+[EVM batch guide](/x402/servers/evm-batch-settlement) for metered charges, durable
+storage, payout and closure. Internal batching of several `exact` transfers into
+one on-chain transaction does not turn them into funded payment channels.

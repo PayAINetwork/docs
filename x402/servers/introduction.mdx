@@ -47,6 +47,13 @@ The server challenges an unpaid request, accepts a retry carrying a payment auth
 
 HTTP compatibility alone is not payment compatibility: both ends must support the selected network, token and scheme. Check [supported networks](/x402/supported-networks). Fee sponsorship depends on the payment flow, and end-to-end latency depends on application work, transport and settlement; neither zero network costs nor sub-second settlement is universal.
 
+## Start paid work safely
+
+For costly `exact` requests, confirm settlement before inference or streaming.
+Verification alone does not reserve funds. Funded channels reserve capacity before
+work and redeem vouchers afterward. Follow the [payment safety guide](/x402/servers/payment-safety)
+for expiry checks, payment ordering and pending-payment recovery.
+
 <span id="facilitator-setup" style={{ scrollMarginTop: "10rem" }} />
 
 ## Configure PayAI and prepare production

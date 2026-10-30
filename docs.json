@@ -34,6 +34,7 @@
             "group": "x402 Merchants",
             "pages": [
               "x402/servers/introduction",
+              "x402/servers/payment-safety",
               "x402/servers/batch-settlement",
               "x402/servers/evm-batch-settlement",
               {

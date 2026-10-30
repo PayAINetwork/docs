@@ -14,6 +14,12 @@ Facilitators provide shared infrastructure for verifying and settling on-chain p
 - Serve multiple merchants/apps via a stable `/verify` and `/settle` API
 - Help clients discover merchants via the [Bazaar](/x402/facilitators/bazaar) `/discovery/resources` endpoint
 
+<Note>
+`/verify` does not reserve funds or guarantee later settlement. For costly exact
+payments, confirm settlement before work. Funded channels use a different
+lifecycle; see [payment safety for servers](/x402/servers/payment-safety).
+</Note>
+
 ## Architecture at a glance
 
 ![x402 sequence diagram](/images/x402-sequence-diagram.svg)

@@ -11,6 +11,7 @@
 - [x402 Quickstart](https://docs.payai.network/x402/quickstart.md): High-level x402 getting started.
 - [Build with AI](https://docs.payai.network/x402/build-with-ai.md): Connect coding agents to PayAI: the docs MCP server, llms.txt files, the facilitator MCP server, Context7 and the PayAI x402 skill.
 - [Merchant Introduction](https://docs.payai.network/x402/servers/introduction.md): Learn how to sell services with x402.
+- [Payment Safety for Servers](https://docs.payai.network/x402/servers/payment-safety.md): Confirm costly exact payments before work; handle expiry, uncertain outcomes, and funded channels.
 - [Express server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/express.md): Accept x402 payments with Express.
 - [Hono server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/hono.md): Accept x402 payments with Hono.
 - [Next.js server quickstart (TypeScript)](https://docs.payai.network/x402/servers/typescript/nextjs.md): Accept x402 payments with Next.js.
