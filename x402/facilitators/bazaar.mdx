@@ -58,6 +58,79 @@ The optional `serviceName`, `tags`, and `iconUrl` fields on the `resource` objec
 
 **MCP servers** declare per tool. The catalog key is `(resource, toolName)`, so a server exposing several tools at one URL gets one entry per tool.
 
+## Dynamic routes
+
+A route with path parameters (`/weather/:city`, `/users/[userId]`) is one catalog entry, not one per value. The x402 SDKs report such a route to the facilitator as a template (`routeTemplate: "/weather/:city"`), and a template is not a URL a buyer can call. The Bazaar lists a dynamic route under a real URL built from **example values you declare**, and keeps the template next to it so clients can substitute their own values.
+
+Declare one example for every path parameter in the path parameter schema:
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```ts
+    declareDiscoveryExtension({
+      pathParamsSchema: {
+        properties: {
+          city: { type: "string", description: "City name slug", examples: ["san-francisco"] },
+        },
+        required: ["city"],
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    declare_discovery_extension(
+        path_params_schema={
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "City name slug",
+                    "examples": ["san-francisco"],
+                },
+            },
+            "required": ["city"],
+        },
+    )
+    ```
+  </Tab>
+  <Tab title="Go">
+    ```go
+    bazaar.DeclareDiscoveryExtensionOpts{
+        PathParamsSchema: types.JSONSchema{
+            "properties": map[string]interface{}{
+                "city": map[string]interface{}{
+                    "type":        "string",
+                    "description": "City name slug",
+                    "examples":    []string{"san-francisco"},
+                },
+            },
+            "required": []string{"city"},
+        },
+    }
+    ```
+  </Tab>
+</Tabs>
+
+With that declaration, payments for `/weather/tokyo` and `/weather/lima` both refresh one entry:
+
+| Field | Value |
+| --- | --- |
+| `resource` | `https://api.example.com/weather/san-francisco` |
+| `extensions.bazaar.routeTemplate` | `/weather/:city` |
+| `extensions.bazaar.info.input.pathParams` | `{ "city": "san-francisco" }` |
+| `extensions.bazaar.schema` | Your parameter schema, unchanged |
+
+The rules:
+
+- **Every path parameter needs an example.** For each parameter the facilitator reads, in order, `examples[0]`, `example`, `default`, `const`, then `enum[0]`. A parameter that already has an `enum` or a `default` needs nothing more. Examples must be a string, number or boolean.
+- **No example, no listing.** If any parameter has none, the declaration is rejected with `resource_path_template` and the route is not listed. The payment is unaffected.
+- **Pick an example anyone can call.** The catalog probes the example URL and agents call it as listed. Use a value that returns a useful public result, never a private identifier such as an inbox, an order or a customer id.
+- **Buyer values are never published.** The path values a buyer requested are not stored in the catalog. Only your declared examples are.
+- **Name your parameters.** A wildcard route (`/api/*`) reaches the facilitator with generated names (`:var1`, `:var2`). You can declare examples under those names, but a named parameter (`/api/:symbol`) describes itself.
+- **Other placeholder syntax is never listed.** A resource URL that contains `{param}`, `[param]` or a `*` segment is rejected with the same reason.
+
+Entries that were listed under the template URL itself (for example `https://api.example.com/weather/:city`) no longer appear in discovery. Add examples, and the next payment that carries your declaration lists the route under its example URL. To confirm, read the `EXTENSION-RESPONSES` header on that payment: `processing` means the route was queued for listing.
+
 ## Host policy
 
 The resource URL must be an absolute `http` or `https` URL on a public host. Declarations that fail these rules are rejected on the payment response itself (see [rejection reasons](#rejection-reasons)) and never enter the catalog:
@@ -99,6 +172,7 @@ A rejected or missing declaration never affects the payment itself: verification
 | `resource url missing or not absolute (payload.resource.url)` | The buyer's client echoed your extension but dropped or rewrote the `resource` object, so the payload carries no absolute URL to catalog under. Your 402 is fine. | Pay once through a client that echoes `resource` verbatim (any `@x402/*` 2.x, `x402-solana` ≥ 2.0.5). If you wrote the client, echo the 402's `resource` object unchanged. |
 | `declaration could not be extracted` | The declaration validated but the extractor failed on it. This should not happen for a spec-valid declaration. | Open an issue with your 402 body. |
 | `failed to enqueue discovery cataloging` | A transient facilitator-side queue error. Nothing is wrong with your declaration. | Retry later. The payment itself was processed normally. |
+| `resource_path_template` | The resource URL is a route template or contains a placeholder (`:param`, `{param}`, `[param]`, a `*` segment), and no example value was declared for every path parameter. | Declare an example for each path parameter, then make one more payment. See [Dynamic routes](#dynamic-routes). |
 
 ## What gets catalogued
 
@@ -106,7 +180,7 @@ Each entry in `/discovery/resources` carries:
 
 | Field | Description |
 | --- | --- |
-| `resource` | The endpoint URL |
+| `resource` | The endpoint URL. For a [dynamic route](#dynamic-routes), the URL built from your declared examples |
 | `toolName` | MCP tool name; `null` for HTTP resources |
 | `type` | `http` or `mcp` |
 | `x402Version` | Protocol version of the indexing payment |
@@ -197,6 +271,7 @@ An MCP server with N tools contributes N `catalogEntries` but one `resource` and
 | Header says `rejected` | See [rejection reasons](#rejection-reasons) — only the validation reasons point at your declaration | Fix the declaration per `rejectedReason`; validate locally with `@x402/extensions` |
 | Header says `rejected` with `resource url missing or not absolute` | Buyer's client dropped or rewrote the `resource` object while echoing your extension | Pay once through a client that echoes `resource` verbatim; your 402 needs no change |
 | Header says `rejected` with a `resource_host_*` or `resource_scheme_*` reason | Your resource URL fails the [host policy](#host-policy) | List a public hostname over `http(s)`; tunnels and preview hosts are not catalogued |
+| Header says `rejected` with `resource_path_template`, or a `/route/:param` entry disappeared from the listing | The route has path parameters and at least one of them has no declared example | Add `examples` to every parameter in your path parameter schema ([Dynamic routes](#dynamic-routes)), then pay once more through a client that echoes extensions |
 | Header said `processing` but the entry never appeared | The catalog worker could not reach the resource on first listing | Query `/discovery/listing-status?resource=…` — `lastWrite.reason` says `resource_unreachable` or `resource_not_found` with detail; fix and pay once more |
 | Entry disappeared from the listing | Probes failed for two days, or the host now resolves to private space | `/discovery/listing-status` shows `hidden: true` with `hiddenReason` and `lastProbe`; the first healthy probe relists it |
 | Entry shows `null` for `serviceName`, `tags`, `iconUrl`, or `extensions` | Entry was last refreshed before those fields were persisted, or the declaration omits them | Any extension-carrying payment after declaring them populates the fields; identical repeats do not rewrite the row, so change something or wait for the next real payment |
