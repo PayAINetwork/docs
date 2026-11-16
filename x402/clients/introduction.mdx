@@ -46,7 +46,9 @@ End-to-end response time also includes application work, network transport and t
 ## Before using real funds
 
 - Protect signing keys: do not put private keys in public frontend code or commit them to source control.
-- Set spending limits appropriate to the resource and check the advertised amount, network and recipient before authorizing payment.
+- Prefer the **live** HTTP 402 challenge over cached directory metadata (Bazaar, indexes, OpenAPI snapshots). Listings can show an old price or payTo after a seller rotates wallets.
+- Set spending limits appropriate to the resource and check the advertised amount, network and recipient on that live challenge before authorizing payment.
+- Optionally run a buyer-side preflight against the seller URL (for example [x402check](https://x402check.dev)) when you want history grades or CI gating before first payment.
 - Check both payment and resource-delivery outcomes. A failed HTTP response does not prove that a payment did not settle; use the [capacity and recovery guidance](/x402/facilitators/capacity-and-limits) before retrying an uncertain payment.
 - Treat [Solana batch settlement](/x402/servers/batch-settlement) as a separate public-preview facilitator integration with matching official `@x402/core` and `@x402/svm` versions, funded channels and its own recovery procedure, not a drop-in replacement for an exact-payment client.
 
