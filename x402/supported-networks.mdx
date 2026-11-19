@@ -13,14 +13,50 @@ import DiscordHelpCard from "/snippets/discord-help-card.mdx";
 
 ## BNB Smart Chain
 
-BNB Smart Chain (BSC, chain 56) supports x402 **v2 exact payments using Permit2**. Both supported stablecoins have **18 decimals**:
+BNB Smart Chain (BSC, chain 56) supports x402 **v2 exact payments** with two transfer methods. The token decides which one applies. All four supported stablecoins have **18 decimals**:
 
-| Token | BSC contract address |
-| --- | --- |
-| Binance-Peg USDC | `0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d` |
-| Binance-Peg USDT | `0x55d398326f99059fF775485246999027B3197955` |
+| Token | BSC contract address | Transfer method | `extra` |
+| --- | --- | --- | --- |
+| USD1 | `0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d` | EIP-3009 | `{ "name": "World Liberty Financial USD", "version": "1" }` |
+| U | `0xcE24439F2D9C6a2289F741120FE202248B666666` | EIP-3009 | `{ "name": "United Stables", "version": "1" }` |
+| Binance-Peg USDC | `0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d` | Permit2 | `{ "assetTransferMethod": "permit2" }` |
+| Binance-Peg USDT | `0x55d398326f99059fF775485246999027B3197955` | Permit2 | `{ "assetTransferMethod": "permit2" }` |
 
-Set the token and amount explicitly. For 0.01 USDC, use this payment requirement:
+Set the token and amount explicitly, because BSC has no default dollar-price asset. PayAI pays settlement gas for both methods.
+
+### EIP-3009 tokens (USD1, U)
+
+The payer signs a transfer authorization and the facilitator submits it. **The payer needs no token approval and no BNB.** The merchant must put the token's EIP-712 domain in `extra.name` and `extra.version`. For 0.01 USD1, use this price in your route configuration:
+
+```ts
+price: {
+  asset: '0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d',
+  amount: '10000000000000000', // 0.01 USD1, 18 decimals
+  extra: { name: 'World Liberty Financial USD', version: '1' },
+}
+```
+
+It produces this payment requirement:
+
+```json
+{
+  "scheme": "exact",
+  "network": "eip155:56",
+  "asset": "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d",
+  "amount": "10000000000000000",
+  "payTo": "YOUR_BSC_RECEIVING_ADDRESS",
+  "maxTimeoutSeconds": 300,
+  "extra": { "name": "World Liberty Financial USD", "version": "1" }
+}
+```
+
+`extra.name` and `extra.version` must match the token exactly. If they are missing, verification fails with `invalid_exact_evm_missing_eip712_domain`. If they are wrong, it fails with `invalid_exact_evm_signature`. Do not reuse the values of another token, such as Base USDC. For U, use `United Stables` and `1`.
+
+These payments were tested with signatures from standard wallets (externally owned accounts). Signatures from smart contract wallets are untested on BSC.
+
+### Permit2 tokens (Binance-Peg USDC, USDT)
+
+Binance-Peg USDC and USDT have no EIP-3009 functions, so they use Permit2. For 0.01 USDC, use this payment requirement:
 
 ```json
 {
@@ -36,18 +72,20 @@ Set the token and amount explicitly. For 0.01 USDC, use this payment requirement
 
 Use a BSC-capable v2 Permit2 client. Before its first payment, the payer must approve the selected token for canonical Permit2 at `0x000000000022D473030F116dDEE9F6B43aC78BA3`. **That approval requires BNB in the payer's wallet.** After approval, payments require a signature and the facilitator pays settlement gas. Having a merchant API key does not sponsor the initial approval.
 
-BSC does not support x402 v1, EIP-3009 transfers, `upto`, or batch settlement. Do not assume six-decimal USDC amounts, a default dollar-price asset, or Base's token authorization fields. These Binance-Peg tokens are distinct from native USDC on other networks.
+### Limits and live routes
 
-Try the live Echo routes for [BSC mainnet USDC](https://x402.payai.network/api/bsc/paid-content) or [BSC testnet USDC](https://x402.payai.network/api/bsc-testnet/paid-content). Each charges and refunds 0.01 token. The testnet route uses the 18-decimal community test token `0x64544969ed7EBf5f083679233325356EbE738930` (not Circle-issued USDC) and requires testnet BNB for the initial Permit2 approval. For current availability and fees, check the facilitator's [`/supported`](https://facilitator.payai.network/supported) and [`/pricing`](https://facilitator.payai.network/pricing) endpoints.
+BSC does not support x402 v1, `upto`, or batch settlement. Do not assume six-decimal USDC amounts, a default dollar-price asset, or Base's token authorization fields. The Binance-Peg tokens are distinct from native USDC on other networks.
+
+Try the live Echo routes for [BSC mainnet USDC](https://x402.payai.network/api/bsc/paid-content) or [BSC testnet USDC](https://x402.payai.network/api/bsc-testnet/paid-content). Both routes use Permit2. Each charges and refunds 0.01 token. The testnet route uses the 18-decimal community test token `0x64544969ed7EBf5f083679233325356EbE738930` (not Circle-issued USDC) and requires testnet BNB for the initial Permit2 approval. For current availability and fees, check the facilitator's [`/supported`](https://facilitator.payai.network/supported) and [`/pricing`](https://facilitator.payai.network/pricing) endpoints.
 
 ### BSC testnet
 
-BSC testnet (`eip155:97`) is **free on both the production and staging facilitators**:
-`https://facilitator.payai.network` and `https://dev-facilitator.payai.network`.
-It supports v2 `exact` Permit2 payments. Configure a token deployed
-on chain 97 and its actual decimals; do not reuse the mainnet USDC or USDT addresses.
-The initial token approval requires testnet BNB (tBNB), which is BNB on BSC testnet.
-Check your chosen endpoint's `/supported` and `/pricing` before integrating.
+BSC testnet (`eip155:97`) is **free** on `https://facilitator.payai.network`.
+It supports v2 `exact` payments with the same two transfer methods. Configure a token deployed
+on chain 97 and its actual decimals; do not reuse the mainnet token addresses.
+For an EIP-3009 token, set that token's own EIP-712 domain in `extra.name` and `extra.version`.
+For a Permit2 token, the initial token approval requires testnet BNB (tBNB), which is BNB on BSC testnet.
+Check the facilitator's `/supported` and `/pricing` before integrating.
 
 ## Solana batch settlement
 

@@ -459,7 +459,7 @@ Our content is organized into four main pillars:
 - Arbitrum
 - Avalanche
 - Base
-- BNB Smart Chain (BSC; v2 exact Permit2, initial approval requires payer BNB)
+- BNB Smart Chain (BSC; v2 exact. USD1 and U need only a signature, with no approval and no payer BNB. Binance-Peg USDC and USDT use Permit2, and the initial approval requires payer BNB)
 - Polygon
 - Sei
 - SKALE
